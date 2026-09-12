@@ -1,0 +1,85 @@
+{
+  "candidate_order": [
+    "dart-lang/http@1.6.0",
+    "cfug/dio@5.11.1"
+  ],
+  "capability_id": "network.http",
+  "comparison": [
+    {
+      "cfug/dio": "MIT",
+      "dart-lang/http": "BSD-3-Clause",
+      "dimension": "license",
+      "verdict": "both permissive; no legal conclusion"
+    },
+    {
+      "cfug/dio": "companion plugin/custom interceptor",
+      "dart-lang/http": "built-in RetryClient",
+      "dimension": "retry",
+      "verdict": "dart-lang/http simpler"
+    },
+    {
+      "cfug/dio": "first-class timeout support",
+      "dart-lang/http": "AbortableRequest + delayed abort wrapper",
+      "dimension": "timeout",
+      "verdict": "Dio simpler"
+    },
+    {
+      "cfug/dio": "first-class cancel/abort",
+      "dart-lang/http": "AbortableRequest/Abortable",
+      "dimension": "cancellation",
+      "verdict": "both viable"
+    },
+    {
+      "cfug/dio": "custom adapters + wrapper adapter required",
+      "dart-lang/http": "Client interface explicitly supports multiple implementations",
+      "dimension": "swappability",
+      "verdict": "dart-lang/http stronger LEGO fit"
+    },
+    {
+      "cfug/dio": "7 runtime deps including web adapter",
+      "dart-lang/http": "4 runtime deps",
+      "dimension": "dependencies",
+      "verdict": "dart-lang/http smaller surface"
+    },
+    {
+      "cfug/dio": "tests + CI + CodeQL + SECURITY + Dependabot",
+      "dart-lang/http": "nested tests + CI + Dependabot",
+      "dimension": "tests_ci",
+      "verdict": "both strong signals"
+    },
+    {
+      "cfug/dio": "human medium",
+      "dart-lang/http": "human low",
+      "dimension": "integration_cost",
+      "verdict": "dart-lang/http lower for minimal contract"
+    },
+    {
+      "cfug/dio": "interceptors, upload/download, FormData, adapters",
+      "dart-lang/http": "focused HTTP abstraction",
+      "dimension": "advanced_features",
+      "verdict": "Dio richer"
+    }
+  ],
+  "contract_id": "network.http.v1",
+  "contract_version": "1.0",
+  "dry_run": true,
+  "generated_at": "2026-09-11T23:56:27Z",
+  "human_recommendation": {
+    "alternative": "cfug/dio 5.11.1",
+    "alternative_reason": "Prefer when the target benefits from richer interceptors, first-class timeout/cancel, upload/download/progress or Dio ecosystem integrations.",
+    "default": "dart-lang/http 1.6.0",
+    "reason": "Its Client/BaseClient abstraction, built-in RetryClient, abortable requests and explicit implementation swapping map most cleanly to the small network.http.v1 LEGO boundary."
+  },
+  "limitations": [
+    "No candidate code executed",
+    "No performance benchmark run",
+    "No definitive vulnerability audit",
+    "Library certification remains required"
+  ],
+  "machine_scores": {
+    "cfug/dio": 0.8325,
+    "dart-lang/http": 0.79
+  },
+  "outcome": "Both candidates shortlisted. No absolute winner; package:http is the default thin contract candidate and Dio is the richer feature-oriented candidate.",
+  "schema_version": 1
+}

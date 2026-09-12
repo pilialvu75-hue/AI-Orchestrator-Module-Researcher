@@ -1,0 +1,105 @@
+{
+  "capabilities": [
+    "network.http"
+  ],
+  "connector": {
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {
+      "path": null,
+      "type": "none"
+    },
+    "integration_mode": "adapter",
+    "provides": [
+      {
+        "capability_id": "network.http",
+        "contract_id": "network.http.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0"
+  },
+  "dependencies": [
+    {
+      "name": "http",
+      "source": "https://pub.dev/packages/http",
+      "version": "1.6.0"
+    }
+  ],
+  "deprecation": {
+    "reason": null,
+    "replacement": null
+  },
+  "description": "Researcher candidate adapter for network.http.v1 using package:http 1.6.0.",
+  "entry_paths": [],
+  "frameworks": [
+    "flutter"
+  ],
+  "id": "network.http.dart-lang.http",
+  "integration": {
+    "adaptation_allowed": true,
+    "adapter_notes": "Thin trusted adapter over Client/RetryClient; allow platform Client injection where useful.",
+    "estimated_effort": "low",
+    "known_constraints": [
+      "timeout policy requires an AbortableRequest trigger wrapper",
+      "Library must validate network.http.v1 semantics"
+    ]
+  },
+  "kind": "module",
+  "languages": [
+    "dart"
+  ],
+  "name": "Dart package:http",
+  "payload": {
+    "path": null,
+    "sha256": null,
+    "type": "upstream_reference",
+    "upstream_commit": "907782f5a792e7a5b0ed92f118c0ad91f3ecde51",
+    "upstream_repository": "https://github.com/dart-lang/http"
+  },
+  "platforms": [
+    "android",
+    "desktop",
+    "web"
+  ],
+  "provenance": {
+    "license": "BSD-3-Clause",
+    "license_file": "https://github.com/dart-lang/http/blob/907782f5a792e7a5b0ed92f118c0ad91f3ecde51/LICENSE",
+    "origin": "researcher",
+    "retrieved_at": "2026-09-11T23:56:27Z",
+    "source_commit": "907782f5a792e7a5b0ed92f118c0ad91f3ecde51",
+    "source_project_id": null,
+    "source_repository": "https://github.com/dart-lang/http",
+    "source_tag": null,
+    "source_task_id": "c198bd548a3eb54692d2d417f93331329233dc66970e7d8f960a0c1cc4c40347"
+  },
+  "quality": {
+    "failed_integrations": 0,
+    "last_used_at": null,
+    "reuse_count": 0,
+    "successful_integrations": 0
+  },
+  "security": {
+    "notes": "Metadata/deep-documentation pre-screen only; no external code executed and no definitive vulnerability audit performed.",
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null
+  },
+  "status": "discovered",
+  "tags": [
+    "network.http",
+    "researcher-candidate",
+    "dart",
+    "flutter"
+  ],
+  "validation": {
+    "score": 0.79,
+    "test_report": null,
+    "tests_passed": false,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "version": "0.1.0"
+}

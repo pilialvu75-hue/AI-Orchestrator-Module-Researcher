@@ -1,0 +1,110 @@
+{
+  "capabilities": [
+    "network.http"
+  ],
+  "connector": {
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {
+      "path": null,
+      "type": "none"
+    },
+    "integration_mode": "adapter",
+    "provides": [
+      {
+        "capability_id": "network.http",
+        "contract_id": "network.http.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0"
+  },
+  "dependencies": [
+    {
+      "name": "dio",
+      "source": "https://pub.dev/packages/dio",
+      "version": "5.11.1"
+    },
+    {
+      "name": "dio_web_adapter",
+      "source": "https://pub.dev/packages/dio_web_adapter",
+      "version": ">=1.1.0 <3.0.0"
+    }
+  ],
+  "deprecation": {
+    "reason": null,
+    "replacement": null
+  },
+  "description": "Researcher candidate adapter for network.http.v1 using Dio 5.11.1.",
+  "entry_paths": [],
+  "frameworks": [
+    "flutter"
+  ],
+  "id": "network.http.cfug.dio",
+  "integration": {
+    "adaptation_allowed": true,
+    "adapter_notes": "Wrap Dio behind a trusted AI-Orchestrator network.http.v1 adapter.",
+    "estimated_effort": "medium",
+    "known_constraints": [
+      "retry requires trusted adapter/custom interceptor or separately reviewed companion module",
+      "Library must validate network.http.v1 semantics"
+    ]
+  },
+  "kind": "module",
+  "languages": [
+    "dart"
+  ],
+  "name": "Dio HTTP Client",
+  "payload": {
+    "path": null,
+    "sha256": null,
+    "type": "upstream_reference",
+    "upstream_commit": "4684e29dabaa2655606f1620a4ed316ee3f8c963",
+    "upstream_repository": "https://github.com/cfug/dio"
+  },
+  "platforms": [
+    "android",
+    "desktop",
+    "web"
+  ],
+  "provenance": {
+    "license": "MIT",
+    "license_file": "https://github.com/cfug/dio/blob/4684e29dabaa2655606f1620a4ed316ee3f8c963/LICENSE",
+    "origin": "researcher",
+    "retrieved_at": "2026-09-11T23:56:27Z",
+    "source_commit": "4684e29dabaa2655606f1620a4ed316ee3f8c963",
+    "source_project_id": null,
+    "source_repository": "https://github.com/cfug/dio",
+    "source_tag": "dio_v5.11.1",
+    "source_task_id": "0cb29b8b8cadadb138456389588f0f8b343588c7d92af28bd960c31dcdc2d004"
+  },
+  "quality": {
+    "failed_integrations": 0,
+    "last_used_at": null,
+    "reuse_count": 0,
+    "successful_integrations": 0
+  },
+  "security": {
+    "notes": "Metadata/deep-documentation pre-screen only; no external code executed and no definitive vulnerability audit performed.",
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null
+  },
+  "status": "discovered",
+  "tags": [
+    "network.http",
+    "researcher-candidate",
+    "dart",
+    "flutter"
+  ],
+  "validation": {
+    "score": 0.8325,
+    "test_report": null,
+    "tests_passed": false,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "version": "0.1.0"
+}
