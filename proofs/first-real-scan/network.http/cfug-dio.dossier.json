@@ -1,0 +1,148 @@
+{
+  "candidate": {
+    "acquired_at": "2026-09-11T23:56:27Z",
+    "commit_sha": "4684e29dabaa2655606f1620a4ed316ee3f8c963",
+    "language": "Dart",
+    "license": "MIT",
+    "license_file": "https://github.com/cfug/dio/blob/4684e29dabaa2655606f1620a4ed316ee3f8c963/LICENSE",
+    "owner": "cfug",
+    "platforms": [
+      "android",
+      "desktop",
+      "web"
+    ],
+    "project": "dio",
+    "provider": "github",
+    "release_tag_verified": true,
+    "repository": "cfug/dio",
+    "source_tag": "dio_v5.11.1",
+    "source_version": "5.11.1",
+    "tree_sha": "9aacf40c7925ff27ba0c10c0ba88e140030f86b6",
+    "upstream_url": "https://github.com/cfug/dio"
+  },
+  "capability": {
+    "capability_id": "network.http",
+    "contract_id": "network.http.v1",
+    "contract_version": "1.0",
+    "targets": [
+      "android",
+      "desktop",
+      "web"
+    ],
+    "title": "HTTP/API client with retries, timeout and cancellation"
+  },
+  "dependencies": [
+    {
+      "name": "async",
+      "version": "^2.8.2"
+    },
+    {
+      "name": "collection",
+      "version": "^1.16.0"
+    },
+    {
+      "name": "http_parser",
+      "version": "^4.0.0"
+    },
+    {
+      "name": "meta",
+      "version": "^1.5.0"
+    },
+    {
+      "name": "mime",
+      "version": ">=1.0.0 <3.0.0"
+    },
+    {
+      "name": "path",
+      "version": "^1.8.0"
+    },
+    {
+      "name": "dio_web_adapter",
+      "version": ">=1.1.0 <3.0.0"
+    }
+  ],
+  "evidence": {
+    "benchmark": {
+      "reason": "untrusted candidate code is not executed in Researcher V1",
+      "status": "PLANNED_NOT_EXECUTED"
+    },
+    "functional": {
+      "cancellation": "aborting and canceling requests are first-class features",
+      "custom_adapters": true,
+      "http_client": true,
+      "interceptors": true,
+      "retry": "not core-first-class; official docs list dio_smart_retry companion and custom interceptor route",
+      "timeout": "first-class request timeout support"
+    },
+    "maintenance": {
+      "archived": false,
+      "candidate_release_date": "2026-09-04",
+      "repository_pushed_at": "2026-09-06T14:55:17Z"
+    },
+    "quality": {
+      "ci_present": true,
+      "codeql_present": true,
+      "dependabot_present": true,
+      "security_policy_present": true,
+      "tests_present": true
+    },
+    "security": {
+      "reviewed": false,
+      "supply_chain_notes": "dependency manifests enumerated; transitive dependencies not audited in proof",
+      "untrusted_code_executed": false,
+      "vulnerability_scan": "not_performed"
+    }
+  },
+  "evidence_sources": [
+    "https://github.com/cfug/dio/commit/4684e29dabaa2655606f1620a4ed316ee3f8c963",
+    "https://github.com/cfug/dio/blob/4684e29dabaa2655606f1620a4ed316ee3f8c963/dio/pubspec.yaml",
+    "https://github.com/cfug/dio/blob/4684e29dabaa2655606f1620a4ed316ee3f8c963/dio/doc/plugins.md",
+    "https://github.com/cfug/dio/blob/4684e29dabaa2655606f1620a4ed316ee3f8c963/LICENSE"
+  ],
+  "fingerprint": "0cb29b8b8cadadb138456389588f0f8b343588c7d92af28bd960c31dcdc2d004",
+  "integration_assessment": {
+    "adapter_model": "trusted AI-Orchestrator adapter around Dio",
+    "additional_costs": [
+      "retry policy needs custom interceptor or companion package",
+      "web path uses dio_web_adapter"
+    ],
+    "human_estimated_effort": "medium",
+    "machine_estimated_effort": "medium",
+    "strengths": [
+      "rich interceptor model",
+      "timeout/cancel built in",
+      "upload/download/progress capabilities",
+      "active ecosystem"
+    ],
+    "weaknesses": [
+      "larger surface than minimal network.http contract",
+      "retry adds another integration choice"
+    ]
+  },
+  "lifecycle": "SHORTLISTED",
+  "recommendation": "SHORTLIST. Strong rich-client option, especially when advanced networking features justify the extra surface.",
+  "schema_version": 1,
+  "scores": {
+    "contract_fit": 0.75,
+    "documentation": 0.8,
+    "footprint": 0.9,
+    "functional_fit": 1.0,
+    "integration_cost": 0.55,
+    "license_fit": 1.0,
+    "maintenance": 1.0,
+    "performance": 0.5,
+    "platform_fit": 0.9,
+    "reasons": [
+      "repository metadata explicitly covers HTTP, cancellation and timeout",
+      "exact Library contract exists: network.http.v1",
+      "repository is active and not archived",
+      "MIT is permissive",
+      "nested tests and CI detected",
+      "retry requires companion plugin or custom interceptor",
+      "no untrusted code executed; vulnerability scan not performed"
+    ],
+    "recommendation": 0.8325,
+    "security": 0.65,
+    "test_quality": 0.9
+  }
+}

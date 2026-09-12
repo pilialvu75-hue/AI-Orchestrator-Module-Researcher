@@ -1,0 +1,136 @@
+{
+  "candidate": {
+    "acquired_at": "2026-09-11T23:56:27Z",
+    "commit_sha": "907782f5a792e7a5b0ed92f118c0ad91f3ecde51",
+    "language": "Dart",
+    "license": "BSD-3-Clause",
+    "license_file": "https://github.com/dart-lang/http/blob/907782f5a792e7a5b0ed92f118c0ad91f3ecde51/LICENSE",
+    "owner": "dart-lang",
+    "platforms": [
+      "android",
+      "desktop",
+      "web"
+    ],
+    "project": "http",
+    "provider": "github",
+    "release_tag_verified": false,
+    "repository": "dart-lang/http",
+    "source_tag": null,
+    "source_version": "1.6.0",
+    "tree_sha": "3adcab234342d84dfc2585c5a7a8d91e71148ecd",
+    "upstream_url": "https://github.com/dart-lang/http"
+  },
+  "capability": {
+    "capability_id": "network.http",
+    "contract_id": "network.http.v1",
+    "contract_version": "1.0",
+    "targets": [
+      "android",
+      "desktop",
+      "web"
+    ],
+    "title": "HTTP/API client with retries, timeout and cancellation"
+  },
+  "dependencies": [
+    {
+      "name": "async",
+      "version": "^2.5.0"
+    },
+    {
+      "name": "http_parser",
+      "version": "^4.0.0"
+    },
+    {
+      "name": "meta",
+      "version": "^1.3.0"
+    },
+    {
+      "name": "web",
+      "version": ">=0.5.0 <2.0.0"
+    }
+  ],
+  "evidence": {
+    "benchmark": {
+      "reason": "untrusted candidate code is not executed in Researcher V1",
+      "status": "PLANNED_NOT_EXECUTED"
+    },
+    "functional": {
+      "cancellation": "AbortableRequest/Abortable supported by BrowserClient, IOClient and RetryClient",
+      "http_client": true,
+      "retry": "RetryClient is built into package:http/retry.dart",
+      "swappable_client": "Client/BaseClient abstraction is explicitly designed for multiple implementations",
+      "timeout": "can be implemented by completing an abort trigger after a Future.delayed timeout"
+    },
+    "maintenance": {
+      "archived": false,
+      "candidate_release_commit_at": "2025-11-10T18:20:05Z",
+      "repository_pushed_at": "2026-09-10T16:43:53Z"
+    },
+    "quality": {
+      "ci_present": true,
+      "codeql_present": false,
+      "dependabot_present": true,
+      "security_policy_present": false,
+      "tests_present": true
+    },
+    "security": {
+      "reviewed": false,
+      "supply_chain_notes": "four runtime dependencies at 1.6.0; transitive dependencies not audited in proof",
+      "untrusted_code_executed": false,
+      "vulnerability_scan": "not_performed"
+    }
+  },
+  "evidence_sources": [
+    "https://github.com/dart-lang/http/commit/907782f5a792e7a5b0ed92f118c0ad91f3ecde51",
+    "https://github.com/dart-lang/http/blob/907782f5a792e7a5b0ed92f118c0ad91f3ecde51/pkgs/http/pubspec.yaml",
+    "https://github.com/dart-lang/http/blob/907782f5a792e7a5b0ed92f118c0ad91f3ecde51/pkgs/http/README.md",
+    "https://github.com/dart-lang/http/blob/907782f5a792e7a5b0ed92f118c0ad91f3ecde51/LICENSE"
+  ],
+  "fingerprint": "c198bd548a3eb54692d2d417f93331329233dc66970e7d8f960a0c1cc4c40347",
+  "integration_assessment": {
+    "adapter_model": "thin trusted adapter over package:http Client",
+    "additional_costs": [
+      "timeout policy needs a small AbortableRequest wrapper",
+      "platform-specific Client selection is optional"
+    ],
+    "human_estimated_effort": "low",
+    "machine_estimated_effort": "medium",
+    "strengths": [
+      "small composable API",
+      "built-in retry wrapper",
+      "abort/cancel support",
+      "explicitly swappable Client implementations",
+      "clean dependency surface"
+    ],
+    "weaknesses": [
+      "timeout is a recipe/wrapper rather than a single built-in client option",
+      "stable 1.6.0 has no matching GitHub release tag, so provenance pins the signed release-preparation commit"
+    ]
+  },
+  "lifecycle": "SHORTLISTED",
+  "recommendation": "SHORTLIST. Preferred thin LEGO-oriented default for network.http.v1; Dio remains valuable as the richer alternative.",
+  "schema_version": 1,
+  "scores": {
+    "contract_fit": 0.75,
+    "documentation": 0.8,
+    "footprint": 0.9,
+    "functional_fit": 0.75,
+    "integration_cost": 0.55,
+    "license_fit": 1.0,
+    "maintenance": 1.0,
+    "performance": 0.5,
+    "platform_fit": 0.9,
+    "reasons": [
+      "repository metadata is narrower than deep documentation, so machine functional fit is conservative",
+      "exact Library contract exists: network.http.v1",
+      "repository is active and not archived",
+      "BSD-3-Clause is permissive",
+      "nested tests and CI detected",
+      "deep documentation proves RetryClient, abortable requests and swappable Client implementations",
+      "no untrusted code executed; vulnerability scan not performed"
+    ],
+    "recommendation": 0.79,
+    "security": 0.65,
+    "test_quality": 0.9
+  }
+}
