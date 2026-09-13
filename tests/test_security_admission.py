@@ -11,6 +11,7 @@ from researcher.rate_limit import RateLimitManager
 from researcher.security_admission import GitHubFullTreeSecurityScanner
 from researcher.security_gate import SecurityVerdict
 from researcher.state import SQLiteStateStore
+from researcher.supply_chain import SupplyChainVerdict
 
 from helpers import candidate
 
@@ -39,8 +40,8 @@ class FullTreeSecurityAdmissionTests(unittest.TestCase):
     def _scan(
         self,
         *,
-        source_path: str = "lib/safe.dart",
-        source_content: str = "void main() { print('ok'); }",
+        source_path: str = "package.json",
+        source_content: str = '{"dependencies":{"safe-package":"^1.2.3"}}',
         source_mode: str = "100644",
         extra_entries: list[dict[str, Any]] | None = None,
         truncated: bool = False,
@@ -85,9 +86,24 @@ class FullTreeSecurityAdmissionTests(unittest.TestCase):
         self.assertEqual(report.verdict, SecurityVerdict.CLEAR)
         self.assertTrue(report.complete)
         self.assertTrue(report.admission_eligible)
+        self.assertIsNotNone(report.supply_chain)
+        assert report.supply_chain is not None
+        self.assertEqual(report.supply_chain.verdict, SupplyChainVerdict.CLEAR)
         self.assertEqual(report.scanned_files, 1)
         self.assertFalse(report.executed_untrusted_code)
         self.assertEqual(len(calls), 3)
+
+    def test_supply_chain_review_prevents_admission(self) -> None:
+        report, _ = self._scan(
+            source_content=(
+                '{"dependencies":{"unsafe":"git+https://example.invalid/u.git#main"}}'
+            )
+        )
+        self.assertEqual(report.verdict, SecurityVerdict.REVIEW)
+        self.assertFalse(report.admission_eligible)
+        self.assertIsNotNone(report.supply_chain)
+        assert report.supply_chain is not None
+        self.assertEqual(report.supply_chain.verdict, SupplyChainVerdict.REVIEW)
 
     def test_download_and_execute_script_is_blocked(self) -> None:
         report, _ = self._scan(

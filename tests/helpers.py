@@ -5,6 +5,7 @@ from typing import Any
 from researcher.models import Candidate, Contract, Need, utc_now
 from researcher.security_admission import FullTreeSecurityReport
 from researcher.security_gate import SecurityFinding, SecuritySeverity, SecurityVerdict
+from researcher.supply_chain import SupplyChainReport, SupplyChainVerdict
 
 
 def need(capability_id: str = "voice.stt") -> Need:
@@ -91,9 +92,11 @@ class FakeSecurityScanner:
         self,
         verdict: SecurityVerdict = SecurityVerdict.CLEAR,
         complete: bool = True,
+        supply_chain_verdict: SupplyChainVerdict = SupplyChainVerdict.CLEAR,
     ) -> None:
         self.verdict = verdict
         self.complete = complete
+        self.supply_chain_verdict = supply_chain_verdict
         self.calls = 0
 
     def scan(self, item: Candidate) -> FullTreeSecurityReport:
@@ -112,6 +115,13 @@ class FakeSecurityScanner:
                     evidence="test-only security finding",
                 ),
             )
+        supply_chain = SupplyChainReport(
+            verdict=self.supply_chain_verdict,
+            manifests_analyzed=("pubspec.yaml",),
+            lockfiles_present=(),
+            dependencies=(),
+            findings=(),
+        )
         return FullTreeSecurityReport(
             repository=item.repository,
             commit_sha=item.commit_sha,
@@ -128,4 +138,5 @@ class FakeSecurityScanner:
             opaque_artifacts=(),
             submodules=(),
             symlinks=(),
+            supply_chain=supply_chain,
         )
