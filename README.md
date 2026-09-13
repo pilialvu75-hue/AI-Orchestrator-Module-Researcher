@@ -68,7 +68,7 @@ researcher diagnostics-sync
 python -m unittest discover -s tests -v
 ```
 
-## Structured logs and Diagnostics
+## Structured logs and shared Diagnostics
 
 The authoritative operational log is local and durable in `data/researcher.db`. Important
 Researcher lifecycle events are stored as structured rows with timestamp, severity, component,
@@ -79,14 +79,55 @@ Each event also gets a second, smaller public projection built from an explicit 
 Secret-like keys, Bearer tokens and URL query/fragment data are redacted before persistence,
 and public projection omits free-form messages, local paths, source text and repository names.
 
-The optional Diagnostics bridge follows the same principle used by AI Orchestrator's
-`GitHubDiagnostics`: Diagnostics is a secondary observation channel, not the source of truth.
-When enabled it publishes only pending public projections to a dedicated GitHub Release in
-`pilialvu75-hue/Ai-orchestrator-diagnostics`. Failed uploads stay in the local outbox and use
-backoff; research cycles continue normally.
+The optional public sink is the shared repository
+`pilialvu75-hue/Ai-orchestrator-diagnostics`. Its authoritative producer contract is
+`docs/PRODUCERS.md` and `schemas/diagnostic-event-v2.schema.json` in that repository.
+The Researcher implements the `researcher` namespace without modifying the existing Android
+app format.
 
-Because the Diagnostics repository is public, upload is **disabled by default**. Enabling it
-requires a separate `DIAGNOSTICS_GITHUB_TOKEN`; the bridge never reuses `GITHUB_TOKEN`.
+### Researcher producer namespace
+
+For each stable Researcher instance:
+
+- release tag: `diagnostics-researcher-v1-<instance-id>`
+- release name: `Researcher diagnostics <instance-id>`
+- archive asset: `researcher-diag-<sha256>.jsonl`
+- latest asset: `researcher-latest.jsonl`
+- event schema: `ai-orchestrator.diagnostics.event.v2`
+- maximum archive chunk: 1 MiB
+- archive retention budget: 20 MiB per Researcher instance/release
+
+Every JSONL event records producer, producer version/commit, platform, stable instance,
+run identifier, RFC3339 timestamp with timezone, event, severity, correlation id and only
+allowlisted technical fields. Uploads are content-addressed and idempotent. The queue is
+acknowledged only after archive upload, latest asset and bounded release-body summary are
+verified. Failures remain pending with exponential backoff.
+
+Rotation is intentionally incapable of global cleanup: it considers only
+`researcher-diag-*.jsonl` inside the Researcher's own release. It never deletes Android
+`latest.txt`, `diag-*.txt`, `diag-crash-*.txt`, Library assets, or releases belonging to other
+producers.
+
+Because the Diagnostics repository is public, publishing is **disabled by default**. Enabling
+it requires a separate `DIAGNOSTICS_GITHUB_TOKEN`; the bridge never reuses `GITHUB_TOKEN`.
+A production fine-grained token should be limited to the Diagnostics repository with Contents
+read/write and kept in the producer's secret store, never in source, logs or chat.
+
+### Shared Diagnostics API endpoints used
+
+Repository: `pilialvu75-hue/Ai-orchestrator-diagnostics`
+
+```text
+GET    /repos/pilialvu75-hue/Ai-orchestrator-diagnostics/releases/tags/<tag>
+POST   /repos/pilialvu75-hue/Ai-orchestrator-diagnostics/releases
+GET    /repos/pilialvu75-hue/Ai-orchestrator-diagnostics/releases/<release-id>/assets?per_page=100&page=<n>
+POST   https://uploads.github.com/repos/pilialvu75-hue/Ai-orchestrator-diagnostics/releases/<release-id>/assets?name=<asset-name>
+DELETE /repos/pilialvu75-hue/Ai-orchestrator-diagnostics/releases/assets/<asset-id>
+PATCH  /repos/pilialvu75-hue/Ai-orchestrator-diagnostics/releases/<release-id>
+```
+
+Diagnostics is a secondary observation channel, not the source of truth. A Diagnostics outage
+must never fail or block a research cycle.
 
 ## Configuration
 
@@ -97,7 +138,7 @@ Environment variables:
 | `RESEARCHER_MODE` | `SEEDING` | `SEEDING`, `MAINTENANCE`, `IMPROVEMENT` |
 | `DRY_RUN` | `true` | Prevents final Library submission |
 | `ALLOW_LIBRARY_WRITE` | `false` | Second fail-closed switch for intake writes |
-| `GITHUB_TOKEN` | empty | GitHub API credential, preferably GitHub App token in production |
+| `GITHUB_TOKEN` | empty | GitHub API credential for normal Researcher work |
 | `LIBRARY_REPOSITORY` | `pilialvu75-hue/AI-Orchestrator-Module-Library` | Library source |
 | `LIBRARY_REF` | `main` | Library ref to read |
 | `DATA_DIR` | `./data` | SQLite/cache/dossier root |
@@ -106,10 +147,16 @@ Environment variables:
 | `IMPROVEMENT_INTERVAL_SECONDS` | `86400` | Improvement cadence when explicitly enabled |
 | `DASHBOARD_HOST` | `127.0.0.1` | HTTP health/dashboard bind |
 | `DASHBOARD_PORT` | `8080` | HTTP port |
-| `DIAGNOSTICS_ENABLED` | `false` | Enables the secondary public Diagnostics bridge |
-| `DIAGNOSTICS_GITHUB_TOKEN` | empty | Dedicated token used only for Diagnostics publishing |
-| `DIAGNOSTICS_REPOSITORY` | `pilialvu75-hue/Ai-orchestrator-diagnostics` | Diagnostics destination |
-| `DIAGNOSTICS_TAG` | `researcher-diagnostics-v1` | Dedicated GitHub Release tag |
+| `DIAGNOSTICS_ENABLED` | `false` | Enables the secondary public Diagnostics producer |
+| `DIAGNOSTICS_GITHUB_TOKEN` | empty | Dedicated Diagnostics-only credential |
+| `DIAGNOSTICS_REPOSITORY` | `pilialvu75-hue/Ai-orchestrator-diagnostics` | Shared sink |
+| `DIAGNOSTICS_INSTANCE_ID` | persisted UUID | Optional stable instance override |
+| `DIAGNOSTICS_PRODUCER_VERSION` | Researcher version | Optional immutable version/commit override |
+| `RESEARCHER_COMMIT` | empty | Used as producer version when the explicit override is absent |
+
+`GITHUB_API_BASE` and `GITHUB_UPLOADS_BASE` exist only for controlled endpoint configuration
+and tests. Production uploads are restricted to `https://uploads.github.com`; plain HTTP is
+accepted only for loopback test mocks.
 
 ## Deployment
 
@@ -147,7 +194,8 @@ Preferred minimal permissions for a dedicated GitHub App:
   - Pull requests: read/write
   - Metadata: read
 - **Discovery repositories**: public metadata/read; no write permission.
-- **Diagnostics**: use a separate minimal credential; do not reuse the Library credential.
+- **Diagnostics**: use a separate minimal credential scoped only to the Diagnostics repository;
+  do not reuse the Library credential.
 
 The current V1 can also use `GITHUB_TOKEN` for development, but a broad PAT is not the
 recommended production credential.
