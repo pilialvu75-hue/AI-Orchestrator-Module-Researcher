@@ -6,6 +6,7 @@ import sys
 import threading
 
 from .app import App, build_app
+from .capability_status import status_payload
 from .config import Config
 from .dashboard import serve
 from .observability import EventLevel
@@ -45,6 +46,10 @@ def _sync_diagnostics(app: App) -> dict[str, object]:
         return {"state": "ERROR", "sent": 0, "error_type": type(exc).__name__}
 
 
+def _status(app: App) -> dict[str, object]:
+    return status_payload(app.state)
+
+
 def main() -> None:
     args = _parser().parse_args()
     config = Config.from_env()
@@ -56,7 +61,7 @@ def main() -> None:
         print(json.dumps(result, indent=2, sort_keys=True))
         return
     if args.command == "status":
-        print(json.dumps(app.state.status(), indent=2, sort_keys=True))
+        print(json.dumps(_status(app), indent=2, sort_keys=True))
         return
     if args.command == "events":
         print(json.dumps(app.state.recent_events(args.limit), indent=2, sort_keys=True))
@@ -65,12 +70,12 @@ def main() -> None:
         print(json.dumps(_sync_diagnostics(app), indent=2, sort_keys=True))
         return
     if args.command == "dashboard":
-        serve(config.dashboard_host, config.dashboard_port, app.state.status)
+        serve(config.dashboard_host, config.dashboard_port, lambda: _status(app))
         return
     if args.command == "worker":
         dashboard_thread = threading.Thread(
             target=serve,
-            args=(config.dashboard_host, config.dashboard_port, app.state.status),
+            args=(config.dashboard_host, config.dashboard_port, lambda: _status(app)),
             daemon=True,
             name="researcher-dashboard",
         )
