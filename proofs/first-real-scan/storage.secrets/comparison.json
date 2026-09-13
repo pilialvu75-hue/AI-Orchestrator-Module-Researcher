@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-13T10:00:00Z",
+  "dry_run": true,
+  "capability_id": "storage.secrets",
+  "contract_id": "storage.secrets.v1",
+  "contract_version": "1.0",
+  "candidate_order": [
+    "juliansteenbakker/flutter_secure_storage@11.1.1",
+    "JohnGalt1717/webauthn_secure_storage@0.2.3"
+  ],
+  "comparison": [
+    {
+      "dimension": "maturity",
+      "flutter_secure_storage": "long-lived project, 1281 stars, active maintenance",
+      "webauthn_secure_storage": "young project created in 2026 with minimal adoption",
+      "verdict": "flutter_secure_storage substantially stronger"
+    },
+    {
+      "dimension": "target_platforms",
+      "flutter_secure_storage": "Android + Linux/macOS/Windows supported",
+      "webauthn_secure_storage": "Android + Linux/macOS/Windows supported",
+      "verdict": "both cover Library target"
+    },
+    {
+      "dimension": "hardware_security",
+      "flutter_secure_storage": "Android Keystore options, Apple Secure Enclave opt-in",
+      "webauthn_secure_storage": "biometric-gated OS stores and native Windows/Linux integrations",
+      "verdict": "webauthn candidate richer but broader"
+    },
+    {
+      "dimension": "release_provenance",
+      "flutter_secure_storage": "verified GitHub release tag and signed commit",
+      "webauthn_secure_storage": "signed commit, version in pubspec, no GitHub release object",
+      "verdict": "flutter_secure_storage stronger"
+    },
+    {
+      "dimension": "security_admission",
+      "flutter_secure_storage": "full-source admission not yet run",
+      "webauthn_secure_storage": "full-source admission not yet run",
+      "verdict": "neither certification-eligible yet"
+    },
+    {
+      "dimension": "integration_cost",
+      "flutter_secure_storage": "thin key/value adapter",
+      "webauthn_secure_storage": "larger API surface; adapter should expose storage subset only",
+      "verdict": "flutter_secure_storage lower"
+    }
+  ],
+  "machine_scores": {
+    "juliansteenbakker/flutter_secure_storage": 0.87,
+    "JohnGalt1717/webauthn_secure_storage": 0.74
+  },
+  "human_recommendation": {
+    "default": "juliansteenbakker/flutter_secure_storage 11.1.1",
+    "reason": "Mature, actively maintained, recent verified release and narrow secure-storage API align well with storage.secrets.v1.",
+    "alternative": "JohnGalt1717/webauthn_secure_storage 0.2.3",
+    "alternative_reason": "Interesting hardware/biometric-first independent implementation, but young enough to require a stricter security and maturity review."
+  },
+  "limitations": [
+    "No candidate code executed",
+    "Full-source static admission gate not yet run",
+    "No dependency/SBOM vulnerability audit",
+    "No sandbox benchmark",
+    "Library certification remains required"
+  ],
+  "outcome": "Two independent candidates shortlisted. Mature default is preferred; emerging alternative remains deliberately lower-confidence until deeper security validation."
+}

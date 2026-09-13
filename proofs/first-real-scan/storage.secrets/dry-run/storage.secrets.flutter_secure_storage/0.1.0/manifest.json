@@ -1,0 +1,85 @@
+{
+  "id": "storage.secrets.flutter_secure_storage",
+  "name": "Flutter Secure Storage",
+  "version": "0.1.0",
+  "description": "Researcher candidate adapter for storage.secrets.v1 using flutter_secure_storage 11.1.1.",
+  "kind": "module",
+  "status": "discovered",
+  "capabilities": ["storage.secrets"],
+  "frameworks": ["flutter"],
+  "languages": ["dart"],
+  "platforms": ["android", "desktop"],
+  "entry_paths": [],
+  "dependencies": [
+    {
+      "name": "flutter_secure_storage",
+      "version": "11.1.1",
+      "source": "https://pub.dev/packages/flutter_secure_storage"
+    }
+  ],
+  "connector": {
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0",
+    "integration_mode": "adapter",
+    "provides": [
+      {
+        "capability_id": "storage.secrets",
+        "contract_id": "storage.secrets.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"type": "none", "path": null}
+  },
+  "payload": {
+    "type": "upstream_reference",
+    "path": null,
+    "sha256": null,
+    "upstream_repository": "https://github.com/juliansteenbakker/flutter_secure_storage",
+    "upstream_commit": "7ee0d6733b3e5179f6874eff34f6d9756c44c16e"
+  },
+  "provenance": {
+    "origin": "researcher",
+    "source_repository": "https://github.com/juliansteenbakker/flutter_secure_storage",
+    "source_commit": "7ee0d6733b3e5179f6874eff34f6d9756c44c16e",
+    "source_tag": "flutter_secure_storage-v11.1.1",
+    "source_project_id": null,
+    "source_task_id": "b472c1eb52cc7cf7c9e5d23977bb0701f317ac882050370b79a1176a9ff44bb4",
+    "retrieved_at": "2026-09-13T10:00:00Z",
+    "license": "BSD-3-Clause",
+    "license_file": "https://github.com/juliansteenbakker/flutter_secure_storage/blob/7ee0d6733b3e5179f6874eff34f6d9756c44c16e/LICENSE"
+  },
+  "integration": {
+    "adaptation_allowed": true,
+    "estimated_effort": "low",
+    "adapter_notes": "Expose only the storage.secrets.v1 key/value boundary and normalize platform-specific options.",
+    "known_constraints": [
+      "full-source Security Admission Gate not yet run",
+      "Android backup policy must be configured correctly",
+      "Library must validate storage.secrets.v1 semantics"
+    ]
+  },
+  "validation": {
+    "score": 0.87,
+    "tests_passed": false,
+    "test_report": null,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "security": {
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null,
+    "notes": "Not certification-eligible: full-source static admission, dependency/SBOM review and sandbox validation are still pending."
+  },
+  "quality": {
+    "reuse_count": 0,
+    "successful_integrations": 0,
+    "failed_integrations": 0,
+    "last_used_at": null
+  },
+  "deprecation": {"reason": null, "replacement": null},
+  "tags": ["storage.secrets", "researcher-candidate", "dart", "flutter"]
+}

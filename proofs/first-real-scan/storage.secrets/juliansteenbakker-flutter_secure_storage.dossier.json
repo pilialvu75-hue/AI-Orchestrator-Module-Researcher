@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "fingerprint": "b472c1eb52cc7cf7c9e5d23977bb0701f317ac882050370b79a1176a9ff44bb4",
+  "lifecycle": "SHORTLISTED",
+  "capability": {
+    "capability_id": "storage.secrets",
+    "contract_id": "storage.secrets.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop"],
+    "title": "Secure local storage / secrets abstraction"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "juliansteenbakker/flutter_secure_storage",
+    "upstream_url": "https://github.com/juliansteenbakker/flutter_secure_storage",
+    "commit_sha": "7ee0d6733b3e5179f6874eff34f6d9756c44c16e",
+    "tree_sha": "62403e7495af2c7aff8666c883276e2b01337d87",
+    "source_version": "11.1.1",
+    "source_tag": "flutter_secure_storage-v11.1.1",
+    "release_tag_verified": true,
+    "license": "BSD-3-Clause",
+    "platforms": ["android", "ios", "linux", "macos", "web", "windows"]
+  },
+  "evidence": {
+    "functional": {
+      "key_value_secret_storage": true,
+      "android": "RSA-OAEP + AES-GCM default, Android Keystore biometric options",
+      "apple": "Keychain with optional Secure Enclave protection",
+      "desktop": "Linux and Windows federated implementations",
+      "delete_and_contains": true
+    },
+    "quality": {
+      "tests_present": true,
+      "ci_present": true,
+      "dependabot_present": true,
+      "security_policy_present": true,
+      "codecov_present": true
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "admission_gate": "NOT_RUN_FULL_SOURCE",
+      "certification_eligible": false,
+      "vulnerability_scan": "not_performed",
+      "notes": "Repository is mature and security-oriented, but full-source static admission and dependency/SBOM review are still required before Library certification."
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "untrusted candidate code is not executed by Researcher"
+    }
+  },
+  "integration_assessment": {
+    "human_estimated_effort": "low",
+    "adapter_model": "thin trusted adapter over FlutterSecureStorage key/value API",
+    "strengths": [
+      "mature cross-platform secure-storage package",
+      "recent signed stable release",
+      "strong Android encryption defaults",
+      "optional biometrics and Secure Enclave support",
+      "small application-facing API"
+    ],
+    "weaknesses": [
+      "platform-specific configuration must be normalized behind storage.secrets.v1",
+      "Android backup configuration must be handled correctly",
+      "full-source security admission has not yet run"
+    ]
+  },
+  "scores": {
+    "functional_fit": 0.95,
+    "contract_fit": 0.85,
+    "maintenance": 1.0,
+    "security": 0.78,
+    "license_fit": 1.0,
+    "platform_fit": 1.0,
+    "test_quality": 0.95,
+    "integration_cost": 0.85,
+    "performance": 0.5,
+    "footprint": 0.72,
+    "documentation": 0.95,
+    "recommendation": 0.87
+  },
+  "recommendation": "SHORTLIST. Preferred mature default candidate for storage.secrets.v1, pending full-source security admission and Library validation."
+}
