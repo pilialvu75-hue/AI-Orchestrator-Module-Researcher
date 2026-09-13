@@ -13,7 +13,7 @@ class SecuritySeverity(StrEnum):
 
 
 class SecurityVerdict(StrEnum):
-    PASS = "PASS"
+    CLEAR = "CLEAR"
     REVIEW = "REVIEW"
     BLOCK = "BLOCK"
     NOT_SCANNED = "NOT_SCANNED"
@@ -42,7 +42,7 @@ class SecurityGateResult:
 
     @property
     def certification_eligible(self) -> bool:
-        return self.verdict == SecurityVerdict.PASS
+        return self.verdict == SecurityVerdict.CLEAR
 
 
 @dataclass(frozen=True)
@@ -145,7 +145,7 @@ def scan_source_artifacts(artifacts: Iterable[SourceArtifact]) -> SecurityGateRe
     elif SecuritySeverity.HIGH in severities or SecuritySeverity.REVIEW in severities:
         verdict = SecurityVerdict.REVIEW
     else:
-        verdict = SecurityVerdict.PASS
+        verdict = SecurityVerdict.CLEAR
 
     return SecurityGateResult(
         verdict=verdict,
