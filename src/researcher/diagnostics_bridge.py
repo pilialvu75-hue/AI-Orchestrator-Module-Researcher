@@ -36,7 +36,7 @@ class GitHubDiagnosticsBridge:
         return urllib.parse.quote(self.tag, safe="")
 
     @staticmethod
-    def _render_body(rows: list[dict[str, Any]]) -> str:
+    def _render_body(rows: list[dict[str, Any]]) -> tuple[str, list[int]]:
         header = (
             "# AI Orchestrator Researcher diagnostics\n\n"
             "Public projection only. No prompts, source text, local paths, tokens, credentials, "
@@ -44,6 +44,7 @@ class GitHubDiagnosticsBridge:
             "```jsonl\n"
         )
         lines: list[str] = []
+        included_ids: list[int] = []
         total = len(header) + len("```\n")
         for row in rows:
             payload = {
@@ -59,8 +60,9 @@ class GitHubDiagnosticsBridge:
             if total + len(line) + 1 > 60_000:
                 break
             lines.append(line)
+            included_ids.append(int(row["id"]))
             total += len(line) + 1
-        return header + "\n".join(lines) + "\n```\n"
+        return header + "\n".join(lines) + "\n```\n", included_ids
 
     def _get_or_create_release(self, body: str) -> dict[str, Any]:
         try:
@@ -94,9 +96,11 @@ class GitHubDiagnosticsBridge:
             self.state.set_json("diagnostics_status", result)
             return result
 
-        event_ids = [int(row["id"]) for row in rows]
-        body = self._render_body(rows)
+        candidate_ids = [int(row["id"]) for row in rows]
+        body, published_ids = self._render_body(rows)
         try:
+            if not published_ids:
+                raise RuntimeError("diagnostics batch cannot fit a single event")
             release = self._get_or_create_release(body)
             release_id = int(release["id"])
             self.api.patch(
@@ -107,11 +111,12 @@ class GitHubDiagnosticsBridge:
                     "prerelease": True,
                 },
             )
-            self.state.mark_diagnostics_sent(event_ids)
+            self.state.mark_diagnostics_sent(published_ids)
             result = {
                 "state": "SYNCED",
-                "sent": len(event_ids),
-                "last_event_id": max(event_ids),
+                "sent": len(published_ids),
+                "last_event_id": max(published_ids),
+                "remaining_in_batch": len(candidate_ids) - len(published_ids),
             }
             self.state.set_json("diagnostics_status", result)
             return result
@@ -120,7 +125,7 @@ class GitHubDiagnosticsBridge:
             delay_minutes = min(2 ** min(attempts, 6), 60)
             next_attempt = datetime.now(UTC) + timedelta(minutes=delay_minutes)
             next_at = next_attempt.isoformat().replace("+00:00", "Z")
-            self.state.mark_diagnostics_retry(event_ids, next_at)
+            self.state.mark_diagnostics_retry(candidate_ids, next_at)
             result = {
                 "state": "BACKOFF",
                 "sent": 0,
