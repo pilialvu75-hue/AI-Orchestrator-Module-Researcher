@@ -9,6 +9,15 @@ class BenchmarkCoordinator:
     """Builds safe benchmark plans; Researcher never executes candidates here."""
 
     def plan(self, need: Need, candidate: Candidate) -> dict[str, Any]:
+        required_sandbox = {
+            "ephemeral_filesystem": True,
+            "secrets": "none",
+            "network": "disabled_by_default",
+            "cpu_limit": True,
+            "memory_limit": True,
+            "timeout": True,
+            "cleanup": "mandatory",
+        }
         return {
             "status": "PLANNED_NOT_EXECUTED",
             "reason": (
@@ -18,6 +27,7 @@ class BenchmarkCoordinator:
             "repository": candidate.repository,
             "commit_sha": candidate.commit_sha,
             "targets": list(need.targets),
+            "required_sandbox": required_sandbox,
             "sandbox_foundation": {
                 "planner": "researcher.sandbox.DockerSandboxPlanner",
                 "executor_enabled": False,
