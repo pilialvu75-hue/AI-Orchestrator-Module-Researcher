@@ -5,9 +5,10 @@ import json
 import sys
 import threading
 
-from .app import build_app
+from .app import App, build_app
 from .config import Config
 from .dashboard import serve
+from .observability import EventLevel
 from .scheduler import Scheduler
 
 
@@ -23,7 +24,25 @@ def _parser() -> argparse.ArgumentParser:
     sub.add_parser("worker", help="Run persistent worker")
     sub.add_parser("dashboard", help="Run health/status HTTP server")
     sub.add_parser("status", help="Print durable state")
+    events = sub.add_parser("events", help="Print recent structured local events")
+    events.add_argument("--limit", type=int, default=100)
+    sub.add_parser("diagnostics-sync", help="Sync pending public diagnostics if enabled")
     return parser
+
+
+def _sync_diagnostics(app: App) -> dict[str, object]:
+    if app.diagnostics is None:
+        return {"state": "DISABLED", "sent": 0}
+    try:
+        return app.diagnostics.sync()
+    except Exception as exc:
+        app.events.emit(
+            EventLevel.WARNING,
+            "diagnostics",
+            "diagnostics_sync_failed",
+            {"result": "FAILED", "error_type": type(exc).__name__},
+        )
+        return {"state": "ERROR", "sent": 0, "error_type": type(exc).__name__}
 
 
 def main() -> None:
@@ -32,10 +51,18 @@ def main() -> None:
     app = build_app(config)
 
     if args.command == "once":
-        print(json.dumps(app.engine.run_cycle(), indent=2, sort_keys=True))
+        result = app.engine.run_cycle()
+        _sync_diagnostics(app)
+        print(json.dumps(result, indent=2, sort_keys=True))
         return
     if args.command == "status":
         print(json.dumps(app.state.status(), indent=2, sort_keys=True))
+        return
+    if args.command == "events":
+        print(json.dumps(app.state.recent_events(args.limit), indent=2, sort_keys=True))
+        return
+    if args.command == "diagnostics-sync":
+        print(json.dumps(_sync_diagnostics(app), indent=2, sort_keys=True))
         return
     if args.command == "dashboard":
         serve(config.dashboard_host, config.dashboard_port, app.state.status)
@@ -58,9 +85,20 @@ def main() -> None:
         while True:
             try:
                 result = app.engine.run_cycle()
+                _sync_diagnostics(app)
                 print(json.dumps(result, sort_keys=True), flush=True)
             except Exception as exc:
-                print(json.dumps({"state": "ERROR", "message": str(exc)}), file=sys.stderr)
+                app.events.emit(
+                    EventLevel.ERROR,
+                    "worker",
+                    "worker_cycle_failed",
+                    {"error_type": type(exc).__name__},
+                )
+                _sync_diagnostics(app)
+                print(
+                    json.dumps({"state": "ERROR", "error_type": type(exc).__name__}),
+                    file=sys.stderr,
+                )
             scheduler.sleep()
 
 
