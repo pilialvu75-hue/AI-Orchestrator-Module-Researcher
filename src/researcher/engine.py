@@ -81,6 +81,8 @@ class ResearchEngine:
         warnings.extend(str(item) for item in security["warnings"])
         if candidate.archived:
             warnings.append("upstream_archived")
+        if candidate.extra.get("source_stable") is False:
+            warnings.append("unstable_source_ref")
         return tuple(sorted(set(warnings)))
 
     def _dossier(
@@ -181,6 +183,7 @@ class ResearchEngine:
                         preliminary.scores.recommendation >= self.shortlist_threshold
                         and preliminary.scores.license_fit >= 0.45
                         and not candidate.archived
+                        and candidate.extra.get("source_stable") is not False
                     )
                     else "REJECTED"
                 )
@@ -189,7 +192,11 @@ class ResearchEngine:
                 rejection_reason = (
                     None
                     if lifecycle == "SHORTLISTED"
-                    else "pre_screen_threshold_or_policy"
+                    else (
+                        "unstable_source_ref"
+                        if candidate.extra.get("source_stable") is False
+                        else "pre_screen_threshold_or_policy"
+                    )
                 )
                 self.state.upsert_candidate(
                     fingerprint,
