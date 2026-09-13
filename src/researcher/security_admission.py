@@ -16,6 +16,7 @@ from .security_gate import (
     SourceArtifact,
     scan_source_artifacts,
 )
+from .supply_chain import SupplyChainReport, SupplyChainVerdict, analyze_supply_chain
 
 
 _SOURCE_SUFFIXES = {
@@ -146,11 +147,17 @@ class FullTreeSecurityReport:
     opaque_artifacts: tuple[str, ...]
     submodules: tuple[str, ...]
     symlinks: tuple[str, ...]
+    supply_chain: SupplyChainReport | None = None
     executed_untrusted_code: bool = False
 
     @property
     def admission_eligible(self) -> bool:
-        return self.complete and self.verdict == SecurityVerdict.CLEAR
+        return (
+            self.complete
+            and self.verdict == SecurityVerdict.CLEAR
+            and self.supply_chain is not None
+            and self.supply_chain.admission_eligible
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -178,6 +185,7 @@ class FullTreeSecurityReport:
             "opaque_artifacts": list(self.opaque_artifacts),
             "submodules": list(self.submodules),
             "symlinks": list(self.symlinks),
+            "supply_chain": None if self.supply_chain is None else self.supply_chain.to_dict(),
             "executed_untrusted_code": self.executed_untrusted_code,
         }
 
@@ -498,6 +506,7 @@ class GitHubFullTreeSecurityScanner:
             scanned_bytes += len(raw_content)
 
         source_result = scan_source_artifacts(artifacts)
+        supply_chain = analyze_supply_chain(artifacts)
         findings.extend(source_result.findings)
         severities = {item.severity for item in findings}
         complete = (
@@ -510,12 +519,13 @@ class GitHubFullTreeSecurityScanner:
             and relevant_blobs == len(artifacts)
         )
 
-        if SecuritySeverity.CRITICAL in severities:
+        if SecuritySeverity.CRITICAL in severities or supply_chain.verdict == SupplyChainVerdict.BLOCK:
             verdict = SecurityVerdict.BLOCK
         elif (
             SecuritySeverity.HIGH in severities
             or SecuritySeverity.REVIEW in severities
             or not complete
+            or supply_chain.verdict != SupplyChainVerdict.CLEAR
         ):
             verdict = SecurityVerdict.REVIEW
         elif source_result.verdict == SecurityVerdict.CLEAR:
@@ -539,4 +549,5 @@ class GitHubFullTreeSecurityScanner:
             opaque_artifacts=tuple(sorted(opaque_artifacts)),
             submodules=tuple(sorted(submodules)),
             symlinks=tuple(sorted(symlinks)),
+            supply_chain=supply_chain,
         )
