@@ -60,27 +60,46 @@ class GitHubLibrarySource:
         if not isinstance(raw_items, list):
             raise ValueError("Library needs items must be an array")
         needs: list[Need] = []
+        status_items: list[dict[str, Any]] = []
         for raw in raw_items:
             if not isinstance(raw, dict):
                 raise ValueError("Invalid need entry")
             targets = raw.get("targets")
             if not isinstance(targets, list) or not targets:
                 raise ValueError(f"Invalid targets for {raw.get('capability_id')}")
+            capability_id = str(raw["capability_id"])
+            title = str(raw["title"])
+            priority = str(raw["priority"])
+            desired_candidates = int(raw["desired_candidates"])
+            status = str(raw["status"])
+            normalized_targets = tuple(str(item) for item in targets)
+            notes = None if raw.get("notes") is None else str(raw["notes"])
             needs.append(
                 Need(
-                    capability_id=str(raw["capability_id"]),
-                    title=str(raw["title"]),
-                    priority=str(raw["priority"]),
-                    desired_candidates=int(raw["desired_candidates"]),
-                    status=str(raw["status"]),
-                    targets=tuple(str(item) for item in targets),
-                    notes=None if raw.get("notes") is None else str(raw["notes"]),
+                    capability_id=capability_id,
+                    title=title,
+                    priority=priority,
+                    desired_candidates=desired_candidates,
+                    status=status,
+                    targets=normalized_targets,
+                    notes=notes,
                 )
+            )
+            status_items.append(
+                {
+                    "capability_id": capability_id,
+                    "title": title,
+                    "priority": priority,
+                    "desired_candidates": desired_candidates,
+                    "status": status,
+                    "targets": list(normalized_targets),
+                }
             )
         return needs, {
             "updated_at": payload.get("updated_at"),
             "used_cache": cached,
             "loaded_at": utc_now(),
+            "items": status_items,
         }
 
     def load_contracts(self) -> tuple[dict[str, Contract], str]:
