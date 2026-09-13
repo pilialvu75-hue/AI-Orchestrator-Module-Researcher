@@ -3,10 +3,11 @@ from __future__ import annotations
 import base64
 import json
 import re
+import urllib.parse
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from .github_api import GitHubApi
+from .github_api import GitHubApi, GitHubApiError
 from .models import Contract, Dossier, Need, utc_now
 
 
@@ -154,10 +155,118 @@ class DryRunSubmissionClient:
 
 
 class GitHubIntakePrSubmissionClient:
+    """Restart-safe, immutable delivery into the Library intake boundary."""
+
     def __init__(self, api: GitHubApi, library_repository: str, base_ref: str = "main") -> None:
         self.api = api
         self.library_repository = library_repository
         self.base_ref = base_ref
+
+    @property
+    def _owner(self) -> str:
+        owner_repo = self.library_repository.split("/", 1)
+        if len(owner_repo) != 2 or not all(owner_repo):
+            raise ValueError("library_repository must be owner/name")
+        return owner_repo[0]
+
+    @staticmethod
+    def _quoted_path(path: str) -> str:
+        return "/".join(urllib.parse.quote(part, safe="") for part in path.split("/"))
+
+    def _branch_ref_path(self, branch: str) -> str:
+        encoded = urllib.parse.quote(branch, safe="/")
+        return f"/repos/{self.library_repository}/git/ref/heads/{encoded}"
+
+    def _ensure_branch(self, branch: str) -> None:
+        try:
+            self.api.get(self._branch_ref_path(branch))
+            return
+        except GitHubApiError as exc:
+            if exc.status != 404:
+                raise
+
+        base = self.api.get(
+            f"/repos/{self.library_repository}/git/ref/heads/"
+            f"{urllib.parse.quote(self.base_ref, safe='/')}"
+        )
+        base_data = base.data if isinstance(base.data, dict) else {}
+        obj = base_data.get("object")
+        if not isinstance(obj, dict) or not obj.get("sha"):
+            raise RuntimeError("Unable to resolve Library base SHA")
+        try:
+            self.api.post(
+                f"/repos/{self.library_repository}/git/refs",
+                {"ref": f"refs/heads/{branch}", "sha": str(obj["sha"])},
+            )
+        except GitHubApiError as exc:
+            if exc.status != 422:
+                raise
+            # Another retry/process may have created the deterministic branch.
+            self.api.get(self._branch_ref_path(branch))
+
+    def _ensure_immutable_json(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        branch: str,
+        submission_id: str,
+    ) -> None:
+        encoded_path = self._quoted_path(path)
+        ref = urllib.parse.quote(branch, safe="")
+        existing: dict[str, Any] | None = None
+        try:
+            response = self.api.get(
+                f"/repos/{self.library_repository}/contents/{encoded_path}?ref={ref}"
+            )
+            if isinstance(response.data, dict):
+                existing = response.data
+        except GitHubApiError as exc:
+            if exc.status != 404:
+                raise
+
+        if existing is not None:
+            encoded = existing.get("content")
+            if not isinstance(encoded, str):
+                raise RuntimeError(f"Unexpected Library contents response for {path}")
+            try:
+                raw = base64.b64decode(encoded.replace("\n", "")).decode("utf-8")
+                current = json.loads(raw)
+            except (ValueError, UnicodeDecodeError) as exc:
+                raise RuntimeError(f"Existing intake payload is unreadable: {path}") from exc
+            if current != payload:
+                raise RuntimeError(
+                    f"Immutable intake payload conflict for {path}; refusing overwrite"
+                )
+            return
+
+        content = base64.b64encode(
+            json.dumps(payload, indent=2, sort_keys=True).encode("utf-8")
+        ).decode("ascii")
+        self.api.put(
+            f"/repos/{self.library_repository}/contents/{encoded_path}",
+            {
+                "message": f"researcher: submit {submission_id}",
+                "content": content,
+                "branch": branch,
+            },
+        )
+
+    def _find_open_pr(self, branch: str) -> dict[str, Any] | None:
+        query = urllib.parse.urlencode(
+            {
+                "state": "open",
+                "head": f"{self._owner}:{branch}",
+                "base": self.base_ref,
+                "per_page": 20,
+            }
+        )
+        response = self.api.get(f"/repos/{self.library_repository}/pulls?{query}")
+        if not isinstance(response.data, list):
+            return None
+        for item in response.data:
+            if isinstance(item, dict):
+                return item
+        return None
 
     def submit(
         self,
@@ -169,45 +278,39 @@ class GitHubIntakePrSubmissionClient:
         manifest = build_manifest(need, contract, standard_version, dossier)
         submission_id = f"{_slug(manifest['id'])}-{dossier.fingerprint[:12]}"
         branch = f"researcher/intake/{submission_id}"
-        base = self.api.get(f"/repos/{self.library_repository}/git/ref/heads/{self.base_ref}")
-        base_data = base.data if isinstance(base.data, dict) else {}
-        obj = base_data.get("object")
-        if not isinstance(obj, dict) or not obj.get("sha"):
-            raise RuntimeError("Unable to resolve Library base SHA")
-        self.api.post(
-            f"/repos/{self.library_repository}/git/refs",
-            {"ref": f"refs/heads/{branch}", "sha": str(obj["sha"])},
-        )
-
         target = f"intake/{manifest['id']}/{manifest['version']}/manifest.json"
         dossier_target = (
             f"intake/{manifest['id']}/{manifest['version']}/provenance/researcher-dossier.json"
         )
-        for path, payload in ((target, manifest), (dossier_target, dossier.to_dict())):
-            content = base64.b64encode(
-                json.dumps(payload, indent=2, sort_keys=True).encode("utf-8")
-            ).decode("ascii")
-            self.api.put(
-                f"/repos/{self.library_repository}/contents/{path}",
+
+        if not target.startswith("intake/") or not dossier_target.startswith("intake/"):
+            raise RuntimeError("Fail-closed: Researcher may write only to Library intake/")
+
+        self._ensure_branch(branch)
+        self._ensure_immutable_json(target, manifest, branch, submission_id)
+        self._ensure_immutable_json(
+            dossier_target,
+            dossier.to_dict(),
+            branch,
+            submission_id,
+        )
+
+        pr_data = self._find_open_pr(branch)
+        if pr_data is None:
+            pr = self.api.post(
+                f"/repos/{self.library_repository}/pulls",
                 {
-                    "message": f"researcher: submit {submission_id}",
-                    "content": content,
-                    "branch": branch,
+                    "title": f"Researcher intake: {manifest['name']} for {need.capability_id}",
+                    "head": branch,
+                    "base": self.base_ref,
+                    "body": (
+                        "Automated Researcher candidate submission.\n\n"
+                        "This PR writes only to Library intake. It is not certification."
+                    ),
                 },
             )
-        pr = self.api.post(
-            f"/repos/{self.library_repository}/pulls",
-            {
-                "title": f"Researcher intake: {manifest['name']} for {need.capability_id}",
-                "head": branch,
-                "base": self.base_ref,
-                "body": (
-                    "Automated Researcher candidate submission.\n\n"
-                    "This PR writes only to Library intake. It is not certification."
-                ),
-            },
-        )
-        pr_data = pr.data if isinstance(pr.data, dict) else {}
+            pr_data = pr.data if isinstance(pr.data, dict) else {}
+
         return {
             "submission_id": submission_id,
             "state": "SUBMITTED",
