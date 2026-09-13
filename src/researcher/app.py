@@ -36,7 +36,10 @@ class App:
 def build_app(config: Config) -> App:
     config.data_dir.mkdir(parents=True, exist_ok=True)
     state = SQLiteStateStore(config.data_dir / "researcher.db")
-    events = EventLogger(state)
+    diagnostics_opted_in = bool(
+        config.diagnostics_enabled and config.diagnostics_github_token
+    )
+    events = EventLogger(state, diagnostics_enabled=diagnostics_opted_in)
     api = GitHubApi(config.github_token, config.github_api_base)
     library = GitHubLibrarySource(
         api,
