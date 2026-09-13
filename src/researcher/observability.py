@@ -40,6 +40,11 @@ _PUBLIC_FIELDS = {
     "security_blocked",
     "prepared_submissions",
     "error_type",
+    "research_state",
+    "candidate_count",
+    "qualified_candidates",
+    "submitted",
+    "desired_candidates",
 }
 
 
@@ -48,7 +53,6 @@ def _sanitize_string(value: str) -> str:
     text = _LONG_SECRETISH.sub("[REDACTED]", text)
     parsed = urllib.parse.urlsplit(text)
     if parsed.scheme in {"http", "https"} and parsed.netloc:
-        # Public diagnostics never needs URL credentials, query strings or fragments.
         hostname = parsed.hostname or ""
         port = f":{parsed.port}" if parsed.port else ""
         path = parsed.path[:240]
