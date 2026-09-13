@@ -1,0 +1,86 @@
+{
+  "id": "storage.secrets.webauthn_secure_storage",
+  "name": "WebAuthn Secure Storage",
+  "version": "0.1.0",
+  "description": "Researcher candidate adapter for storage.secrets.v1 using webauthn_secure_storage 0.2.3.",
+  "kind": "module",
+  "status": "discovered",
+  "capabilities": ["storage.secrets"],
+  "frameworks": ["flutter"],
+  "languages": ["dart"],
+  "platforms": ["android", "desktop"],
+  "entry_paths": [],
+  "dependencies": [
+    {
+      "name": "webauthn_secure_storage",
+      "version": "0.2.3",
+      "source": "https://pub.dev/packages/webauthn_secure_storage"
+    }
+  ],
+  "connector": {
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0",
+    "integration_mode": "adapter",
+    "provides": [
+      {
+        "capability_id": "storage.secrets",
+        "contract_id": "storage.secrets.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"type": "none", "path": null}
+  },
+  "payload": {
+    "type": "upstream_reference",
+    "path": null,
+    "sha256": null,
+    "upstream_repository": "https://github.com/JohnGalt1717/webauthn_secure_storage",
+    "upstream_commit": "807eb716e506bcc48e7b5a739d2b2c93131cf6d0"
+  },
+  "provenance": {
+    "origin": "researcher",
+    "source_repository": "https://github.com/JohnGalt1717/webauthn_secure_storage",
+    "source_commit": "807eb716e506bcc48e7b5a739d2b2c93131cf6d0",
+    "source_tag": null,
+    "source_project_id": null,
+    "source_task_id": "9d43b86484630bbd45da751c9dea7c5df9f33a197738aba2c8e33873d08809a3",
+    "retrieved_at": "2026-09-13T10:00:00Z",
+    "license": "MIT",
+    "license_file": "https://github.com/JohnGalt1717/webauthn_secure_storage/blob/807eb716e506bcc48e7b5a739d2b2c93131cf6d0/LICENSE"
+  },
+  "integration": {
+    "adaptation_allowed": true,
+    "estimated_effort": "medium",
+    "adapter_notes": "Expose only the storage.secrets.v1 subset; do not couple the contract to passkey/WebAuthn features.",
+    "known_constraints": [
+      "young project with limited adoption",
+      "full-source Security Admission Gate not yet run",
+      "no verified GitHub release object for 0.2.3",
+      "Library must validate storage.secrets.v1 semantics"
+    ]
+  },
+  "validation": {
+    "score": 0.74,
+    "tests_passed": false,
+    "test_report": null,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "security": {
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null,
+    "notes": "Not certification-eligible: emerging candidate requires full-source static admission, dependency/SBOM review and stronger sandbox validation."
+  },
+  "quality": {
+    "reuse_count": 0,
+    "successful_integrations": 0,
+    "failed_integrations": 0,
+    "last_used_at": null
+  },
+  "deprecation": {"reason": null, "replacement": null},
+  "tags": ["storage.secrets", "researcher-candidate", "dart", "flutter", "emerging"]
+}
