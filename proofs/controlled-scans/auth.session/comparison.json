@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-13T09:45:00Z",
+  "dry_run": true,
+  "capability_id": "auth.session",
+  "contract_id": "auth.session.v1",
+  "contract_version": "1.0",
+  "candidate_order": [
+    "Bdaya-Dev/oidc@4.0.0",
+    "appsup-dart/openid_client@0.4.10+1"
+  ],
+  "machine_scores": {
+    "Bdaya-Dev/oidc": 0.86,
+    "appsup-dart/openid_client": 0.78
+  },
+  "comparison": [
+    {
+      "dimension": "license",
+      "Bdaya-Dev/oidc": "MIT",
+      "appsup-dart/openid_client": "BSD-3-Clause",
+      "verdict": "both permissive; no legal conclusion"
+    },
+    {
+      "dimension": "target_platforms",
+      "Bdaya-Dev/oidc": "federated plugin explicitly covers Android/iOS/Linux/macOS/Web/Windows",
+      "appsup-dart/openid_client": "Dart IO/browser design plus published platform support across mobile/desktop/web",
+      "verdict": "both cover requested Android/Desktop/Web"
+    },
+    {
+      "dimension": "session_lifecycle",
+      "Bdaya-Dev/oidc": "OidcUserManager, login/logout, user changes, refresh-token rotation",
+      "appsup-dart/openid_client": "Client/Credential/Flow primitives, token refresh and RP-initiated logout",
+      "verdict": "Bdaya maps more directly to a full session boundary"
+    },
+    {
+      "dimension": "persistence",
+      "Bdaya-Dev/oidc": "customizable store is first-class",
+      "appsup-dart/openid_client": "proof does not treat persistence as a complete session-store abstraction",
+      "verdict": "Bdaya lower semantic adapter work; Library must still keep storage ownership explicit"
+    },
+    {
+      "dimension": "framework_coupling",
+      "Bdaya-Dev/oidc": "Flutter >=3.41.0, Dart ^3.11.0, federated plugin",
+      "appsup-dart/openid_client": "Dart >=3.0 <4.0, Dart-first library",
+      "verdict": "openid_client is less coupled"
+    },
+    {
+      "dimension": "dependency_surface",
+      "Bdaya-Dev/oidc": "federated platform packages plus OIDC/runtime helpers",
+      "appsup-dart/openid_client": "8 direct runtime dependencies",
+      "verdict": "openid_client smaller overall integration surface"
+    },
+    {
+      "dimension": "tests_ci",
+      "Bdaya-Dev/oidc": "unit/E2E tests, GitHub Actions and Dependabot at pinned tree",
+      "appsup-dart/openid_client": "tests plus Travis config; current CI health not verified",
+      "verdict": "Bdaya stronger current quality signals"
+    },
+    {
+      "dimension": "integration_risk",
+      "Bdaya-Dev/oidc": "fuller semantics but higher SDK floor",
+      "appsup-dart/openid_client": "lower SDK coupling but more auth.session adapter policy required",
+      "verdict": "trade-off depends on host compatibility and desired boundary thickness"
+    }
+  ],
+  "human_recommendation": {
+    "default": "Bdaya-Dev/oidc 4.0.0",
+    "reason": "Its UserManager, refresh, logout, configurable store and all-platform federated implementation map most directly to a full auth.session boundary.",
+    "alternative": "appsup-dart/openid_client 0.4.10+1",
+    "alternative_reason": "Prefer when lower framework coupling and a thinner provider-neutral OIDC primitive are more important than built-in session-management semantics."
+  },
+  "limitations": [
+    "auth.session.v1 is currently only a draft logical Library contract; no unstated API semantics were invented",
+    "No candidate code executed",
+    "No performance benchmark run",
+    "No definitive vulnerability audit",
+    "Upstream CI workflow/config presence is evidence, not a claim that every upstream job is currently green",
+    "Library certification remains required"
+  ],
+  "outcome": "Both candidates shortlisted. No absolute winner: Bdaya-Dev/oidc is the preferred full-session candidate; openid_client is the thinner lower-coupling alternative."
+}
