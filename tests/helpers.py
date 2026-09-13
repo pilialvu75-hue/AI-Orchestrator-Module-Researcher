@@ -6,6 +6,13 @@ from researcher.models import Candidate, Contract, Need, utc_now
 from researcher.security_admission import FullTreeSecurityReport
 from researcher.security_gate import SecurityFinding, SecuritySeverity, SecurityVerdict
 from researcher.supply_chain import SupplyChainReport, SupplyChainVerdict
+from researcher.vulnerability import (
+    ResearcherSbom,
+    VulnerabilityHit,
+    VulnerabilityReport,
+    VulnerabilityVerdict,
+)
+from researcher.vulnerability_admission import VulnerabilityAdmissionResult
 
 
 def need(capability_id: str = "voice.stt") -> Need:
@@ -140,3 +147,52 @@ class FakeSecurityScanner:
             symlinks=(),
             supply_chain=supply_chain,
         )
+
+
+class FakeVulnerabilityScanner:
+    def __init__(
+        self,
+        verdict: VulnerabilityVerdict = VulnerabilityVerdict.CLEAR,
+        database_checked: bool = True,
+    ) -> None:
+        self.verdict = verdict
+        self.database_checked = database_checked
+        self.calls = 0
+
+    def scan(
+        self,
+        item: Candidate,
+        security_report: FullTreeSecurityReport,
+    ) -> VulnerabilityAdmissionResult:
+        self.calls += 1
+        sbom = ResearcherSbom(
+            schema_version=1,
+            components=(),
+            unresolved=(),
+            source_files=("pubspec.yaml",),
+        )
+        hits: tuple[VulnerabilityHit, ...] = ()
+        if self.verdict == VulnerabilityVerdict.REVIEW:
+            hits = (
+                VulnerabilityHit(
+                    vulnerability_id="OSV-TEST-1",
+                    ecosystem="Pub",
+                    package="example",
+                    version="1.0.0",
+                ),
+            )
+        report = VulnerabilityReport(
+            verdict=self.verdict,
+            database="OSV",
+            database_checked=self.database_checked,
+            sbom_fingerprint=sbom.fingerprint,
+            queried_components=0,
+            hits=hits,
+            unresolved=(),
+            error=(
+                None
+                if self.database_checked
+                else "test-only vulnerability database unavailable"
+            ),
+        )
+        return VulnerabilityAdmissionResult(sbom=sbom, report=report)

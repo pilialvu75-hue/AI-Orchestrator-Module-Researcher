@@ -7,7 +7,7 @@ All discovered source code is treated as untrusted.
 A discovered candidate is never trusted merely because it is popular, licensed, well tested,
 or hosted on GitHub. The intended lifecycle is:
 
-`FOUND -> QUARANTINED -> STATIC_ANALYSIS -> SUPPLY_CHAIN_ANALYSIS -> SANDBOX_TEST -> LIBRARY_REVIEW -> CERTIFIED`
+`FOUND -> QUARANTINED -> STATIC_ANALYSIS -> SUPPLY_CHAIN_ANALYSIS -> SBOM_VULNERABILITY_ANALYSIS -> SANDBOX_TEST -> LIBRARY_REVIEW -> CERTIFIED`
 
 Researcher may discover and analyse candidates, but only the Library is allowed to certify them.
 No candidate may skip a stage.
@@ -65,9 +65,33 @@ A clean source tree is therefore not enough for automatic admission: the supply-
 must also be `CLEAR`. Supply-chain evidence is stored in the dossier, including manifests,
 lockfiles and enumerated direct dependencies.
 
-This stage does **not** yet claim that registry dependencies are vulnerability-free. External
-vulnerability/SBOM correlation and recursive admission of dependency source are separate gates.
-The dossier records `vulnerability_database_checked=false` until that evidence exists.
+### SBOM and vulnerability admission gate
+
+`researcher.vulnerability` and `researcher.vulnerability_admission` add a fail-closed,
+zero-cost vulnerability correlation stage without running package managers or candidate code.
+The Researcher reads recognised lockfiles at the exact immutable candidate commit and builds a
+deterministic SBOM-like inventory with a SHA-256 fingerprint. Exact registry versions may also
+be taken from already-admitted dependency manifests where the constraint itself is exact.
+
+The first vulnerability database is OSV. Only dependency versions that can be resolved to an
+exact package version are queried. Automatic admission requires all of the following:
+
+- the earlier full-tree and supply-chain gates are `CLEAR`;
+- the SBOM has no unresolved dependency versions;
+- the vulnerability database query completes successfully and returns a structurally valid
+  response for every queried component;
+- no known vulnerability is returned for the exact queried package/version set.
+
+An unresolved version, unreadable/oversized lockfile, vulnerability-database outage, malformed
+response, component-budget overflow or known vulnerability produces `SECURITY_REVIEW`, never a
+clean admission. A database outage is therefore not equivalent to "zero vulnerabilities".
+Known vulnerability findings are review evidence rather than an automatic exploitability
+claim; Library review remains responsible for severity, reachability, remediation and final
+certification decisions.
+
+The dossier records the SBOM fingerprint, component count, whether vulnerability correlation
+actually completed, the database verdict and the number of known vulnerability hits. Candidate
+or package-manager code is still never executed at this stage.
 
 ### Execution isolation
 

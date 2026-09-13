@@ -20,6 +20,11 @@ from .security_admission import CandidateSecurityScanner, FullTreeSecurityReport
 from .security_gate import SecurityVerdict
 from .state import SQLiteStateStore
 from .submission import LibrarySubmissionClient
+from .vulnerability import ResearcherSbom, VulnerabilityReport
+from .vulnerability_admission import (
+    CandidateVulnerabilityScanner,
+    VulnerabilityAdmissionResult,
+)
 
 
 _PRIORITY = {"critical": 0, "high": 1, "medium": 2, "low": 3}
@@ -39,6 +44,7 @@ class ResearchEngine:
         mode: ResearchMode,
         shortlist_threshold: float = 0.58,
         security_scanner: CandidateSecurityScanner | None = None,
+        vulnerability_scanner: CandidateVulnerabilityScanner | None = None,
     ) -> None:
         self.need_source = need_source
         self.contract_source = contract_source
@@ -52,6 +58,7 @@ class ResearchEngine:
         self.mode = mode
         self.shortlist_threshold = shortlist_threshold
         self.security_scanner = security_scanner
+        self.vulnerability_scanner = vulnerability_scanner
         self.state.set_mode(mode)
 
     def _rank_needs(self, needs: list[Need]) -> list[Need]:
@@ -96,6 +103,7 @@ class ResearchEngine:
         contract: Any,
         lifecycle: str,
         security_report: FullTreeSecurityReport | None = None,
+        vulnerability_admission: VulnerabilityAdmissionResult | None = None,
     ) -> Dossier:
         fingerprint = candidate_fingerprint(need.capability_id, candidate)
         scores = self.scorer.score(need, candidate, contract)
@@ -103,7 +111,16 @@ class ResearchEngine:
         security["admission_gate"] = (
             None if security_report is None else security_report.to_dict()
         )
+        security["vulnerability_gate"] = (
+            None
+            if vulnerability_admission is None
+            else vulnerability_admission.to_dict()
+        )
         supply_chain = None if security_report is None else security_report.supply_chain
+        sbom = None if vulnerability_admission is None else vulnerability_admission.sbom
+        vulnerability_report = (
+            None if vulnerability_admission is None else vulnerability_admission.report
+        )
         dependency_evidence = {
             "manifest_files_detected": list(candidate.extra.get("dependency_manifests", [])),
             "dependencies_enumerated": bool(
@@ -119,10 +136,26 @@ class ResearchEngine:
             "lockfiles_present": (
                 [] if supply_chain is None else list(supply_chain.lockfiles_present)
             ),
-            "vulnerability_database_checked": False,
+            "sbom_complete": None if sbom is None else sbom.complete,
+            "sbom_component_count": 0 if sbom is None else len(sbom.components),
+            "sbom_fingerprint": None if sbom is None else sbom.fingerprint,
+            "vulnerability_database_checked": bool(
+                vulnerability_report is not None
+                and vulnerability_report.database_checked
+            ),
+            "vulnerability_verdict": (
+                None
+                if vulnerability_report is None
+                else vulnerability_report.verdict.value
+            ),
+            "known_vulnerability_count": (
+                0
+                if vulnerability_report is None
+                else len(vulnerability_report.hits)
+            ),
             "note": (
-                "Static manifest/provenance analysis only; package-manager code was not "
-                "executed and vulnerability database review is still pending."
+                "Static source, dependency provenance, SBOM and vulnerability admission only; "
+                "candidate/package-manager code was not executed."
             ),
         }
         return Dossier(
@@ -151,6 +184,30 @@ class ResearchEngine:
         return self.security_scanner.scan(candidate)
 
     @staticmethod
+    def _vulnerability_not_analyzed(reason: str) -> VulnerabilityAdmissionResult:
+        sbom = ResearcherSbom(
+            schema_version=1,
+            components=(),
+            unresolved=(reason,),
+            source_files=(),
+        )
+        return VulnerabilityAdmissionResult(
+            sbom=sbom,
+            report=VulnerabilityReport.not_analyzed(reason, sbom),
+        )
+
+    def _scan_vulnerabilities(
+        self,
+        candidate: Candidate,
+        security_report: FullTreeSecurityReport,
+    ) -> VulnerabilityAdmissionResult:
+        if self.vulnerability_scanner is None:
+            return self._vulnerability_not_analyzed(
+                "no candidate vulnerability scanner configured"
+            )
+        return self.vulnerability_scanner.scan(candidate, security_report)
+
+    @staticmethod
     def _pre_screen_qualified(
         dossier: Dossier,
         candidate: Candidate,
@@ -168,12 +225,16 @@ class ResearchEngine:
         lifecycle: str,
         candidate: Candidate,
         security_report: FullTreeSecurityReport,
+        vulnerability_admission: VulnerabilityAdmissionResult,
     ) -> str | None:
         if lifecycle == "SHORTLISTED":
             return None
         if lifecycle == "SECURITY_BLOCKED":
             return "security_gate_blocked"
         if lifecycle == "SECURITY_REVIEW":
+            if security_report.admission_eligible:
+                verdict = vulnerability_admission.report.verdict.value.lower()
+                return f"vulnerability_review:{verdict}"
             return f"security_review:{security_report.verdict.value.lower()}"
         if candidate.extra.get("source_stable") is False:
             return "unstable_source_ref"
@@ -248,15 +309,31 @@ class ResearchEngine:
                 if pre_screen_qualified:
                     security_report = self._scan_candidate(candidate)
                     if security_report.admission_eligible:
-                        lifecycle = "SHORTLISTED"
-                    elif security_report.verdict == SecurityVerdict.BLOCK:
-                        lifecycle = "SECURITY_BLOCKED"
+                        vulnerability_admission = self._scan_vulnerabilities(
+                            candidate,
+                            security_report,
+                        )
+                        lifecycle = (
+                            "SHORTLISTED"
+                            if vulnerability_admission.admission_eligible
+                            else "SECURITY_REVIEW"
+                        )
                     else:
-                        lifecycle = "SECURITY_REVIEW"
+                        vulnerability_admission = self._vulnerability_not_analyzed(
+                            "earlier security gate not clear"
+                        )
+                        lifecycle = (
+                            "SECURITY_BLOCKED"
+                            if security_report.verdict == SecurityVerdict.BLOCK
+                            else "SECURITY_REVIEW"
+                        )
                 else:
                     security_report = FullTreeSecurityReport.not_scanned(
                         candidate,
                         "candidate did not pass preliminary scoring/policy",
+                    )
+                    vulnerability_admission = self._vulnerability_not_analyzed(
+                        "candidate did not pass preliminary scoring/policy"
                     )
                     lifecycle = "REJECTED"
 
@@ -266,12 +343,14 @@ class ResearchEngine:
                     contract,
                     lifecycle,
                     security_report,
+                    vulnerability_admission,
                 )
                 dossier_path = self.dossiers.save_dossier(dossier)
                 rejection_reason = self._rejection_reason(
                     lifecycle,
                     candidate,
                     security_report,
+                    vulnerability_admission,
                 )
                 self.state.upsert_candidate(
                     fingerprint,

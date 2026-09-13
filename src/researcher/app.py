@@ -18,6 +18,8 @@ from .submission import (
     GitHubIntakePrSubmissionClient,
     LibrarySubmissionClient,
 )
+from .vulnerability import OsvClient, OsvVulnerabilityScanner
+from .vulnerability_admission import GitHubVulnerabilityAdmissionScanner
 
 
 @dataclass
@@ -40,6 +42,11 @@ def build_app(config: Config) -> App:
     rate_limits = RateLimitManager(state)
     discovery = GitHubDiscoveryProvider(api, rate_limits)
     security_scanner = GitHubFullTreeSecurityScanner(api, rate_limits)
+    vulnerability_scanner = GitHubVulnerabilityAdmissionScanner(
+        api,
+        rate_limits,
+        OsvVulnerabilityScanner(OsvClient()),
+    )
     dossiers = DossierStore(config.data_dir)
 
     submission: LibrarySubmissionClient
@@ -67,5 +74,6 @@ def build_app(config: Config) -> App:
         submission,
         config.mode,
         security_scanner=security_scanner,
+        vulnerability_scanner=vulnerability_scanner,
     )
     return App(config=config, state=state, engine=engine)
