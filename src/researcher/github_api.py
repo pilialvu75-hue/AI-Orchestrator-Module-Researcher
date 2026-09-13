@@ -108,6 +108,9 @@ class GitHubApi:
     def put(self, path: str, payload: dict[str, Any]) -> GitHubResponse:
         return self._request("PUT", path, payload)
 
+    def patch(self, path: str, payload: dict[str, Any]) -> GitHubResponse:
+        return self._request("PATCH", path, payload)
+
     def get_json_file(self, repository: str, path: str, ref: str = "main") -> dict[str, Any]:
         encoded_path = "/".join(urllib.parse.quote(part, safe="") for part in path.split("/"))
         response = self.get(

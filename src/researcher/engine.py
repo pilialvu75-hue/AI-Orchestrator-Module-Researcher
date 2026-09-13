@@ -15,6 +15,7 @@ from .discovery.base import DiscoveryProvider
 from .dossiers import DossierStore
 from .library import ContractSource, NeedSource
 from .models import Candidate, Dossier, Need, ResearchMode, utc_now
+from .observability import EventLevel, EventLogger, sanitize_payload
 from .scoring import CandidateScorer
 from .security_admission import CandidateSecurityScanner, FullTreeSecurityReport
 from .security_gate import SecurityVerdict
@@ -45,6 +46,7 @@ class ResearchEngine:
         shortlist_threshold: float = 0.58,
         security_scanner: CandidateSecurityScanner | None = None,
         vulnerability_scanner: CandidateVulnerabilityScanner | None = None,
+        event_logger: EventLogger | None = None,
     ) -> None:
         self.need_source = need_source
         self.contract_source = contract_source
@@ -59,7 +61,17 @@ class ResearchEngine:
         self.shortlist_threshold = shortlist_threshold
         self.security_scanner = security_scanner
         self.vulnerability_scanner = vulnerability_scanner
+        self.event_logger = event_logger
         self.state.set_mode(mode)
+
+    def _emit(
+        self,
+        level: EventLevel | str,
+        event: str,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        if self.event_logger is not None:
+            self.event_logger.emit(level, "research_engine", event, payload)
 
     def _rank_needs(self, needs: list[Need]) -> list[Need]:
         statuses = (
@@ -243,6 +255,7 @@ class ResearchEngine:
     def run_cycle(self) -> dict[str, Any]:
         self.state.set_json("engine_state", "RUNNING")
         self.state.set_json("last_error", None)
+        self._emit(EventLevel.INFO, "cycle_started", {"mode": self.mode.value})
         result: dict[str, Any]
         try:
             needs, snapshot = self.need_source.load_needs()
@@ -263,10 +276,16 @@ class ResearchEngine:
                     "needs_total": len(needs),
                 }
                 self.state.set_json("last_cycle", {"at": utc_now(), **result})
+                self._emit(EventLevel.INFO, "cycle_idle", {"mode": self.mode.value})
                 return result
 
             need = ranked[0]
             self.state.set_json("current_capability", need.capability_id)
+            self._emit(
+                EventLevel.INFO,
+                "need_selected",
+                {"capability_id": need.capability_id, "mode": self.mode.value},
+            )
             qualified_before = self.state.count_qualified(need.capability_id)
             contract = contracts.get(need.capability_id)
             if contract is None:
@@ -283,6 +302,11 @@ class ResearchEngine:
                     need.capability_id,
                     success=False,
                     error_state=f"contract_gap:{path}",
+                )
+                self._emit(
+                    EventLevel.WARNING,
+                    "contract_gap",
+                    {"capability_id": need.capability_id, "phase": "contract"},
                 )
                 return {
                     "state": "BLOCKED",
@@ -362,6 +386,21 @@ class ResearchEngine:
                     str(dossier_path),
                     rejection_reason,
                 )
+                supply_chain = security_report.supply_chain
+                self._emit(
+                    EventLevel.INFO,
+                    "candidate_evaluated",
+                    {
+                        "capability_id": need.capability_id,
+                        "provider": candidate.provider,
+                        "lifecycle": lifecycle,
+                        "security_verdict": security_report.verdict.value,
+                        "supply_chain_verdict": (
+                            None if supply_chain is None else supply_chain.verdict.value
+                        ),
+                        "vulnerability_verdict": vulnerability_admission.report.verdict.value,
+                    },
+                )
                 dossiers.append(dossier)
 
             all_rows = self.state.candidate_rows(need.capability_id)
@@ -430,10 +469,32 @@ class ResearchEngine:
                 "comparison": str(comparison_path),
             }
             self.state.set_json("last_cycle", {"at": utc_now(), **result})
+            self._emit(
+                EventLevel.INFO,
+                "cycle_completed",
+                {
+                    "capability_id": need.capability_id,
+                    "mode": self.mode.value,
+                    "result": "COMPLETED",
+                    "shortlisted": len(shortlisted),
+                    "security_review": len(security_review),
+                    "security_blocked": len(security_blocked),
+                    "prepared_submissions": len(prepared),
+                },
+            )
             return result
         except Exception as exc:
-            self.state.set_json("last_error", {"at": utc_now(), "message": str(exc)})
+            safe_message = sanitize_payload(str(exc))
+            self.state.set_json(
+                "last_error",
+                {"at": utc_now(), "type": type(exc).__name__, "message": safe_message},
+            )
             self.state.set_json("engine_state", "BACKOFF")
+            self._emit(
+                EventLevel.ERROR,
+                "cycle_failed",
+                {"error_type": type(exc).__name__, "message": safe_message},
+            )
             raise
         finally:
             if self.state.get_json("engine_state") != "BACKOFF":

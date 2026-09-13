@@ -28,6 +28,10 @@ class Config:
     improvement_interval_seconds: int
     dashboard_host: str
     dashboard_port: int
+    diagnostics_enabled: bool = False
+    diagnostics_github_token: str | None = None
+    diagnostics_repository: str = "pilialvu75-hue/Ai-orchestrator-diagnostics"
+    diagnostics_tag: str = "researcher-diagnostics-v1"
     github_api_base: str = "https://api.github.com"
 
     @classmethod
@@ -51,4 +55,10 @@ class Config:
             ),
             dashboard_host=os.getenv("DASHBOARD_HOST", "127.0.0.1"),
             dashboard_port=int(os.getenv("DASHBOARD_PORT", "8080")),
+            diagnostics_enabled=_bool("DIAGNOSTICS_ENABLED", False),
+            diagnostics_github_token=os.getenv("DIAGNOSTICS_GITHUB_TOKEN") or None,
+            diagnostics_repository=os.getenv(
+                "DIAGNOSTICS_REPOSITORY", "pilialvu75-hue/Ai-orchestrator-diagnostics"
+            ),
+            diagnostics_tag=os.getenv("DIAGNOSTICS_TAG", "researcher-diagnostics-v1"),
         )

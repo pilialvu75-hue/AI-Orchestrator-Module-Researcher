@@ -4,11 +4,13 @@ from dataclasses import dataclass
 
 from .comparison import ComparisonEngine
 from .config import Config
+from .diagnostics_bridge import GitHubDiagnosticsBridge
 from .discovery.github import GitHubDiscoveryProvider
 from .dossiers import DossierStore
 from .engine import ResearchEngine
 from .github_api import GitHubApi
 from .library import GitHubLibrarySource
+from .observability import EventLevel, EventLogger
 from .rate_limit import RateLimitManager
 from .scoring import CandidateScorer
 from .security_admission import GitHubFullTreeSecurityScanner
@@ -27,11 +29,17 @@ class App:
     config: Config
     state: SQLiteStateStore
     engine: ResearchEngine
+    events: EventLogger
+    diagnostics: GitHubDiagnosticsBridge | None
 
 
 def build_app(config: Config) -> App:
     config.data_dir.mkdir(parents=True, exist_ok=True)
     state = SQLiteStateStore(config.data_dir / "researcher.db")
+    diagnostics_opted_in = bool(
+        config.diagnostics_enabled and config.diagnostics_github_token
+    )
+    events = EventLogger(state, diagnostics_enabled=diagnostics_opted_in)
     api = GitHubApi(config.github_token, config.github_api_base)
     library = GitHubLibrarySource(
         api,
@@ -48,6 +56,41 @@ def build_app(config: Config) -> App:
         OsvVulnerabilityScanner(OsvClient()),
     )
     dossiers = DossierStore(config.data_dir)
+
+    diagnostics: GitHubDiagnosticsBridge | None = None
+    if config.diagnostics_enabled:
+        if config.diagnostics_github_token:
+            diagnostics_api = GitHubApi(
+                config.diagnostics_github_token,
+                config.github_api_base,
+                user_agent="AI-Orchestrator-Module-Researcher-Diagnostics/1.0",
+            )
+            diagnostics = GitHubDiagnosticsBridge(
+                diagnostics_api,
+                state,
+                config.diagnostics_repository,
+                config.diagnostics_tag,
+            )
+            state.set_json("diagnostics_status", {"state": "READY"})
+            events.emit(
+                EventLevel.INFO,
+                "diagnostics",
+                "diagnostics_configured",
+                {"result": "READY"},
+            )
+        else:
+            state.set_json(
+                "diagnostics_status",
+                {"state": "MISCONFIGURED", "error_type": "MissingDiagnosticsToken"},
+            )
+            events.emit(
+                EventLevel.WARNING,
+                "diagnostics",
+                "diagnostics_misconfigured",
+                {"result": "MISCONFIGURED", "error_type": "MissingDiagnosticsToken"},
+            )
+    else:
+        state.set_json("diagnostics_status", {"state": "DISABLED"})
 
     submission: LibrarySubmissionClient
     if config.dry_run:
@@ -75,5 +118,12 @@ def build_app(config: Config) -> App:
         config.mode,
         security_scanner=security_scanner,
         vulnerability_scanner=vulnerability_scanner,
+        event_logger=events,
     )
-    return App(config=config, state=state, engine=engine)
+    return App(
+        config=config,
+        state=state,
+        engine=engine,
+        events=events,
+        diagnostics=diagnostics,
+    )
