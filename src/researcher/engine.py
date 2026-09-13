@@ -103,6 +103,28 @@ class ResearchEngine:
         security["admission_gate"] = (
             None if security_report is None else security_report.to_dict()
         )
+        supply_chain = None if security_report is None else security_report.supply_chain
+        dependency_evidence = {
+            "manifest_files_detected": list(candidate.extra.get("dependency_manifests", [])),
+            "dependencies_enumerated": bool(
+                supply_chain is not None and supply_chain.manifests_analyzed
+            ),
+            "dependency_count": 0 if supply_chain is None else len(supply_chain.dependencies),
+            "supply_chain_verdict": (
+                None if supply_chain is None else supply_chain.verdict.value
+            ),
+            "manifests_analyzed": (
+                [] if supply_chain is None else list(supply_chain.manifests_analyzed)
+            ),
+            "lockfiles_present": (
+                [] if supply_chain is None else list(supply_chain.lockfiles_present)
+            ),
+            "vulnerability_database_checked": False,
+            "note": (
+                "Static manifest/provenance analysis only; package-manager code was not "
+                "executed and vulnerability database review is still pending."
+            ),
+        }
         return Dossier(
             schema_version=1,
             capability_id=need.capability_id,
@@ -115,13 +137,7 @@ class ResearchEngine:
             security_evidence=security,
             maintenance_evidence=maintenance_evidence(candidate),
             license_evidence=classify_license(candidate.license_spdx),
-            dependency_evidence={
-                "manifest_files_detected": list(
-                    candidate.extra.get("dependency_manifests", [])
-                ),
-                "dependencies_enumerated": False,
-                "note": "Metadata pre-screen only; manifests are not executed.",
-            },
+            dependency_evidence=dependency_evidence,
             benchmark_plan=self.benchmarks.plan(need, candidate),
             created_at=utc_now(),
         )
