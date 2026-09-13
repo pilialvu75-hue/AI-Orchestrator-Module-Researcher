@@ -230,7 +230,10 @@ class GitHubFullTreeSecurityScanner:
     def _get(self, path: str) -> GitHubResponse:
         decision = self.rate_limits.decision()
         if not decision.allowed:
-            self.rate_limits.record_backoff(decision.retry_after_seconds, "security_scan_rate_limit")
+            self.rate_limits.record_backoff(
+                decision.retry_after_seconds,
+                "security_scan_rate_limit",
+            )
             raise SecurityScanDeferred(
                 f"GitHub rate limit exhausted; retry after {decision.retry_after_seconds}s"
             )
