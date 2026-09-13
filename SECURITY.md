@@ -95,20 +95,35 @@ or package-manager code is still never executed at this stage.
 
 ### Execution isolation
 
-Researcher V1 does not clone and execute arbitrary candidate code. Any future benchmark or
-compatibility execution must run in a separate sandbox runner with:
+Researcher still does not execute arbitrary candidate code. `researcher.sandbox` now provides
+a **planning-only** Docker sandbox foundation. It produces a hardened argv/configuration but
+contains no executor and never invokes Docker or a subprocess. Every generated plan explicitly
+sets `execution_enabled=false`.
 
-- ephemeral filesystem and guaranteed destruction after the run;
-- no GitHub token, API key, signing key, keystore, SSH key or project secret;
-- no mount of the Researcher, Library, Cantiere or application repositories;
-- network denied by default and allowlisted only for a test that explicitly requires it;
-- strict CPU, RAM, process-count, disk and wall-clock limits;
-- repository and artifact size caps;
-- no privileged container mode, host socket, Docker socket or host device access;
-- immutable candidate commit provenance and recorded hashes;
-- complete logs/results exported as evidence before cleanup.
+The planner requires a trusted runner image pinned by SHA-256 digest and refuses protected host
+paths such as the Researcher, Library, Cantiere repositories, `.git` storage and Docker socket.
+Its generated policy includes:
 
-The sandbox result does not certify a candidate by itself. Library review remains the final
+- network namespace disabled with `--network none`;
+- read-only container root filesystem;
+- read-only candidate source bind mount;
+- all Linux capabilities dropped;
+- `no-new-privileges=true`;
+- no privileged mode and no host-device mappings;
+- no host secret/environment injection;
+- non-root UID/GID;
+- bounded CPU, RAM, PID and wall-clock policy;
+- `--pull never` so execution cannot silently replace the trusted runner image;
+- ephemeral tmpfs work area and a smaller no-exec tmpfs for temporary files;
+- no project repository, Docker socket or broad host-directory mount.
+
+A future executor must additionally guarantee wall-clock termination and cleanup outside the
+container, stage candidate content into a dedicated ephemeral quarantine directory, capture
+results without exposing host storage, verify the trusted runner image digest, and preserve the
+same fail-closed policy. That executor must be separately reviewed and explicitly enabled; CI
+must not execute third-party candidate code merely to test the planner.
+
+The sandbox result will not certify a candidate by itself. Library review remains the final
 authority.
 
 ## Project secrets and Library writes
