@@ -42,10 +42,32 @@ Researcher resources. Exceeding those budgets never produces a clean result; it 
 review. Non-code assets may be skipped after the entire tree has been enumerated, but opaque
 or executable artifacts are not treated as harmless assets.
 
-The static/full-tree gates are still only source-code layers. Before Library certification,
-the pipeline must also inspect dependency provenance, lockfiles, Git dependencies,
-install/build hooks, vulnerability/SBOM evidence, generated code and any behaviour observed
-in an isolated sandbox. Findings are evidence for review, not proof of safety.
+### Supply-chain admission gate
+
+`researcher.supply_chain` analyses dependency manifests already collected by the full-tree
+scan. It does not invoke npm, pub, pip, cargo, Go tooling or any package-manager lifecycle
+script. This avoids turning dependency inspection itself into code execution.
+
+The initial zero-cost analyser supports `package.json`, `pubspec.yaml`, `Cargo.toml`,
+`pyproject.toml`, `requirements.txt` and `go.mod`, while recording recognised lockfiles. It
+extracts direct dependency provenance and requires review for trust-boundary changes such as:
+
+- npm lifecycle hooks including `preinstall`, `install`, `postinstall` and `prepare`;
+- Git dependencies, even when commit-pinned, until their dependency source is separately
+  admitted;
+- Git dependencies that are not pinned to an exact 40-character commit;
+- local/path/workspace and editable dependencies;
+- direct HTTP/archive dependency references;
+- Cargo path/Git dependencies, Pub path/Git dependencies and Go `replace` directives;
+- dependency manifests that cannot be parsed or ecosystems not yet supported by the gate.
+
+A clean source tree is therefore not enough for automatic admission: the supply-chain report
+must also be `CLEAR`. Supply-chain evidence is stored in the dossier, including manifests,
+lockfiles and enumerated direct dependencies.
+
+This stage does **not** yet claim that registry dependencies are vulnerability-free. External
+vulnerability/SBOM correlation and recursive admission of dependency source are separate gates.
+The dossier records `vulnerability_database_checked=false` until that evidence exists.
 
 ### Execution isolation
 
