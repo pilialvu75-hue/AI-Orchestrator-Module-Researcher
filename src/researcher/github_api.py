@@ -12,7 +12,12 @@ from typing import Any
 
 
 class GitHubApiError(RuntimeError):
-    def __init__(self, status: int, message: str, headers: dict[str, str] | None = None) -> None:
+    def __init__(
+        self,
+        status: int,
+        message: str,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(f"GitHub API {status}: {message}")
         self.status = status
         self.headers = headers or {}
@@ -44,7 +49,9 @@ class GitHubApi:
         value = base_url.rstrip("/")
         parsed = urllib.parse.urlsplit(value)
         if parsed.username or parsed.password or parsed.query or parsed.fragment:
-            raise ValueError("GitHub API base URL must not contain credentials, query or fragment")
+            raise ValueError(
+                "GitHub API base URL must not contain credentials, query or fragment"
+            )
         hostname = (parsed.hostname or "").lower()
         loopback = hostname in {"localhost", "127.0.0.1", "::1"}
         if parsed.scheme != "https" and not (parsed.scheme == "http" and loopback):
@@ -61,7 +68,9 @@ class GitHubApi:
         value = base_url.rstrip("/")
         parsed = urllib.parse.urlsplit(value)
         if parsed.username or parsed.password or parsed.query or parsed.fragment:
-            raise ValueError("GitHub uploads base URL must not contain credentials, query or fragment")
+            raise ValueError(
+                "GitHub uploads base URL must not contain credentials, query or fragment"
+            )
         hostname = (parsed.hostname or "").lower()
         loopback = hostname in {"localhost", "127.0.0.1", "::1"}
         if parsed.scheme == "https" and hostname == "uploads.github.com":
@@ -125,7 +134,9 @@ class GitHubApi:
         request = urllib.request.Request(
             url,
             data=body,
-            headers=self._headers(content_type="application/json" if body is not None else None),
+            headers=self._headers(
+                content_type="application/json" if body is not None else None
+            ),
             method=method,
         )
         return self._send(request, retries=retries)
@@ -159,10 +170,13 @@ class GitHubApi:
             raise ValueError("repository must be owner/name")
         if not asset_name or "/" in asset_name or "\\" in asset_name:
             raise ValueError("asset name must be a plain file name")
-        repo_path = "/".join(urllib.parse.quote(part, safe="") for part in owner_repo)
+        repo_path = "/".join(
+            urllib.parse.quote(part, safe="") for part in owner_repo
+        )
         query = urllib.parse.urlencode({"name": asset_name})
         url = (
-            f"{self._uploads_base}/repos/{repo_path}/releases/{int(release_id)}/assets?{query}"
+            f"{self._uploads_base}/repos/{repo_path}/releases/"
+            f"{int(release_id)}/assets?{query}"
         )
         request = urllib.request.Request(
             url,
@@ -172,15 +186,25 @@ class GitHubApi:
         )
         return self._send(request)
 
-    def get_json_file(self, repository: str, path: str, ref: str = "main") -> dict[str, Any]:
-        encoded_path = "/".join(urllib.parse.quote(part, safe="") for part in path.split("/"))
+    def get_json_file(
+        self,
+        repository: str,
+        path: str,
+        ref: str = "main",
+    ) -> dict[str, Any]:
+        encoded_path = "/".join(
+            urllib.parse.quote(part, safe="") for part in path.split("/")
+        )
         response = self.get(
-            f"/repos/{repository}/contents/{encoded_path}?ref={urllib.parse.quote(ref, safe='')}"
+            f"/repos/{repository}/contents/{encoded_path}"
+            f"?ref={urllib.parse.quote(ref, safe='')}"
         )
         payload = response.data
         if not isinstance(payload, dict) or "content" not in payload:
             raise GitHubApiError(500, f"Unexpected contents response for {path}")
-        raw = base64.b64decode(str(payload["content"]).replace("\n", "")).decode("utf-8")
+        raw = base64.b64decode(
+            str(payload["content"]).replace("\n", "")
+        ).decode("utf-8")
         decoded = json.loads(raw)
         if not isinstance(decoded, dict):
             raise GitHubApiError(500, f"Expected JSON object in {path}")
