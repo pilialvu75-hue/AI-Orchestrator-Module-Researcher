@@ -62,6 +62,20 @@ class SQLiteStateStore:
                     next_scan_at TEXT,
                     error_state TEXT
                 );
+                CREATE TABLE IF NOT EXISTS events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    created_at TEXT NOT NULL,
+                    level TEXT NOT NULL,
+                    component TEXT NOT NULL,
+                    event TEXT NOT NULL,
+                    payload_json TEXT NOT NULL,
+                    public_payload_json TEXT NOT NULL,
+                    diagnostics_state TEXT NOT NULL,
+                    diagnostics_attempts INTEGER NOT NULL DEFAULT 0,
+                    diagnostics_next_attempt_at TEXT
+                );
+                CREATE INDEX IF NOT EXISTS idx_events_diagnostics
+                    ON events(diagnostics_state, diagnostics_next_attempt_at, id);
                 """
             )
 
@@ -81,6 +95,118 @@ class SQLiteStateStore:
         with self._connect() as conn:
             row = conn.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
         return default if row is None else json.loads(str(row["value"]))
+
+    def append_event(
+        self,
+        *,
+        level: str,
+        component: str,
+        event: str,
+        payload: Any,
+        public_payload: Any,
+        retention: int = 5000,
+    ) -> int:
+        now = utc_now()
+        public_json = json.dumps(public_payload, sort_keys=True, separators=(",", ":"))
+        diagnostics_state = "PENDING" if public_payload else "SKIPPED"
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                INSERT INTO events(
+                    created_at, level, component, event, payload_json, public_payload_json,
+                    diagnostics_state, diagnostics_attempts, diagnostics_next_attempt_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NULL)
+                """,
+                (
+                    now,
+                    level,
+                    component,
+                    event,
+                    json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                    public_json,
+                    diagnostics_state,
+                ),
+            )
+            event_id = int(cursor.lastrowid)
+            if retention > 0:
+                conn.execute(
+                    """
+                    DELETE FROM events
+                    WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT ?)
+                    """,
+                    (retention,),
+                )
+        return event_id
+
+    def recent_events(self, limit: int = 100) -> list[dict[str, Any]]:
+        bounded = max(1, min(limit, 1000))
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, created_at, level, component, event, payload_json,
+                       public_payload_json, diagnostics_state, diagnostics_attempts,
+                       diagnostics_next_attempt_at
+                FROM events ORDER BY id DESC LIMIT ?
+                """,
+                (bounded,),
+            ).fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["payload"] = json.loads(str(item.pop("payload_json")))
+            item["public_payload"] = json.loads(str(item.pop("public_payload_json")))
+            result.append(item)
+        return result
+
+    def pending_diagnostics(self, limit: int = 100) -> list[dict[str, Any]]:
+        bounded = max(1, min(limit, 500))
+        now = utc_now()
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT id, created_at, level, component, event, public_payload_json,
+                       diagnostics_attempts
+                FROM events
+                WHERE diagnostics_state='PENDING'
+                  AND (diagnostics_next_attempt_at IS NULL OR diagnostics_next_attempt_at<=?)
+                ORDER BY id ASC LIMIT ?
+                """,
+                (now, bounded),
+            ).fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            item["public_payload"] = json.loads(str(item.pop("public_payload_json")))
+            result.append(item)
+        return result
+
+    def mark_diagnostics_sent(self, event_ids: list[int]) -> None:
+        if not event_ids:
+            return
+        placeholders = ",".join("?" for _ in event_ids)
+        with self._connect() as conn:
+            conn.execute(
+                f"""
+                UPDATE events SET diagnostics_state='SENT', diagnostics_next_attempt_at=NULL
+                WHERE id IN ({placeholders})
+                """,
+                tuple(event_ids),
+            )
+
+    def mark_diagnostics_retry(self, event_ids: list[int], next_attempt_at: str) -> None:
+        if not event_ids:
+            return
+        placeholders = ",".join("?" for _ in event_ids)
+        with self._connect() as conn:
+            conn.execute(
+                f"""
+                UPDATE events
+                SET diagnostics_attempts=diagnostics_attempts+1,
+                    diagnostics_next_attempt_at=?
+                WHERE id IN ({placeholders}) AND diagnostics_state='PENDING'
+                """,
+                (next_attempt_at, *event_ids),
+            )
 
     def upsert_candidate(
         self,
@@ -236,6 +362,13 @@ class SQLiteStateStore:
                 """
             ).fetchone()
             submitted = conn.execute("SELECT COUNT(*) AS c FROM submissions").fetchone()
+            event_counts = conn.execute(
+                """
+                SELECT COUNT(*) AS total,
+                       SUM(CASE WHEN diagnostics_state='PENDING' THEN 1 ELSE 0 END) AS pending
+                FROM events
+                """
+            ).fetchone()
         return {
             "mode": self.get_json("mode", ResearchMode.SEEDING.value),
             "engine_state": self.get_json("engine_state", "IDLE"),
@@ -253,4 +386,6 @@ class SQLiteStateStore:
             "security_review": int(totals["security_review"] or 0),
             "security_blocked": int(totals["security_blocked"] or 0),
             "submitted": int(submitted["c"] or 0),
+            "events": int(event_counts["total"] or 0),
+            "diagnostics_pending": int(event_counts["pending"] or 0),
         }
