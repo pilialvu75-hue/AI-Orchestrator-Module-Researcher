@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 
 from researcher.analysis import (
@@ -55,6 +56,40 @@ class SubmissionTests(unittest.TestCase):
             self.assertEqual(manifest["status"], "discovered")
             self.assertFalse(manifest["validation"]["tests_passed"])
             self.assertNotIn("known_vulnerabilities", manifest["security"])
+            self.assertEqual(manifest["provenance"]["license_file"], "provenance/LICENSE")
+
+    def test_dry_run_rejects_mutable_license_endpoint(self) -> None:
+        n = need()
+        original = candidate("mutable-license", "b" * 40)
+        c = replace(
+            original,
+            license_file_url=(
+                f"https://api.github.com/repos/{original.repository}/license"
+            ),
+        )
+        ctr = contract()
+        score = CandidateScorer().score(n, c, ctr)
+        dossier = Dossier(
+            1,
+            n.capability_id,
+            c,
+            candidate_fingerprint(n.capability_id, c),
+            score,
+            "SHORTLISTED",
+            (),
+            integration_estimate(c, n),
+            security_evidence(c),
+            maintenance_evidence(c),
+            classify_license(c.license_spdx),
+            {"manifest_files_detected": [], "dependencies_enumerated": False},
+            {"status": "PLANNED_NOT_EXECUTED"},
+            utc_now(),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaisesRegex(RuntimeError, "immutable"):
+                DryRunSubmissionClient(DossierStore(Path(tmp))).submit(
+                    n, ctr, "1.0.0", dossier
+                )
 
 
 if __name__ == "__main__":

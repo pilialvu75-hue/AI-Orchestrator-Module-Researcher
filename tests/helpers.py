@@ -47,7 +47,9 @@ def candidate(name: str, sha: str, license_spdx: str | None = "MIT") -> Candidat
         default_branch="main",
         acquired_at=utc_now(),
         license_spdx=license_spdx,
-        license_file_url=f"https://api.github.com/repos/example/{name}/license",
+        license_file_url=(
+            f"https://github.com/example/{name}/blob/{sha}/LICENSE"
+        ),
         stars=10,
         forks=2,
         open_issues=1,
