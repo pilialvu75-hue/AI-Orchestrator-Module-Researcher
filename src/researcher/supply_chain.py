@@ -519,7 +519,14 @@ def _analyze_go_mod(
         fields = line.split()
         if len(fields) >= 2:
             dependencies.append(
-                _dependency("go", fields[0], fields[1], "module_proxy", artifact.path, immutable=True)
+                _dependency(
+                    "go",
+                    fields[0],
+                    fields[1],
+                    "module_proxy",
+                    artifact.path,
+                    immutable=True,
+                )
             )
     return dependencies, findings
 
