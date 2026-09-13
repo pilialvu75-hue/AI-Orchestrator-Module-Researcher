@@ -18,6 +18,7 @@ from .submission import (
     GitHubIntakePrSubmissionClient,
     LibrarySubmissionClient,
 )
+from .vulnerability import OsvVulnerabilityChecker
 
 
 @dataclass
@@ -40,6 +41,7 @@ def build_app(config: Config) -> App:
     rate_limits = RateLimitManager(state)
     discovery = GitHubDiscoveryProvider(api, rate_limits)
     security_scanner = GitHubFullTreeSecurityScanner(api, rate_limits)
+    vulnerability_checker = OsvVulnerabilityChecker()
     dossiers = DossierStore(config.data_dir)
 
     submission: LibrarySubmissionClient
@@ -67,5 +69,6 @@ def build_app(config: Config) -> App:
         submission,
         config.mode,
         security_scanner=security_scanner,
+        vulnerability_checker=vulnerability_checker,
     )
     return App(config=config, state=state, engine=engine)
