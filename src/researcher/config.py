@@ -31,8 +31,10 @@ class Config:
     diagnostics_enabled: bool = False
     diagnostics_github_token: str | None = None
     diagnostics_repository: str = "pilialvu75-hue/Ai-orchestrator-diagnostics"
-    diagnostics_tag: str = "researcher-diagnostics-v1"
+    diagnostics_instance_id: str | None = None
+    diagnostics_producer_version: str | None = None
     github_api_base: str = "https://api.github.com"
+    github_uploads_base: str = "https://uploads.github.com"
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -60,5 +62,14 @@ class Config:
             diagnostics_repository=os.getenv(
                 "DIAGNOSTICS_REPOSITORY", "pilialvu75-hue/Ai-orchestrator-diagnostics"
             ),
-            diagnostics_tag=os.getenv("DIAGNOSTICS_TAG", "researcher-diagnostics-v1"),
+            diagnostics_instance_id=os.getenv("DIAGNOSTICS_INSTANCE_ID") or None,
+            diagnostics_producer_version=(
+                os.getenv("DIAGNOSTICS_PRODUCER_VERSION")
+                or os.getenv("RESEARCHER_COMMIT")
+                or None
+            ),
+            github_api_base=os.getenv("GITHUB_API_BASE", "https://api.github.com"),
+            github_uploads_base=os.getenv(
+                "GITHUB_UPLOADS_BASE", "https://uploads.github.com"
+            ),
         )
