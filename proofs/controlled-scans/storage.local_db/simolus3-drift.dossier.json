@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "storage.local_db",
+    "contract_id": "storage.local_db.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop"],
+    "title": "Local database / persistence"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "simolus3/drift",
+    "project": "drift",
+    "owner": "simolus3",
+    "upstream_url": "https://github.com/simolus3/drift",
+    "commit_sha": "1e8bb788a8815d1e18e5c18d1705a2ca3cba6580",
+    "tree_sha": "74030a4d76e5d236fdf07871fc333836fec71149",
+    "source_version": "2.35.0",
+    "source_tag": "drift-2.35.0",
+    "release_tag_verified": true,
+    "acquired_at": "2026-09-13T16:15:00Z",
+    "license": "MIT",
+    "license_file": "https://github.com/simolus3/drift/blob/1e8bb788a8815d1e18e5c18d1705a2ca3cba6580/LICENSE",
+    "language": "Dart",
+    "platforms": ["android", "desktop"]
+  },
+  "dependencies": [
+    {"name": "sqlite3", "version": "^3.4.0"},
+    {"name": "async", "version": "^2.10.0"},
+    {"name": "convert", "version": "^3.1.1"},
+    {"name": "collection", "version": "^1.15.0"},
+    {"name": "meta", "version": "^1.3.0"},
+    {"name": "stream_channel", "version": "^2.1.0"},
+    {"name": "path", "version": "^1.9.0"},
+    {"name": "stack_trace", "version": "^1.11.1"},
+    {"name": "web", "version": "^1.0.0"}
+  ],
+  "evidence": {
+    "functional": {
+      "local_persistence": true,
+      "storage_model": "relational SQLite",
+      "transactions": true,
+      "schema_migrations": true,
+      "reactive_queries": true,
+      "typed_queries": true,
+      "isolate_support": true
+    },
+    "maintenance": {
+      "archived": false,
+      "release": "drift-2.35.0",
+      "release_published_at": "2026-09-09T20:16:24Z",
+      "repository_pushed_at": "2026-09-13T11:18:30Z",
+      "stars": 3273,
+      "forks": 464,
+      "release_commit_verified_signature": true
+    },
+    "quality": {
+      "tests_present": true,
+      "integration_tests_present": true,
+      "ci_present": true,
+      "release_workflow_present": true,
+      "ci_status": "workflow_presence_verified; upstream run result not asserted by this proof"
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "vulnerability_scan": "not_performed",
+      "supply_chain_notes": "MIT Dart layer over SQLite via package:sqlite3; dependency metadata recorded, transitive/native artifacts not independently audited in this proof"
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "untrusted candidate code is not executed in Researcher V1"
+    }
+  },
+  "evidence_sources": [
+    "https://github.com/simolus3/drift/releases/tag/drift-2.35.0",
+    "https://github.com/simolus3/drift/commit/1e8bb788a8815d1e18e5c18d1705a2ca3cba6580",
+    "https://github.com/simolus3/drift/blob/1e8bb788a8815d1e18e5c18d1705a2ca3cba6580/drift/pubspec.yaml",
+    "https://github.com/simolus3/drift/blob/1e8bb788a8815d1e18e5c18d1705a2ca3cba6580/README.md",
+    "https://github.com/simolus3/drift/blob/1e8bb788a8815d1e18e5c18d1705a2ca3cba6580/LICENSE"
+  ],
+  "fingerprint": "2a70f312704f56cf5cf8237a07f13102b4b383fe348937e0c3847bb6e7ad8a09",
+  "integration_assessment": {
+    "adapter_model": "storage.local_db.v1 adapter over Drift/SQLite while Library retains persistence policy",
+    "human_estimated_effort": "medium",
+    "strengths": [
+      "mature relational SQLite foundation",
+      "explicit Android/Linux/macOS/Windows support",
+      "transactions and schema migrations",
+      "reactive and type-safe API",
+      "active upstream with signed release commit",
+      "permissive MIT license and open SQLite ecosystem",
+      "broad unit/integration test and CI surface"
+    ],
+    "weaknesses": [
+      "Dart SDK >=3.10.0",
+      "code generation is commonly used and adds build-time integration",
+      "native SQLite packaging still needs host-specific verification before certification"
+    ],
+    "additional_costs": [
+      "validate exact host Dart/Flutter floor",
+      "define Library-owned migration and backup policy without inventing contract API"
+    ]
+  },
+  "lifecycle": "SHORTLISTED",
+  "scores": {
+    "functional_fit": 0.97,
+    "contract_fit": 0.88,
+    "maintenance": 0.98,
+    "security": 0.68,
+    "license_fit": 1.0,
+    "platform_fit": 1.0,
+    "test_quality": 0.96,
+    "integration_cost": 0.78,
+    "performance": 0.5,
+    "footprint": 0.76,
+    "documentation": 0.96,
+    "recommendation": 0.92,
+    "reasons": [
+      "draft storage.local_db.v1 is a logical boundary only",
+      "stable signed 2.35.0 release pinned to immutable commit",
+      "MIT and SQLite-based implementation provide strong provenance",
+      "requested Android and desktop targets explicitly supported",
+      "transactions/migrations/reactive persistence are strong generic persistence signals",
+      "no untrusted code executed and no definitive vulnerability audit performed"
+    ]
+  },
+  "recommendation": "SHORTLIST. Preferred general-purpose storage.local_db candidate, subject to Library contract and host compatibility validation."
+}

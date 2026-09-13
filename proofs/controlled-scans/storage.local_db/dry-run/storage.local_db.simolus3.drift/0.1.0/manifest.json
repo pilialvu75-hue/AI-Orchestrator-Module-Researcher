@@ -1,0 +1,62 @@
+{
+  "capabilities": ["storage.local_db"],
+  "connector": {
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"path": null, "type": "none"},
+    "integration_mode": "adapter",
+    "provides": [{"capability_id": "storage.local_db", "contract_id": "storage.local_db.v1", "contract_version": "1.0"}],
+    "requires": [],
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0"
+  },
+  "dependencies": [{"name": "drift", "source": "https://pub.dev/packages/drift", "version": "2.35.0"}],
+  "deprecation": {"reason": null, "replacement": null},
+  "description": "Researcher candidate adapter for storage.local_db.v1 using Drift 2.35.0.",
+  "entry_paths": [],
+  "frameworks": ["dart", "flutter"],
+  "id": "storage.local_db.simolus3.drift",
+  "integration": {
+    "adaptation_allowed": true,
+    "adapter_notes": "Adapter over Drift/SQLite; Library owns persistence policy and any future detailed contract semantics.",
+    "estimated_effort": "medium",
+    "known_constraints": [
+      "requires Dart >=3.10.0",
+      "SQLite/native packaging must be validated on target hosts",
+      "Library must define migration/backup policy before certification"
+    ]
+  },
+  "kind": "module",
+  "languages": ["dart"],
+  "name": "Drift local persistence",
+  "payload": {
+    "path": null,
+    "sha256": null,
+    "type": "upstream_reference",
+    "upstream_commit": "1e8bb788a8815d1e18e5c18d1705a2ca3cba6580",
+    "upstream_repository": "https://github.com/simolus3/drift"
+  },
+  "platforms": ["android", "desktop"],
+  "provenance": {
+    "license": "MIT",
+    "license_file": "https://github.com/simolus3/drift/blob/1e8bb788a8815d1e18e5c18d1705a2ca3cba6580/LICENSE",
+    "origin": "researcher",
+    "retrieved_at": "2026-09-13T16:15:00Z",
+    "source_commit": "1e8bb788a8815d1e18e5c18d1705a2ca3cba6580",
+    "source_project_id": null,
+    "source_repository": "https://github.com/simolus3/drift",
+    "source_tag": "drift-2.35.0",
+    "source_task_id": "2a70f312704f56cf5cf8237a07f13102b4b383fe348937e0c3847bb6e7ad8a09"
+  },
+  "quality": {"failed_integrations": 0, "last_used_at": null, "reuse_count": 0, "successful_integrations": 0},
+  "security": {
+    "notes": "Metadata/documentation pre-screen only; no external code executed and no definitive vulnerability audit performed.",
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null
+  },
+  "status": "discovered",
+  "tags": ["storage.local_db", "researcher-candidate", "sqlite", "drift", "dart", "flutter"],
+  "validation": {"score": 0.92, "test_report": null, "tests_passed": false, "validated_at": null, "validated_on": []},
+  "version": "0.1.0"
+}

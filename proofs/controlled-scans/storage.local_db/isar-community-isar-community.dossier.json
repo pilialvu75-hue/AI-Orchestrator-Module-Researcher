@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "storage.local_db",
+    "contract_id": "storage.local_db.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop"],
+    "title": "Local database / persistence"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "isar-community/isar-community",
+    "project": "isar_community",
+    "owner": "isar-community",
+    "upstream_url": "https://github.com/isar-community/isar-community",
+    "commit_sha": "4c2cd02d4e5c17b7edca89d141d1729ddc1698ff",
+    "tree_sha": "6caadb21f9b06e52cba0cd1203429eb941c0b29d",
+    "source_version": "3.3.2",
+    "source_tag": "3.3.2",
+    "release_tag_verified": true,
+    "acquired_at": "2026-09-13T16:15:00Z",
+    "license": "Apache-2.0",
+    "license_file": "https://github.com/isar-community/isar-community/blob/4c2cd02d4e5c17b7edca89d141d1729ddc1698ff/LICENSE",
+    "language": "Dart/Rust",
+    "platforms": ["android", "desktop"]
+  },
+  "dependencies": [
+    {"name": "ffi", "version": ">=2.0.0 <3.0.0"},
+    {"name": "js", "version": "any"},
+    {"name": "meta", "version": "^1.7.0"},
+    {"name": "isar_community_flutter_libs", "version": "3.3.2", "note": "required native core binaries for Flutter apps"}
+  ],
+  "evidence": {
+    "functional": {
+      "local_persistence": true,
+      "storage_model": "NoSQL object database",
+      "async_api": true,
+      "native_core": true,
+      "platform_metadata": ["android", "ios", "linux", "macos", "windows"]
+    },
+    "maintenance": {
+      "archived": false,
+      "community_fork_created_at": "2024-11-23T01:36:51Z",
+      "release": "3.3.2",
+      "release_published_at": "2026-03-23T20:19:52Z",
+      "repository_pushed_at": "2026-09-08T04:42:43Z",
+      "stars": 193,
+      "forks": 95,
+      "release_commit_verified_signature": false
+    },
+    "quality": {
+      "tests_present": true,
+      "ci_present": true,
+      "release_workflow_present": true,
+      "scheduled_test_workflow_present": true,
+      "ci_status": "workflow_presence_verified; upstream run result not asserted by this proof"
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "vulnerability_scan": "not_performed",
+      "supply_chain_notes": "repository includes native core source/binaries and NOTICE attribution for libmdbx under Apache-2.0; release binaries were not executed or independently reproduced"
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "untrusted candidate code is not executed in Researcher V1"
+    }
+  },
+  "evidence_sources": [
+    "https://github.com/isar-community/isar-community/releases/tag/3.3.2",
+    "https://github.com/isar-community/isar-community/commit/4c2cd02d4e5c17b7edca89d141d1729ddc1698ff",
+    "https://github.com/isar-community/isar-community/blob/4c2cd02d4e5c17b7edca89d141d1729ddc1698ff/packages/isar_community/pubspec.yaml",
+    "https://github.com/isar-community/isar-community/blob/4c2cd02d4e5c17b7edca89d141d1729ddc1698ff/LICENSE",
+    "https://github.com/isar-community/isar-community/blob/4c2cd02d4e5c17b7edca89d141d1729ddc1698ff/NOTICE"
+  ],
+  "fingerprint": "3dbef2cfc0205a88acd59665904360b7d9e69a9df67c984e89424f295e5d4c3c",
+  "integration_assessment": {
+    "adapter_model": "storage.local_db.v1 adapter over isar_community object persistence",
+    "human_estimated_effort": "medium",
+    "strengths": [
+      "fully local NoSQL persistence",
+      "Android plus Linux/macOS/Windows platform declaration",
+      "Apache-2.0 repository and Apache-2.0 libmdbx attribution",
+      "native release artifacts for Android and desktop",
+      "active community maintenance and substantial CI/test workflows",
+      "lower Dart SDK floor than Drift"
+    ],
+    "weaknesses": [
+      "community fork has shorter independent governance history than Drift",
+      "release commit/tag is unsigned",
+      "native binary reproducibility was not verified",
+      "object-store semantics may require more adaptation if Library later standardizes relational assumptions"
+    ],
+    "additional_costs": [
+      "verify native binary provenance/reproducibility before certification",
+      "confirm migration/backup semantics against the future detailed Library contract"
+    ]
+  },
+  "lifecycle": "SHORTLISTED",
+  "scores": {
+    "functional_fit": 0.93,
+    "contract_fit": 0.84,
+    "maintenance": 0.82,
+    "security": 0.66,
+    "license_fit": 0.96,
+    "platform_fit": 1.0,
+    "test_quality": 0.91,
+    "integration_cost": 0.75,
+    "performance": 0.5,
+    "footprint": 0.72,
+    "documentation": 0.88,
+    "recommendation": 0.83,
+    "reasons": [
+      "draft storage.local_db.v1 does not require relational semantics",
+      "Apache-2.0 open implementation with explicit NOTICE for libmdbx",
+      "requested Android and desktop targets declared",
+      "active community fork with current CI and recent pushes",
+      "shorter governance history and unsigned release reduce provenance confidence",
+      "no untrusted code executed and release binaries not independently reproduced"
+    ]
+  },
+  "recommendation": "SHORTLIST. Strong open-source NoSQL alternative to Drift, with extra provenance checks required before Library certification."
+}

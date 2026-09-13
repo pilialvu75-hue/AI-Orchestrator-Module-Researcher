@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-13T16:15:00Z",
+  "dry_run": true,
+  "capability_id": "storage.local_db",
+  "contract_id": "storage.local_db.v1",
+  "contract_version": "1.0",
+  "candidate_order": [
+    "simolus3/drift@2.35.0",
+    "isar-community/isar-community@3.3.2"
+  ],
+  "machine_scores": {
+    "simolus3/drift": 0.92,
+    "isar-community/isar-community": 0.83
+  },
+  "comparison": [
+    {
+      "dimension": "license",
+      "simolus3/drift": "MIT; SQLite ecosystem",
+      "isar-community/isar-community": "Apache-2.0; NOTICE includes libmdbx Apache-2.0",
+      "verdict": "both strong open-source fits; Drift has simpler dependency provenance"
+    },
+    {
+      "dimension": "target_platforms",
+      "simolus3/drift": "Android, Linux, macOS, Windows explicitly documented",
+      "isar-community/isar-community": "pubspec declares Android, Linux, macOS, Windows and release ships native platform artifacts",
+      "verdict": "both cover requested Android + desktop"
+    },
+    {
+      "dimension": "storage_model",
+      "simolus3/drift": "relational SQLite, SQL/Dart queries",
+      "isar-community/isar-community": "NoSQL object database",
+      "verdict": "Drift is more neutral for structured persistence; Isar is attractive for object-centric storage"
+    },
+    {
+      "dimension": "durability_features",
+      "simolus3/drift": "transactions and schema migrations explicitly documented",
+      "isar-community/isar-community": "local native object persistence; detailed contract mapping deferred",
+      "verdict": "Drift has stronger directly evidenced generic persistence lifecycle features"
+    },
+    {
+      "dimension": "maintenance",
+      "simolus3/drift": "2019 project, 3273 stars, current 2.35.0 release, pushed 2026-09-13",
+      "isar-community/isar-community": "community fork since 2024, 193 stars, 3.3.2 release, pushed 2026-09-08",
+      "verdict": "Drift has longer independent maturity; Isar community is active but newer"
+    },
+    {
+      "dimension": "tests_ci",
+      "simolus3/drift": "large test/integration surface and GitHub Actions",
+      "isar-community/isar-community": "test, testlab, scheduled test and release workflows",
+      "verdict": "both have strong static quality signals; no upstream job result asserted"
+    },
+    {
+      "dimension": "integration_risk",
+      "simolus3/drift": "Dart >=3.10, SQLite/native packaging and common codegen",
+      "isar-community/isar-community": "native binaries plus generator; provenance/reproducibility check remains",
+      "verdict": "both medium; Isar needs more native provenance scrutiny"
+    }
+  ],
+  "screened_out": [
+    {
+      "candidate": "objectbox/objectbox-dart@5.3.2",
+      "reason": "Technically strong and actively maintained, but official documentation states Dart bindings are Apache-2.0 while the native runtime uses the ObjectBox Binary License. The local database is free, but this mixed licensing is a weaker fit for a reusable open-source Library default. Retained as a future alternative, not misclassified as fully Apache-2.0."
+    }
+  ],
+  "human_recommendation": {
+    "default": "simolus3/drift 2.35.0",
+    "reason": "Best combination of open provenance, maturity, Android/desktop coverage, transactions, migrations, testing and ecosystem neutrality.",
+    "alternative": "isar-community/isar-community 3.3.2",
+    "alternative_reason": "Prefer for object-centric NoSQL persistence when a fully open Apache-2.0 native stack is more useful than relational SQLite semantics."
+  },
+  "limitations": [
+    "storage.local_db.v1 is currently only a draft logical Library contract; no unstated CRUD/schema API semantics were invented",
+    "No candidate code or release binary executed",
+    "No performance benchmark run",
+    "No definitive vulnerability audit",
+    "Native artifact reproducibility was not independently verified",
+    "Upstream CI workflow/config presence is evidence, not a claim every upstream job is currently green",
+    "Library certification remains required"
+  ],
+  "outcome": "Two independent candidates shortlisted. Drift is the preferred general-purpose local persistence candidate; Isar Community is the open-source NoSQL alternative. ObjectBox is screened but not shortlisted because its native runtime uses a separate binary license."
+}
