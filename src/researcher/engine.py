@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from .analysis import (
     classify_license,
@@ -20,9 +20,19 @@ from .security_admission import CandidateSecurityScanner, FullTreeSecurityReport
 from .security_gate import SecurityVerdict
 from .state import SQLiteStateStore
 from .submission import LibrarySubmissionClient
+from .supply_chain import SupplyChainReport
+from .vulnerability import VulnerabilityReport, VulnerabilityVerdict
 
 
 _PRIORITY = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
+
+class CandidateVulnerabilityChecker(Protocol):
+    def check(
+        self,
+        candidate: Candidate,
+        supply_chain: SupplyChainReport,
+    ) -> VulnerabilityReport: ...
 
 
 class ResearchEngine:
@@ -39,6 +49,7 @@ class ResearchEngine:
         mode: ResearchMode,
         shortlist_threshold: float = 0.58,
         security_scanner: CandidateSecurityScanner | None = None,
+        vulnerability_checker: CandidateVulnerabilityChecker | None = None,
     ) -> None:
         self.need_source = need_source
         self.contract_source = contract_source
@@ -52,6 +63,7 @@ class ResearchEngine:
         self.mode = mode
         self.shortlist_threshold = shortlist_threshold
         self.security_scanner = security_scanner
+        self.vulnerability_checker = vulnerability_checker
         self.state.set_mode(mode)
 
     def _rank_needs(self, needs: list[Need]) -> list[Need]:
@@ -96,6 +108,7 @@ class ResearchEngine:
         contract: Any,
         lifecycle: str,
         security_report: FullTreeSecurityReport | None = None,
+        vulnerability_report: VulnerabilityReport | None = None,
     ) -> Dossier:
         fingerprint = candidate_fingerprint(need.capability_id, candidate)
         scores = self.scorer.score(need, candidate, contract)
@@ -103,7 +116,19 @@ class ResearchEngine:
         security["admission_gate"] = (
             None if security_report is None else security_report.to_dict()
         )
+        security["vulnerability_evidence"] = (
+            None if vulnerability_report is None else vulnerability_report.to_dict()
+        )
+        security["vulnerability_evidence_complete"] = bool(
+            vulnerability_report is not None and vulnerability_report.coverage_complete
+        )
         supply_chain = None if security_report is None else security_report.supply_chain
+        vulnerability_checked = bool(
+            vulnerability_report is not None
+            and vulnerability_report.verdict
+            not in {VulnerabilityVerdict.NOT_CHECKED, VulnerabilityVerdict.UNAVAILABLE}
+            and vulnerability_report.queries_completed > 0
+        )
         dependency_evidence = {
             "manifest_files_detected": list(candidate.extra.get("dependency_manifests", [])),
             "dependencies_enumerated": bool(
@@ -119,10 +144,31 @@ class ResearchEngine:
             "lockfiles_present": (
                 [] if supply_chain is None else list(supply_chain.lockfiles_present)
             ),
-            "vulnerability_database_checked": False,
+            "vulnerability_database_checked": vulnerability_checked,
+            "vulnerability_provider": (
+                None if vulnerability_report is None else vulnerability_report.provider
+            ),
+            "vulnerability_verdict": (
+                None if vulnerability_report is None else vulnerability_report.verdict.value
+            ),
+            "vulnerability_queries_requested": (
+                0 if vulnerability_report is None else vulnerability_report.queries_requested
+            ),
+            "vulnerability_queries_completed": (
+                0 if vulnerability_report is None else vulnerability_report.queries_completed
+            ),
+            "vulnerability_coverage_complete": bool(
+                vulnerability_report is not None and vulnerability_report.coverage_complete
+            ),
+            "known_vulnerability_ids": (
+                []
+                if vulnerability_report is None
+                else [hit.osv_id for hit in vulnerability_report.hits]
+            ),
             "note": (
-                "Static manifest/provenance analysis only; package-manager code was not "
-                "executed and vulnerability database review is still pending."
+                "Static source/dependency evidence only; candidate package-manager code was "
+                "not executed. Vulnerability evidence is authoritative only for the exact "
+                "queries OSV completed, and incomplete coverage is preserved explicitly."
             ),
         }
         return Dossier(
@@ -150,6 +196,17 @@ class ResearchEngine:
             )
         return self.security_scanner.scan(candidate)
 
+    def _check_vulnerabilities(
+        self,
+        candidate: Candidate,
+        security_report: FullTreeSecurityReport,
+    ) -> VulnerabilityReport:
+        if security_report.supply_chain is None:
+            return VulnerabilityReport.not_checked("supply-chain evidence unavailable")
+        if self.vulnerability_checker is None:
+            return VulnerabilityReport.not_checked("no vulnerability checker configured")
+        return self.vulnerability_checker.check(candidate, security_report.supply_chain)
+
     @staticmethod
     def _pre_screen_qualified(
         dossier: Dossier,
@@ -168,11 +225,17 @@ class ResearchEngine:
         lifecycle: str,
         candidate: Candidate,
         security_report: FullTreeSecurityReport,
+        vulnerability_report: VulnerabilityReport,
     ) -> str | None:
         if lifecycle == "SHORTLISTED":
             return None
         if lifecycle == "SECURITY_BLOCKED":
             return "security_gate_blocked"
+        if (
+            lifecycle == "SECURITY_REVIEW"
+            and vulnerability_report.verdict == VulnerabilityVerdict.FINDINGS
+        ):
+            return "known_vulnerability_findings"
         if lifecycle == "SECURITY_REVIEW":
             return f"security_review:{security_report.verdict.value.lower()}"
         if candidate.extra.get("source_stable") is False:
@@ -245,10 +308,20 @@ class ResearchEngine:
                     candidate,
                     self.shortlist_threshold,
                 )
+                vulnerability_report = VulnerabilityReport.not_checked(
+                    "candidate did not reach vulnerability evidence stage"
+                )
                 if pre_screen_qualified:
                     security_report = self._scan_candidate(candidate)
                     if security_report.admission_eligible:
-                        lifecycle = "SHORTLISTED"
+                        vulnerability_report = self._check_vulnerabilities(
+                            candidate,
+                            security_report,
+                        )
+                        if vulnerability_report.verdict == VulnerabilityVerdict.FINDINGS:
+                            lifecycle = "SECURITY_REVIEW"
+                        else:
+                            lifecycle = "SHORTLISTED"
                     elif security_report.verdict == SecurityVerdict.BLOCK:
                         lifecycle = "SECURITY_BLOCKED"
                     else:
@@ -266,12 +339,14 @@ class ResearchEngine:
                     contract,
                     lifecycle,
                     security_report,
+                    vulnerability_report,
                 )
                 dossier_path = self.dossiers.save_dossier(dossier)
                 rejection_reason = self._rejection_reason(
                     lifecycle,
                     candidate,
                     security_report,
+                    vulnerability_report,
                 )
                 self.state.upsert_candidate(
                     fingerprint,
