@@ -28,10 +28,10 @@ class Config:
     improvement_interval_seconds: int
     dashboard_host: str
     dashboard_port: int
-    diagnostics_enabled: bool
-    diagnostics_github_token: str | None
-    diagnostics_repository: str
-    diagnostics_tag: str
+    diagnostics_enabled: bool = False
+    diagnostics_github_token: str | None = None
+    diagnostics_repository: str = "pilialvu75-hue/Ai-orchestrator-diagnostics"
+    diagnostics_tag: str = "researcher-diagnostics-v1"
     github_api_base: str = "https://api.github.com"
 
     @classmethod
