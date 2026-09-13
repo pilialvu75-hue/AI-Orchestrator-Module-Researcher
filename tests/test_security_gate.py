@@ -18,13 +18,13 @@ class SecurityGateTests(unittest.TestCase):
         self.assertFalse(result.certification_eligible)
         self.assertFalse(result.executed_untrusted_code)
 
-    def test_clean_source_passes_without_execution(self) -> None:
+    def test_clean_source_is_clear_without_execution(self) -> None:
         artifact = SourceArtifact(
             path="lib/client.dart",
             content="class Client { String read() => 'ok'; }",
         )
         result = scan_source_artifacts([artifact])
-        self.assertEqual(result.verdict, SecurityVerdict.PASS)
+        self.assertEqual(result.verdict, SecurityVerdict.CLEAR)
         self.assertTrue(result.certification_eligible)
         self.assertFalse(result.executed_untrusted_code)
         self.assertEqual(result.findings, ())
