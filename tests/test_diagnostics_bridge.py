@@ -28,7 +28,10 @@ class FakeDiagnosticsApi:
                 raise GitHubApiError(404, "missing")
             return GitHubResponse(data=dict(self.release), headers={})
         if "/assets?" in path:
-            return GitHubResponse(data=[dict(asset) for asset in self.assets], headers={})
+            return GitHubResponse(
+                data=[dict(asset) for asset in self.assets],
+                headers={},
+            )
         raise AssertionError(f"unexpected GET {path}")
 
     def post(self, path: str, payload: dict[str, Any]) -> GitHubResponse:
@@ -50,7 +53,9 @@ class FakeDiagnosticsApi:
     def delete(self, path: str) -> GitHubResponse:
         self.calls.append(("DELETE", path, None))
         asset_id = int(path.rsplit("/", 1)[-1])
-        self.assets = [asset for asset in self.assets if int(asset["id"]) != asset_id]
+        self.assets = [
+            asset for asset in self.assets if int(asset["id"]) != asset_id
+        ]
         return GitHubResponse(data=None, headers={})
 
     def upload_release_asset(
@@ -63,7 +68,11 @@ class FakeDiagnosticsApi:
         content_type: str = "application/x-ndjson; charset=utf-8",
     ) -> GitHubResponse:
         self.calls.append(
-            ("UPLOAD", asset_name, {"repository": repository, "content_type": content_type})
+            (
+                "UPLOAD",
+                asset_name,
+                {"repository": repository, "content_type": content_type},
+            )
         )
         digest = hashlib.sha256(content).hexdigest()
         asset = {
@@ -128,13 +137,21 @@ class DiagnosticsBridgeTests(unittest.TestCase):
             self.assertEqual(rows[0]["diagnostics_state"], "SENT")
 
             names = {str(asset["name"]) for asset in api.assets}
-            archive = next(name for name in names if name.startswith("researcher-diag-"))
-            self.assertRegex(archive, r"^researcher-diag-[a-f0-9]{64}\.jsonl$")
+            archive = next(
+                name for name in names if name.startswith("researcher-diag-")
+            )
+            self.assertRegex(
+                archive,
+                r"^researcher-diag-[a-f0-9]{64}\.jsonl$",
+            )
             self.assertIn("researcher-latest.jsonl", names)
             self.assertNotIn("latest.txt", names)
 
             body = str(api.release["body"])
-            self.assertIn('"schema":"ai-orchestrator.diagnostics.event.v2"', body)
+            self.assertIn(
+                '"schema":"ai-orchestrator.diagnostics.event.v2"',
+                body,
+            )
             self.assertIn('"producer":"researcher"', body)
             self.assertIn('"producer_version":"0.1.0/testcommit"', body)
             self.assertIn('"platform":"linux"', body)
@@ -159,7 +176,12 @@ class DiagnosticsBridgeTests(unittest.TestCase):
             self.assertEqual(rows[0]["diagnostics_state"], "PENDING")
             self.assertEqual(rows[0]["diagnostics_attempts"], 1)
             self.assertIsNotNone(rows[0]["diagnostics_next_attempt_at"])
-            self.assertTrue(any(asset["name"].startswith("researcher-diag-") for asset in api.assets))
+            self.assertTrue(
+                any(
+                    asset["name"].startswith("researcher-diag-")
+                    for asset in api.assets
+                )
+            )
             status = state.get_json("diagnostics_status")
             self.assertEqual(status["error_type"], "GitHubApiError")
             self.assertNotIn("temporary failure", str(status))
@@ -208,7 +230,9 @@ class DiagnosticsBridgeTests(unittest.TestCase):
             self.assertIn(2, remaining_ids)
             self.assertIn(3, remaining_ids)
             self.assertNotIn(4, remaining_ids)
-            deleted_paths = [path for method, path, _ in api.calls if method == "DELETE"]
+            deleted_paths = [
+                path for method, path, _ in api.calls if method == "DELETE"
+            ]
             self.assertTrue(any(path.endswith("/4") for path in deleted_paths))
             self.assertFalse(any(path.endswith("/1") for path in deleted_paths))
             self.assertFalse(any(path.endswith("/2") for path in deleted_paths))
@@ -224,9 +248,17 @@ class DiagnosticsBridgeTests(unittest.TestCase):
             api.release_exists = True
             assets = api.assets
             first_name, digest = bridge._ensure_archive(77, assets, content)
-            upload_count = sum(1 for method, _, _ in api.calls if method == "UPLOAD")
-            second_name, second_digest = bridge._ensure_archive(77, assets, content)
-            second_upload_count = sum(1 for method, _, _ in api.calls if method == "UPLOAD")
+            upload_count = sum(
+                1 for method, _, _ in api.calls if method == "UPLOAD"
+            )
+            second_name, second_digest = bridge._ensure_archive(
+                77,
+                assets,
+                content,
+            )
+            second_upload_count = sum(
+                1 for method, _, _ in api.calls if method == "UPLOAD"
+            )
             self.assertEqual(first_name, second_name)
             self.assertEqual(digest, second_digest)
             self.assertEqual(upload_count, second_upload_count)
