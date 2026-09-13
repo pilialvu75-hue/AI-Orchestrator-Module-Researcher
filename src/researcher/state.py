@@ -256,18 +256,37 @@ class SQLiteStateStore:
         return existing is None
 
     def is_known_candidate(self, fingerprint: str) -> bool:
-        with self._connect() as conn:
-            row = conn.execute(
-                "SELECT 1 FROM candidates WHERE fingerprint=?", (fingerprint,)
-            ).fetchone()
-        return row is not None
-
-    def count_qualified(self, capability_id: str) -> int:
+        """Treat an unacknowledged shortlisted candidate as retryable after restart."""
         with self._connect() as conn:
             row = conn.execute(
                 """
-                SELECT COUNT(*) AS c FROM candidates
-                WHERE capability_id=? AND lifecycle IN ('SHORTLISTED', 'SUBMITTED')
+                SELECT c.lifecycle, s.fingerprint AS submission_fingerprint
+                FROM candidates c
+                LEFT JOIN submissions s ON s.fingerprint=c.fingerprint
+                WHERE c.fingerprint=?
+                """,
+                (fingerprint,),
+            ).fetchone()
+        if row is None:
+            return False
+        retryable = (
+            row["lifecycle"] in {"SHORTLISTED", "SUBMITTED"}
+            and row["submission_fingerprint"] is None
+        )
+        return not retryable
+
+    def count_qualified(self, capability_id: str) -> int:
+        """Count only qualified candidates whose delivery was locally acknowledged."""
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c
+                FROM candidates c
+                WHERE c.capability_id=?
+                  AND c.lifecycle IN ('SHORTLISTED', 'SUBMITTED')
+                  AND EXISTS (
+                      SELECT 1 FROM submissions s WHERE s.fingerprint=c.fingerprint
+                  )
                 """,
                 (capability_id,),
             ).fetchone()
@@ -289,6 +308,7 @@ class SQLiteStateStore:
         state: str,
         target_path: str,
     ) -> bool:
+        now = utc_now()
         with self._connect() as conn:
             existing = conn.execute(
                 "SELECT fingerprint FROM submissions WHERE fingerprint=?", (fingerprint,)
@@ -301,8 +321,17 @@ class SQLiteStateStore:
                     fingerprint, capability_id, submission_id, state, target_path, created_at
                 ) VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (fingerprint, capability_id, submission_id, state, target_path, utc_now()),
+                (fingerprint, capability_id, submission_id, state, target_path, now),
             )
+            if state == "SUBMITTED":
+                conn.execute(
+                    """
+                    UPDATE candidates
+                    SET lifecycle='SUBMITTED', updated_at=?
+                    WHERE fingerprint=? AND lifecycle='SHORTLISTED'
+                    """,
+                    (now, fingerprint),
+                )
         return True
 
     def update_scan(
