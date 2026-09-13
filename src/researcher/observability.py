@@ -22,6 +22,7 @@ _SECRET_KEY = re.compile(
 )
 _BEARER = re.compile(r"\bBearer\s+[A-Za-z0-9._~+/=-]+", re.IGNORECASE)
 _LONG_SECRETISH = re.compile(r"\b(?:gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,})\b")
+_EVENT_IDENTIFIER = re.compile(r"^[A-Za-z0-9_.-]{1,120}$")
 _PUBLIC_FIELDS = {
     "capability_id",
     "mode",
@@ -94,8 +95,15 @@ class EventRecord:
 class EventLogger:
     """Durable structured event logger. Local storage is authoritative."""
 
-    def __init__(self, state: SQLiteStateStore) -> None:
+    def __init__(self, state: SQLiteStateStore, *, diagnostics_enabled: bool = False) -> None:
         self.state = state
+        self.diagnostics_enabled = diagnostics_enabled
+
+    @staticmethod
+    def _identifier(value: str, field: str) -> str:
+        if not _EVENT_IDENTIFIER.fullmatch(value):
+            raise ValueError(f"{field} must be a stable identifier")
+        return value
 
     def emit(
         self,
@@ -108,8 +116,9 @@ class EventLogger:
         public_payload = public_projection(clean_payload)
         return self.state.append_event(
             level=str(level),
-            component=component[:80],
-            event=event[:120],
+            component=self._identifier(component, "component")[:80],
+            event=self._identifier(event, "event"),
             payload=clean_payload,
             public_payload=public_payload,
+            queue_diagnostics=self.diagnostics_enabled,
         )
