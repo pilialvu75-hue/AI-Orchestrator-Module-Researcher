@@ -519,7 +519,10 @@ class GitHubFullTreeSecurityScanner:
             and relevant_blobs == len(artifacts)
         )
 
-        if SecuritySeverity.CRITICAL in severities or supply_chain.verdict == SupplyChainVerdict.BLOCK:
+        if (
+            SecuritySeverity.CRITICAL in severities
+            or supply_chain.verdict == SupplyChainVerdict.BLOCK
+        ):
             verdict = SecurityVerdict.BLOCK
         elif (
             SecuritySeverity.HIGH in severities
