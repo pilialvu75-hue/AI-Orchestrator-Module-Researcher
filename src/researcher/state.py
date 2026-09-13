@@ -128,7 +128,9 @@ class SQLiteStateStore:
                     diagnostics_state,
                 ),
             )
-            event_id = int(cursor.lastrowid)
+            event_id = cursor.lastrowid
+            if event_id is None:
+                raise RuntimeError("SQLite did not return an event id")
             if retention > 0:
                 conn.execute(
                     """
@@ -185,29 +187,28 @@ class SQLiteStateStore:
     def mark_diagnostics_sent(self, event_ids: list[int]) -> None:
         if not event_ids:
             return
-        placeholders = ",".join("?" for _ in event_ids)
         with self._connect() as conn:
-            conn.execute(
-                f"""
-                UPDATE events SET diagnostics_state='SENT', diagnostics_next_attempt_at=NULL
-                WHERE id IN ({placeholders})
+            conn.executemany(
+                """
+                UPDATE events
+                SET diagnostics_state='SENT', diagnostics_next_attempt_at=NULL
+                WHERE id=?
                 """,
-                tuple(event_ids),
+                ((event_id,) for event_id in event_ids),
             )
 
     def mark_diagnostics_retry(self, event_ids: list[int], next_attempt_at: str) -> None:
         if not event_ids:
             return
-        placeholders = ",".join("?" for _ in event_ids)
         with self._connect() as conn:
-            conn.execute(
-                f"""
+            conn.executemany(
+                """
                 UPDATE events
                 SET diagnostics_attempts=diagnostics_attempts+1,
                     diagnostics_next_attempt_at=?
-                WHERE id IN ({placeholders}) AND diagnostics_state='PENDING'
+                WHERE id=? AND diagnostics_state='PENDING'
                 """,
-                (next_attempt_at, *event_ids),
+                ((next_attempt_at, event_id) for event_id in event_ids),
             )
 
     def upsert_candidate(
