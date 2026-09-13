@@ -4,7 +4,7 @@ import base64
 import re
 import urllib.parse
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Callable
 
 from ..github_api import GitHubApi, GitHubApiError, GitHubResponse
 
