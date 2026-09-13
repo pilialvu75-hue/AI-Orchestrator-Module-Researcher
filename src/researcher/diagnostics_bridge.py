@@ -88,7 +88,9 @@ class GitHubDiagnosticsBridge:
 
     @property
     def _repo_path(self) -> str:
-        return "/".join(urllib.parse.quote(part, safe="") for part in self.repository.split("/"))
+        return "/".join(
+            urllib.parse.quote(part, safe="") for part in self.repository.split("/")
+        )
 
     @property
     def _tag_path(self) -> str:
@@ -132,7 +134,12 @@ class GitHubDiagnosticsBridge:
         for row in rows:
             event = self._event(row)
             encoded = (
-                json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+                json.dumps(
+                    event,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                )
                 + "\n"
             ).encode("utf-8")
             if len(encoded) > _MAX_ASSET_BYTES:
@@ -166,15 +173,27 @@ class GitHubDiagnosticsBridge:
     def _render_body(cls, previous_body: str, current: list[dict[str, Any]]) -> str:
         records: dict[str, dict[str, Any]] = {}
         for event in [*cls._events_from_body(previous_body), *current]:
-            key = str(event.get("correlation_id") or hashlib.sha256(
-                json.dumps(event, sort_keys=True, separators=(",", ":")).encode("utf-8")
-            ).hexdigest())
+            canonical = json.dumps(
+                event,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+            fallback = hashlib.sha256(canonical).hexdigest()
+            key = str(event.get("correlation_id") or fallback)
             records[key] = event
-        ordered = sorted(records.values(), key=lambda item: str(item.get("timestamp", "")))
+        ordered = sorted(
+            records.values(),
+            key=lambda item: str(item.get("timestamp", "")),
+        )
         selected: list[str] = []
         used = 0
         for event in reversed(ordered):
-            line = json.dumps(event, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+            line = json.dumps(
+                event,
+                sort_keys=True,
+                separators=(",", ":"),
+                ensure_ascii=True,
+            )
             if len(line) + 1 + used > _BODY_BUDGET:
                 continue
             selected.append(line)
@@ -218,9 +237,11 @@ class GitHubDiagnosticsBridge:
         assets: list[dict[str, Any]] = []
         page = 1
         while True:
-            response = self.api.get(
-                f"/repos/{self._repo_path}/releases/{release_id}/assets?per_page=100&page={page}"
+            path = (
+                f"/repos/{self._repo_path}/releases/{release_id}/assets"
+                f"?per_page=100&page={page}"
             )
+            response = self.api.get(path)
             if not isinstance(response.data, list):
                 raise RuntimeError("unexpected diagnostics assets response")
             batch = [dict(item) for item in response.data if isinstance(item, dict)]
@@ -230,11 +251,20 @@ class GitHubDiagnosticsBridge:
             page += 1
 
     @staticmethod
-    def _uploaded(asset: dict[str, Any], *, size: int, digest: str | None = None) -> bool:
+    def _uploaded(
+        asset: dict[str, Any],
+        *,
+        size: int,
+        digest: str | None = None,
+    ) -> bool:
         if asset.get("state") != "uploaded" or int(asset.get("size", -1)) != size:
             return False
         remote_digest = asset.get("digest")
-        return digest is None or remote_digest is None or remote_digest == f"sha256:{digest}"
+        return (
+            digest is None
+            or remote_digest is None
+            or remote_digest == f"sha256:{digest}"
+        )
 
     def _delete_asset(self, asset: dict[str, Any]) -> None:
         asset_id = int(asset["id"])
@@ -248,7 +278,11 @@ class GitHubDiagnosticsBridge:
         incoming_bytes: int,
         already_uploaded: bool,
     ) -> None:
-        owned = [asset for asset in assets if _ARCHIVE.fullmatch(str(asset.get("name", "")))]
+        owned = [
+            asset
+            for asset in assets
+            if _ARCHIVE.fullmatch(str(asset.get("name", "")))
+        ]
         total = sum(int(asset.get("size", 0)) for asset in owned)
         incoming = 0 if already_uploaded else incoming_bytes
         owned.sort(key=lambda asset: str(asset.get("created_at", "")))
@@ -271,7 +305,11 @@ class GitHubDiagnosticsBridge:
         name = f"researcher-diag-{digest}.jsonl"
         matching = [asset for asset in assets if asset.get("name") == name]
         valid = next(
-            (asset for asset in matching if self._uploaded(asset, size=len(content), digest=digest)),
+            (
+                asset
+                for asset in matching
+                if self._uploaded(asset, size=len(content), digest=digest)
+            ),
             None,
         )
         for asset in matching:
@@ -308,7 +346,11 @@ class GitHubDiagnosticsBridge:
     ) -> None:
         matching = [asset for asset in assets if asset.get("name") == _LATEST]
         valid = next(
-            (asset for asset in matching if self._uploaded(asset, size=len(content), digest=digest)),
+            (
+                asset
+                for asset in matching
+                if self._uploaded(asset, size=len(content), digest=digest)
+            ),
             None,
         )
         for asset in matching:
@@ -352,7 +394,10 @@ class GitHubDiagnosticsBridge:
                     "prerelease": True,
                 },
             )
-            if not isinstance(response.data, dict) or int(response.data.get("id", -1)) != release_id:
+            verified = isinstance(response.data, dict) and int(
+                response.data.get("id", -1)
+            ) == release_id
+            if not verified:
                 raise RuntimeError("release summary update was not verified")
             self.state.mark_diagnostics_sent(published_ids)
             result = {
@@ -366,10 +411,11 @@ class GitHubDiagnosticsBridge:
             self.state.set_json("diagnostics_status", result)
             return result
         except Exception as exc:
+            published_set = set(published_ids)
             attempts = max(
                 int(row["diagnostics_attempts"])
                 for row in rows
-                if int(row["id"]) in set(published_ids)
+                if int(row["id"]) in published_set
             ) + 1
             delay_minutes = min(2 ** min(attempts, 6), 60)
             next_attempt = datetime.now(UTC) + timedelta(minutes=delay_minutes)
