@@ -1,0 +1,65 @@
+{
+  "capabilities": ["storage.local_db"],
+  "connector": {
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"path": null, "type": "none"},
+    "integration_mode": "adapter",
+    "provides": [{"capability_id": "storage.local_db", "contract_id": "storage.local_db.v1", "contract_version": "1.0"}],
+    "requires": [],
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0"
+  },
+  "dependencies": [
+    {"name": "isar_community", "source": "https://pub.dev/packages/isar_community", "version": "3.3.2"},
+    {"name": "isar_community_flutter_libs", "source": "https://pub.dev/packages/isar_community_flutter_libs", "version": "3.3.2"}
+  ],
+  "deprecation": {"reason": null, "replacement": null},
+  "description": "Researcher candidate adapter for storage.local_db.v1 using Isar Community 3.3.2.",
+  "entry_paths": [],
+  "frameworks": ["dart", "flutter"],
+  "id": "storage.local_db.isar-community.isar-community",
+  "integration": {
+    "adaptation_allowed": true,
+    "adapter_notes": "Adapter over Isar Community object persistence; no relational semantics are assumed by the draft Library contract.",
+    "estimated_effort": "medium",
+    "known_constraints": [
+      "community fork has shorter governance history",
+      "native release artifacts require provenance/reproducibility validation",
+      "Library must define migration/backup semantics before certification"
+    ]
+  },
+  "kind": "module",
+  "languages": ["dart", "rust"],
+  "name": "Isar Community local persistence",
+  "payload": {
+    "path": null,
+    "sha256": null,
+    "type": "upstream_reference",
+    "upstream_commit": "4c2cd02d4e5c17b7edca89d141d1729ddc1698ff",
+    "upstream_repository": "https://github.com/isar-community/isar-community"
+  },
+  "platforms": ["android", "desktop"],
+  "provenance": {
+    "license": "Apache-2.0",
+    "license_file": "https://github.com/isar-community/isar-community/blob/4c2cd02d4e5c17b7edca89d141d1729ddc1698ff/LICENSE",
+    "origin": "researcher",
+    "retrieved_at": "2026-09-13T16:15:00Z",
+    "source_commit": "4c2cd02d4e5c17b7edca89d141d1729ddc1698ff",
+    "source_project_id": null,
+    "source_repository": "https://github.com/isar-community/isar-community",
+    "source_tag": "3.3.2",
+    "source_task_id": "3dbef2cfc0205a88acd59665904360b7d9e69a9df67c984e89424f295e5d4c3c"
+  },
+  "quality": {"failed_integrations": 0, "last_used_at": null, "reuse_count": 0, "successful_integrations": 0},
+  "security": {
+    "notes": "Metadata/documentation pre-screen only; native binaries were not executed or independently reproduced; no definitive vulnerability audit performed.",
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null
+  },
+  "status": "discovered",
+  "tags": ["storage.local_db", "researcher-candidate", "nosql", "isar", "dart", "flutter"],
+  "validation": {"score": 0.83, "test_report": null, "tests_passed": false, "validated_at": null, "validated_on": []},
+  "version": "0.1.0"
+}
