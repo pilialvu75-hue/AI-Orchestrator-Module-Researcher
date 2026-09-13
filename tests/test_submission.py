@@ -23,14 +23,7 @@ from helpers import candidate, contract, need
 class SubmissionTests(unittest.TestCase):
     def test_dry_run_manifest_matches_library_contract_shape(self) -> None:
         n = need()
-        original = candidate("alpha", "a" * 40)
-        c = replace(
-            original,
-            license_file_url=(
-                f"https://github.com/{original.repository}/blob/"
-                f"{original.commit_sha}/LICENSE"
-            ),
-        )
+        c = candidate("alpha", "a" * 40)
         ctr = contract()
         score = CandidateScorer().score(n, c, ctr)
         dossier = Dossier(
@@ -67,7 +60,13 @@ class SubmissionTests(unittest.TestCase):
 
     def test_dry_run_rejects_mutable_license_endpoint(self) -> None:
         n = need()
-        c = candidate("mutable-license", "b" * 40)
+        original = candidate("mutable-license", "b" * 40)
+        c = replace(
+            original,
+            license_file_url=(
+                f"https://api.github.com/repos/{original.repository}/license"
+            ),
+        )
         ctr = contract()
         score = CandidateScorer().score(n, c, ctr)
         dossier = Dossier(
