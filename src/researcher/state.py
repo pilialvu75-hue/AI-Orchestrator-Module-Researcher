@@ -104,11 +104,12 @@ class SQLiteStateStore:
         event: str,
         payload: Any,
         public_payload: Any,
+        queue_diagnostics: bool,
         retention: int = 5000,
     ) -> int:
         now = utc_now()
         public_json = json.dumps(public_payload, sort_keys=True, separators=(",", ":"))
-        diagnostics_state = "PENDING" if public_payload else "SKIPPED"
+        diagnostics_state = "PENDING" if public_payload and queue_diagnostics else "SKIPPED"
         with self._connect() as conn:
             cursor = conn.execute(
                 """
@@ -132,7 +133,8 @@ class SQLiteStateStore:
                 conn.execute(
                     """
                     DELETE FROM events
-                    WHERE id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT ?)
+                    WHERE diagnostics_state!='PENDING'
+                      AND id NOT IN (SELECT id FROM events ORDER BY id DESC LIMIT ?)
                     """,
                     (retention,),
                 )
@@ -378,6 +380,7 @@ class SQLiteStateStore:
             "library": self.get_json("library_snapshot", {}),
             "rate_limit": self.get_json("rate_limit", {}),
             "last_error": self.get_json("last_error"),
+            "diagnostics": self.get_json("diagnostics_status", {"state": "DISABLED"}),
             "needs_total": self.get_json("needs_total", 0),
             "needs_incomplete": self.get_json("needs_incomplete", 0),
             "candidates": int(totals["candidates"] or 0),
