@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "auth.session",
+    "contract_id": "auth.session.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "web"],
+    "title": "Authentication and session management"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "appsup-dart/openid_client",
+    "project": "openid_client",
+    "owner": "appsup-dart",
+    "upstream_url": "https://github.com/appsup-dart/openid_client",
+    "commit_sha": "44348cc4006762363a873526e33bf769d751ad71",
+    "tree_sha": "8b4f1b059fcc27e2fd059186834a187a2539637c",
+    "source_version": "0.4.10+1",
+    "source_tag": null,
+    "release_tag_verified": false,
+    "acquired_at": "2026-09-13T09:45:00Z",
+    "license": "BSD-3-Clause",
+    "license_file": "https://github.com/appsup-dart/openid_client/blob/44348cc4006762363a873526e33bf769d751ad71/LICENSE",
+    "language": "Dart",
+    "platforms": ["android", "desktop", "web"]
+  },
+  "dependencies": [
+    {"name": "jose", "version": "^0.3.5+1"},
+    {"name": "pointycastle", "version": ">=3.0.0 <5.0.0"},
+    {"name": "http", "version": ">=0.13.5 <2.0.0"},
+    {"name": "logging", "version": "^1.0.0"},
+    {"name": "args", "version": "^2.0.0"},
+    {"name": "meta", "version": "^1.0.0"},
+    {"name": "clock", "version": "^1.1.0"},
+    {"name": "web", "version": "^1.1.0"}
+  ],
+  "evidence": {
+    "functional": {
+      "openid_provider_discovery": true,
+      "authorization_code_flow": true,
+      "id_token_validation": true,
+      "refresh": "supported; current release includes token-refresh future deduplication",
+      "logout": "RP-initiated logout supported",
+      "session_persistence": "not treated as a complete cross-platform session store by this proof; adapter policy remains required",
+      "provider_neutrality": "works with OpenID Connect providers and can interoperate with OAuth2 providers with reduced OIDC features"
+    },
+    "maintenance": {
+      "archived": false,
+      "candidate_release_commit_at": "2026-04-28T09:22:25Z",
+      "repository_pushed_at": "2026-04-28T09:32:53Z"
+    },
+    "quality": {
+      "tests_present": true,
+      "ci_present": true,
+      "ci_kind": "Travis configuration at pinned SHA",
+      "ci_status": "not_verified_by_researcher",
+      "codeql_present": false,
+      "dependabot_present": false,
+      "security_policy_present": false
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "vulnerability_scan": "not_performed",
+      "supply_chain_notes": "runtime crypto/HTTP dependencies recorded from pubspec; transitive dependencies not audited in this proof"
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "untrusted candidate code is not executed in Researcher V1"
+    }
+  },
+  "evidence_sources": [
+    "https://github.com/appsup-dart/openid_client/commit/44348cc4006762363a873526e33bf769d751ad71",
+    "https://github.com/appsup-dart/openid_client/blob/44348cc4006762363a873526e33bf769d751ad71/pubspec.yaml",
+    "https://github.com/appsup-dart/openid_client/blob/44348cc4006762363a873526e33bf769d751ad71/README.md",
+    "https://github.com/appsup-dart/openid_client/blob/44348cc4006762363a873526e33bf769d751ad71/LICENSE",
+    "https://pub.dev/packages/openid_client"
+  ],
+  "fingerprint": "cab355eb329b1d9209d09b54b4e7e7a2f652cd008b210d9c1190a82e1d088586",
+  "integration_assessment": {
+    "adapter_model": "thin trusted adapter over Client/Credential/Flow with explicit session persistence policy",
+    "human_estimated_effort": "low-to-medium",
+    "strengths": [
+      "provider-neutral OpenID Connect core",
+      "Dart-first and comparatively low Flutter coupling",
+      "authorization-code flow, discovery, token validation and logout",
+      "broad mobile/desktop/web viability",
+      "permissive BSD-3-Clause license"
+    ],
+    "weaknesses": [
+      "not a complete opinionated session manager at the Library boundary",
+      "secure persistence semantics must be made explicit by the adapter/Library",
+      "current CI health was not verified; pinned tree contains legacy Travis configuration"
+    ],
+    "additional_costs": [
+      "define auth.session.v1 adapter semantics for persistence and session restoration",
+      "coordinate secret persistence with storage.secrets during Library normalization without inventing a hard dependency here"
+    ]
+  },
+  "lifecycle": "SHORTLISTED",
+  "scores": {
+    "functional_fit": 0.78,
+    "contract_fit": 0.68,
+    "maintenance": 0.85,
+    "security": 0.58,
+    "license_fit": 1.0,
+    "platform_fit": 0.95,
+    "test_quality": 0.75,
+    "integration_cost": 0.82,
+    "performance": 0.5,
+    "footprint": 0.82,
+    "documentation": 0.82,
+    "recommendation": 0.78,
+    "reasons": [
+      "Library exposes only a draft logical auth.session.v1 boundary, so contract fit is intentionally conservative",
+      "active upstream with a pinned stable release commit",
+      "BSD-3-Clause is permissive",
+      "tests and examples exist across browser/Flutter/CLI usage",
+      "framework coupling is lower than a federated Flutter plugin",
+      "no untrusted code executed; vulnerability scan not performed"
+    ]
+  },
+  "recommendation": "SHORTLIST. Strong thin/provider-neutral alternative; Library adapter must make persistence and session lifecycle semantics explicit."
+}

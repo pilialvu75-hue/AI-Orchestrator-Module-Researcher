@@ -1,0 +1,62 @@
+{
+  "capabilities": ["auth.session"],
+  "connector": {
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"path": null, "type": "none"},
+    "integration_mode": "adapter",
+    "provides": [{"capability_id": "auth.session", "contract_id": "auth.session.v1", "contract_version": "1.0"}],
+    "requires": [],
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0"
+  },
+  "dependencies": [{"name": "openid_client", "source": "https://pub.dev/packages/openid_client", "version": "0.4.10+1"}],
+  "deprecation": {"reason": null, "replacement": null},
+  "description": "Researcher candidate adapter for auth.session.v1 using openid_client 0.4.10+1.",
+  "entry_paths": [],
+  "frameworks": ["flutter"],
+  "id": "auth.session.appsup-dart.openid-client",
+  "integration": {
+    "adaptation_allowed": true,
+    "adapter_notes": "Thin provider-neutral adapter over Client/Credential/Flow; session persistence policy remains Library-owned.",
+    "estimated_effort": "low",
+    "known_constraints": [
+      "auth.session.v1 is currently a draft logical boundary",
+      "secure persistence/session restoration semantics require normalization",
+      "Library must validate the adapter before certification"
+    ]
+  },
+  "kind": "module",
+  "languages": ["dart"],
+  "name": "OpenID Client",
+  "payload": {
+    "path": null,
+    "sha256": null,
+    "type": "upstream_reference",
+    "upstream_commit": "44348cc4006762363a873526e33bf769d751ad71",
+    "upstream_repository": "https://github.com/appsup-dart/openid_client"
+  },
+  "platforms": ["android", "desktop", "web"],
+  "provenance": {
+    "license": "BSD-3-Clause",
+    "license_file": "https://github.com/appsup-dart/openid_client/blob/44348cc4006762363a873526e33bf769d751ad71/LICENSE",
+    "origin": "researcher",
+    "retrieved_at": "2026-09-13T09:45:00Z",
+    "source_commit": "44348cc4006762363a873526e33bf769d751ad71",
+    "source_project_id": null,
+    "source_repository": "https://github.com/appsup-dart/openid_client",
+    "source_tag": null,
+    "source_task_id": "cab355eb329b1d9209d09b54b4e7e7a2f652cd008b210d9c1190a82e1d088586"
+  },
+  "quality": {"failed_integrations": 0, "last_used_at": null, "reuse_count": 0, "successful_integrations": 0},
+  "security": {
+    "notes": "Metadata/deep-documentation pre-screen only; no external code executed and no definitive vulnerability audit performed.",
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null
+  },
+  "status": "discovered",
+  "tags": ["auth.session", "researcher-candidate", "oidc", "dart", "flutter"],
+  "validation": {"score": 0.78, "test_report": null, "tests_passed": false, "validated_at": null, "validated_on": []},
+  "version": "0.1.0"
+}

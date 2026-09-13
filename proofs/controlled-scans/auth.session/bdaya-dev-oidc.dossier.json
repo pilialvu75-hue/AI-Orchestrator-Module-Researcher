@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "auth.session",
+    "contract_id": "auth.session.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "web"],
+    "title": "Authentication and session management"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "Bdaya-Dev/oidc",
+    "project": "oidc",
+    "owner": "Bdaya-Dev",
+    "upstream_url": "https://github.com/Bdaya-Dev/oidc",
+    "commit_sha": "eedd79f14f7b72fa0d725b9446d8c896c4c02b8b",
+    "tree_sha": "389ea7acf00927bce16565ddbb1aa24fd47d7573",
+    "source_version": "4.0.0",
+    "source_tag": null,
+    "release_tag_verified": false,
+    "acquired_at": "2026-09-13T09:45:00Z",
+    "license": "MIT",
+    "license_file": "https://github.com/Bdaya-Dev/oidc/blob/eedd79f14f7b72fa0d725b9446d8c896c4c02b8b/LICENSE",
+    "language": "Dart",
+    "platforms": ["android", "desktop", "web"]
+  },
+  "dependencies": [
+    {"name": "oidc_android", "version": "^3.0.0"},
+    {"name": "oidc_core", "version": "^3.0.0"},
+    {"name": "oidc_darwin", "version": "^1.1.2"},
+    {"name": "oidc_linux", "version": "^1.0.3"},
+    {"name": "oidc_platform_interface", "version": "^1.0.3"},
+    {"name": "oidc_web", "version": "^1.0.3"},
+    {"name": "oidc_windows", "version": "^1.0.3"},
+    {"name": "http", "version": "^1.1.0"},
+    {"name": "jose_plus", "version": "^1.0.0"},
+    {"name": "retry", "version": "^3.1.2"},
+    {"name": "logging", "version": "^1.2.0"},
+    {"name": "json_annotation", "version": "^4.12.0"},
+    {"name": "nonce", "version": "^1.2.0"},
+    {"name": "uuid", "version": "^4.0.0"},
+    {"name": "clock", "version": "^1.1.1"}
+  ],
+  "evidence": {
+    "functional": {
+      "user_manager": true,
+      "login_logout": true,
+      "authorization_code_pkce": true,
+      "automatic_refresh_token_rotation": true,
+      "provider_discovery": true,
+      "front_channel_logout": true,
+      "session_management": "OIDC Session Management is implemented for Web; cross-platform user/session lifecycle is exposed by OidcUserManager",
+      "custom_store": true,
+      "custom_http_client": true
+    },
+    "maintenance": {
+      "archived": false,
+      "candidate_release_commit_at": "2026-08-01T14:45:15Z",
+      "repository_pushed_at": "2026-08-01T20:54:19Z",
+      "release_commit_verified_signature": true
+    },
+    "quality": {
+      "tests_present": true,
+      "e2e_tests_present": true,
+      "ci_present": true,
+      "dependabot_present": true,
+      "security_policy_present": false,
+      "ci_status": "workflow_presence_verified; upstream run result not asserted by this proof"
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "vulnerability_scan": "not_performed",
+      "supply_chain_notes": "federated plugin and runtime dependency surface recorded from pubspec; transitive dependencies not audited in this proof"
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "untrusted candidate code is not executed in Researcher V1"
+    }
+  },
+  "evidence_sources": [
+    "https://github.com/Bdaya-Dev/oidc/commit/eedd79f14f7b72fa0d725b9446d8c896c4c02b8b",
+    "https://github.com/Bdaya-Dev/oidc/blob/eedd79f14f7b72fa0d725b9446d8c896c4c02b8b/packages/oidc/pubspec.yaml",
+    "https://github.com/Bdaya-Dev/oidc/blob/eedd79f14f7b72fa0d725b9446d8c896c4c02b8b/packages/oidc/README.md",
+    "https://github.com/Bdaya-Dev/oidc/blob/eedd79f14f7b72fa0d725b9446d8c896c4c02b8b/LICENSE",
+    "https://pub.dev/packages/oidc"
+  ],
+  "fingerprint": "b8829130ed8419c9a1d6981d6e343a68966f3cce4f1db0ced07531b8b924e172",
+  "integration_assessment": {
+    "adapter_model": "trusted auth.session.v1 adapter over OidcUserManager with Library-owned configuration and persistence policy",
+    "human_estimated_effort": "medium",
+    "strengths": [
+      "full session-oriented UserManager abstraction",
+      "automatic refresh-token rotation and logout flows",
+      "explicit all-platform federated Flutter support",
+      "customizable persistence store and HTTP client",
+      "strong test/CI signals and recent maintenance",
+      "permissive MIT license"
+    ],
+    "weaknesses": [
+      "larger federated dependency surface",
+      "requires Flutter >=3.41.0 and Dart ^3.11.0",
+      "OIDC Session Management spec support is Web-specific even though user lifecycle is cross-platform"
+    ],
+    "additional_costs": [
+      "verify host Flutter/Dart compatibility before Library promotion",
+      "normalize storage responsibilities so auth.session does not silently absorb storage.secrets ownership"
+    ]
+  },
+  "lifecycle": "SHORTLISTED",
+  "scores": {
+    "functional_fit": 0.95,
+    "contract_fit": 0.82,
+    "maintenance": 0.95,
+    "security": 0.68,
+    "license_fit": 1.0,
+    "platform_fit": 1.0,
+    "test_quality": 0.95,
+    "integration_cost": 0.68,
+    "performance": 0.5,
+    "footprint": 0.60,
+    "documentation": 0.92,
+    "recommendation": 0.86,
+    "reasons": [
+      "Library exposes only a draft logical auth.session.v1 boundary, so certification remains out of scope",
+      "signed current release commit and active upstream",
+      "MIT is permissive",
+      "federated package explicitly covers Android/iOS/Linux/macOS/Web/Windows",
+      "UserManager, refresh, logout and customizable store map closely to a session boundary",
+      "larger dependency surface and high Flutter/Dart minimums increase integration risk",
+      "no untrusted code executed; vulnerability scan not performed"
+    ]
+  },
+  "recommendation": "SHORTLIST. Preferred full-session candidate for auth.session.v1, subject to Library compatibility and storage-boundary validation."
+}

@@ -1,0 +1,63 @@
+{
+  "capabilities": ["auth.session"],
+  "connector": {
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"path": null, "type": "none"},
+    "integration_mode": "adapter",
+    "provides": [{"capability_id": "auth.session", "contract_id": "auth.session.v1", "contract_version": "1.0"}],
+    "requires": [],
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0"
+  },
+  "dependencies": [{"name": "oidc", "source": "https://pub.dev/packages/oidc", "version": "4.0.0"}],
+  "deprecation": {"reason": null, "replacement": null},
+  "description": "Researcher candidate adapter for auth.session.v1 using oidc 4.0.0.",
+  "entry_paths": [],
+  "frameworks": ["flutter"],
+  "id": "auth.session.bdaya-dev.oidc",
+  "integration": {
+    "adaptation_allowed": true,
+    "adapter_notes": "Adapter over OidcUserManager; keep Library configuration/persistence ownership explicit.",
+    "estimated_effort": "medium",
+    "known_constraints": [
+      "requires Flutter >=3.41.0 and Dart ^3.11.0",
+      "federated plugin has a larger dependency surface",
+      "storage responsibilities must not silently absorb storage.secrets",
+      "Library must validate auth.session.v1 semantics before certification"
+    ]
+  },
+  "kind": "module",
+  "languages": ["dart"],
+  "name": "BDAYA OIDC",
+  "payload": {
+    "path": null,
+    "sha256": null,
+    "type": "upstream_reference",
+    "upstream_commit": "eedd79f14f7b72fa0d725b9446d8c896c4c02b8b",
+    "upstream_repository": "https://github.com/Bdaya-Dev/oidc"
+  },
+  "platforms": ["android", "desktop", "web"],
+  "provenance": {
+    "license": "MIT",
+    "license_file": "https://github.com/Bdaya-Dev/oidc/blob/eedd79f14f7b72fa0d725b9446d8c896c4c02b8b/LICENSE",
+    "origin": "researcher",
+    "retrieved_at": "2026-09-13T09:45:00Z",
+    "source_commit": "eedd79f14f7b72fa0d725b9446d8c896c4c02b8b",
+    "source_project_id": null,
+    "source_repository": "https://github.com/Bdaya-Dev/oidc",
+    "source_tag": null,
+    "source_task_id": "b8829130ed8419c9a1d6981d6e343a68966f3cce4f1db0ced07531b8b924e172"
+  },
+  "quality": {"failed_integrations": 0, "last_used_at": null, "reuse_count": 0, "successful_integrations": 0},
+  "security": {
+    "notes": "Metadata/deep-documentation pre-screen only; no external code executed and no definitive vulnerability audit performed.",
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null
+  },
+  "status": "discovered",
+  "tags": ["auth.session", "researcher-candidate", "oidc", "dart", "flutter"],
+  "validation": {"score": 0.86, "test_report": null, "tests_passed": false, "validated_at": null, "validated_on": []},
+  "version": "0.1.0"
+}
