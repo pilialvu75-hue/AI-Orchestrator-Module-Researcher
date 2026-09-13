@@ -38,7 +38,7 @@ class FakeDiagnosticsApi:
 class DiagnosticsBridgeTests(unittest.TestCase):
     def _state_with_event(self, tmp: str) -> tuple[SQLiteStateStore, int]:
         state = SQLiteStateStore(Path(tmp) / "state.db")
-        event_id = EventLogger(state).emit(
+        event_id = EventLogger(state, diagnostics_enabled=True).emit(
             EventLevel.INFO,
             "research_engine",
             "candidate_evaluated",
