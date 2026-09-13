@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,10 @@ from researcher.rate_limit import RateLimitManager
 from researcher.state import SQLiteStateStore
 
 from helpers import need
+
+
+def encoded(text: str) -> str:
+    return base64.b64encode(text.encode("utf-8")).decode("ascii")
 
 
 class FakeGitHubApi:
@@ -78,11 +83,115 @@ class FakeGitHubApi:
         raise AssertionError(f"unexpected path: {path}")
 
 
+class FakeDartMonorepoApi:
+    def __init__(self, resolve_stable: bool = True) -> None:
+        self.resolve_stable = resolve_stable
+        self.calls: list[str] = []
+        self.branch_sha = "a" * 40
+        self.stable_sha = "b" * 40
+        self.unrelated_tag_sha = "c" * 40
+
+    @staticmethod
+    def _meta() -> dict[str, Any]:
+        return {
+            "full_name": "dart-lang/http",
+            "html_url": "https://github.com/dart-lang/http",
+            "name": "http",
+            "owner": {"login": "dart-lang"},
+            "default_branch": "master",
+            "license": {"spdx_id": "BSD-3-Clause"},
+            "stargazers_count": 1000,
+            "forks_count": 400,
+            "open_issues_count": 100,
+            "pushed_at": "2026-09-10T00:00:00Z",
+            "archived": False,
+            "disabled": False,
+            "language": "Dart",
+            "topics": ["dart", "flutter", "http"],
+            "description": "A composable API for HTTP requests",
+            "homepage": "https://pub.dev/packages/http",
+            "size": 6400,
+            "has_issues": True,
+            "has_wiki": True,
+            "visibility": "public",
+            "fork": False,
+        }
+
+    @staticmethod
+    def _tree(tree_sha: str) -> GitHubResponse:
+        headers = {"X-RateLimit-Remaining": "100", "X-RateLimit-Reset": "9999999999"}
+        return GitHubResponse(
+            {
+                "truncated": False,
+                "sha": tree_sha,
+                "tree": [
+                    {"path": "LICENSE"},
+                    {"path": "README.md"},
+                    {"path": ".github/workflows/dart.yml"},
+                    {"path": "pkgs/http/pubspec.yaml"},
+                    {"path": "pkgs/http/CHANGELOG.md"},
+                    {"path": "pkgs/http/test/client_test.dart"},
+                ],
+            },
+            headers,
+        )
+
+    def get(self, path: str) -> GitHubResponse:
+        self.calls.append(path)
+        headers = {"X-RateLimit-Remaining": "100", "X-RateLimit-Reset": "9999999999"}
+        if path.startswith("/search/repositories?"):
+            return GitHubResponse({"items": [{"full_name": "dart-lang/http"}]}, headers)
+        if path == "/repos/dart-lang/http":
+            return GitHubResponse(self._meta(), headers)
+        if path == "/repos/dart-lang/http/commits/master":
+            return GitHubResponse(
+                {"sha": self.branch_sha, "commit": {"tree": {"sha": "tiptree"}}},
+                headers,
+            )
+        if path == "/repos/dart-lang/http/git/trees/tiptree?recursive=1":
+            return self._tree("tiptree")
+        if path.startswith("/repos/dart-lang/http/contents/pkgs/http/pubspec.yaml?ref="):
+            ref = path.rsplit("=", 1)[-1]
+            version = "1.6.0" if ref == self.stable_sha else "1.7.0-wip"
+            return GitHubResponse(
+                {"content": encoded(f"name: http\nversion: {version}\n")}, headers
+            )
+        if path.startswith("/repos/dart-lang/http/contents/pkgs/http/CHANGELOG.md?ref="):
+            return GitHubResponse(
+                {"content": encoded("## 1.7.0-wip\n\n## 1.6.0\n\n## 1.5.0\n")},
+                headers,
+            )
+        if path.startswith("/search/commits?"):
+            items = [{"sha": self.stable_sha}] if self.resolve_stable else []
+            return GitHubResponse({"items": items}, headers)
+        if path == f"/repos/dart-lang/http/commits/{self.stable_sha}":
+            return GitHubResponse(
+                {"sha": self.stable_sha, "commit": {"tree": {"sha": "stabletree"}}},
+                headers,
+            )
+        if path == "/repos/dart-lang/http/git/trees/stabletree?recursive=1":
+            return self._tree("stabletree")
+        if path == "/repos/dart-lang/http/releases/latest":
+            return GitHubResponse({"tag_name": "web_socket-v3.0.3"}, headers)
+        if path == "/repos/dart-lang/http/commits/web_socket-v3.0.3":
+            return GitHubResponse({"sha": self.unrelated_tag_sha}, headers)
+        raise AssertionError(f"unexpected path: {path}")
+
+
 class GitHubDiscoveryTests(unittest.TestCase):
     def _discover(self, tag_sha: str) -> tuple[Any, FakeGitHubApi]:
         with tempfile.TemporaryDirectory() as tmp:
             state = SQLiteStateStore(Path(tmp) / "state.db")
             api = FakeGitHubApi(tag_sha)
+            provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
+            candidates = provider.discover(need("network.http"), limit=1)
+            self.assertEqual(len(candidates), 1)
+            return candidates[0], api
+
+    def _discover_dart(self, resolve_stable: bool) -> tuple[Any, FakeDartMonorepoApi]:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            api = FakeDartMonorepoApi(resolve_stable=resolve_stable)
             provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
             candidates = provider.discover(need("network.http"), limit=1)
             self.assertEqual(len(candidates), 1)
@@ -108,6 +217,33 @@ class GitHubDiscoveryTests(unittest.TestCase):
         candidate, _ = self._discover("b" * 40)
         self.assertIsNone(candidate.release_tag)
         self.assertFalse(candidate.extra["release_tag_verified"])
+
+    def test_resolves_unstable_dart_tip_to_verified_stable_commit(self) -> None:
+        candidate, api = self._discover_dart(resolve_stable=True)
+        self.assertEqual(candidate.commit_sha, api.stable_sha)
+        self.assertEqual(candidate.extra["source_version"], "1.6.0")
+        self.assertTrue(candidate.extra["source_stable"])
+        self.assertEqual(
+            candidate.extra["release_resolution_strategy"],
+            "dart_changelog_verified_stable_commit",
+        )
+        self.assertEqual(candidate.extra["source_manifest_path"], "pkgs/http/pubspec.yaml")
+        self.assertIsNone(candidate.release_tag)
+        self.assertEqual(
+            candidate.license_file_url,
+            f"https://github.com/dart-lang/http/blob/{api.stable_sha}/LICENSE",
+        )
+
+    def test_marks_unresolved_dart_tip_unstable(self) -> None:
+        candidate, api = self._discover_dart(resolve_stable=False)
+        self.assertEqual(candidate.commit_sha, api.branch_sha)
+        self.assertEqual(candidate.extra["source_version"], "1.7.0-wip")
+        self.assertFalse(candidate.extra["source_stable"])
+        self.assertEqual(candidate.extra["latest_stable_version"], "1.6.0")
+        self.assertEqual(
+            candidate.extra["release_resolution_strategy"],
+            "dart_manifest_unstable_stable_commit_unresolved",
+        )
 
 
 if __name__ == "__main__":

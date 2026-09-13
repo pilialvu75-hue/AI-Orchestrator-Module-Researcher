@@ -83,6 +83,39 @@ class E2ETests(unittest.TestCase):
             self.assertTrue((data / "contract_gaps" / "custom.future_capability.json").exists())
             self.assertFalse((data / "submissions").exists())
 
+    def test_unresolved_unstable_source_is_not_shortlisted(self) -> None:
+        n = need()
+        library = FakeLibrary([n])
+        unstable = candidate("unstable-stt", "d" * 40)
+        unstable.extra["source_stable"] = False
+        unstable.extra["source_version"] = "2.0.0-wip"
+        discovery = FakeDiscovery([unstable])
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            state = SQLiteStateStore(data / "state.db")
+            dossiers = DossierStore(data)
+            engine = ResearchEngine(
+                library,
+                library,
+                discovery,
+                state,
+                dossiers,
+                CandidateScorer(),
+                ComparisonEngine(),
+                DryRunSubmissionClient(dossiers),
+                ResearchMode.SEEDING,
+                shortlist_threshold=0.40,
+            )
+            result = engine.run_cycle()
+            self.assertEqual(result["state"], "COMPLETED")
+            self.assertEqual(result["shortlisted"], 0)
+            self.assertEqual(result["prepared_submissions"], [])
+            self.assertEqual(state.count_qualified("voice.stt"), 0)
+            rows = state.candidate_rows("voice.stt")
+            self.assertEqual(len(rows), 1)
+            self.assertEqual(rows[0]["lifecycle"], "REJECTED")
+            self.assertEqual(rows[0]["rejection_reason"], "unstable_source_ref")
+
 
 if __name__ == "__main__":
     unittest.main()

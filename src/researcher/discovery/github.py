@@ -6,6 +6,7 @@ from typing import Any
 from ..github_api import GitHubApi, GitHubApiError, GitHubResponse
 from ..models import Candidate, Need, utc_now
 from ..rate_limit import RateLimitManager
+from .dart_release import DartStableReleaseResolver
 
 
 _DEPENDENCY_MANIFESTS = {
@@ -36,6 +37,7 @@ class GitHubDiscoveryProvider:
     def __init__(self, api: GitHubApi, rate_limits: RateLimitManager) -> None:
         self.api = api
         self.rate_limits = rate_limits
+        self.dart_releases = DartStableReleaseResolver(api, self._observe)
 
     @staticmethod
     def _query(need: Need) -> str:
@@ -159,6 +161,43 @@ class GitHubDiscoveryProvider:
             "provenance_tree_sha": tree_sha,
         }
 
+    def _resolve_source(
+        self,
+        full_name: str,
+        repo_name: str,
+        branch_sha: str,
+        branch_commit: dict[str, Any],
+    ) -> tuple[str, dict[str, Any], dict[str, Any], dict[str, Any]]:
+        branch_tree = self._inspect_tree(full_name, branch_sha, branch_commit)
+        manifests = [str(item) for item in branch_tree.get("dependency_manifests", [])]
+        resolution = self.dart_releases.resolve(
+            full_name,
+            repo_name,
+            branch_sha,
+            manifests,
+        )
+        selected_sha = resolution.commit_sha
+        selected_commit = branch_commit
+        selected_tree = branch_tree
+        if selected_sha != branch_sha:
+            resolved = self.api.get(f"/repos/{full_name}/commits/{selected_sha}")
+            self._observe(resolved)
+            selected_commit = resolved.data if isinstance(resolved.data, dict) else {}
+            if str(selected_commit.get("sha", "")) != selected_sha:
+                raise RuntimeError(
+                    f"Resolved source commit mismatch for {full_name}: {selected_sha}"
+                )
+            selected_tree = self._inspect_tree(full_name, selected_sha, selected_commit)
+
+        release_metadata: dict[str, Any] = {
+            "source_version": resolution.source_version,
+            "source_stable": resolution.source_stable,
+            "source_manifest_path": resolution.manifest_path,
+            "release_resolution_strategy": resolution.strategy,
+            "latest_stable_version": resolution.latest_stable_version,
+        }
+        return selected_sha, selected_commit, selected_tree, release_metadata
+
     def discover(self, need: Need, limit: int = 8) -> list[Candidate]:
         decision = self.rate_limits.decision()
         if not decision.allowed:
@@ -189,13 +228,19 @@ class GitHubDiscoveryProvider:
                 f"/repos/{full_name}/commits/{urllib.parse.quote(branch, safe='')}"
             )
             self._observe(commit)
-            commit_data = commit.data if isinstance(commit.data, dict) else {}
-            sha = str(commit_data.get("sha", ""))
-            if len(sha) < 12:
+            branch_commit = commit.data if isinstance(commit.data, dict) else {}
+            branch_sha = str(branch_commit.get("sha", ""))
+            if len(branch_sha) < 12:
                 continue
 
+            repo_name = str(meta.get("name") or full_name.split("/", 1)[1])
+            sha, _, tree_evidence, release_metadata = self._resolve_source(
+                full_name,
+                repo_name,
+                branch_sha,
+                branch_commit,
+            )
             release_tag = self._release_tag_for_commit(full_name, sha)
-            tree_evidence = self._inspect_tree(full_name, sha, commit_data)
 
             license_spdx: str | None = None
             license_meta = meta.get("license")
@@ -217,7 +262,7 @@ class GitHubDiscoveryProvider:
                     repository=full_name,
                     upstream_url=str(meta.get("html_url") or f"https://github.com/{full_name}"),
                     owner=owner,
-                    name=str(meta.get("name") or full_name.split("/", 1)[1]),
+                    name=repo_name,
                     commit_sha=sha,
                     release_tag=release_tag,
                     default_branch=branch,
@@ -264,6 +309,7 @@ class GitHubDiscoveryProvider:
                         "codeql_present": bool(tree_evidence.get("codeql_present")),
                         "provenance_tree_sha": tree_evidence.get("provenance_tree_sha"),
                         "release_tag_verified": release_tag is not None,
+                        **release_metadata,
                     },
                 )
             )
