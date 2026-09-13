@@ -227,7 +227,11 @@ class SQLiteStateStore:
                 SELECT
                   COUNT(*) AS candidates,
                   SUM(CASE WHEN lifecycle='SHORTLISTED' THEN 1 ELSE 0 END) AS shortlisted,
-                  SUM(CASE WHEN lifecycle='REJECTED' THEN 1 ELSE 0 END) AS rejected
+                  SUM(CASE WHEN lifecycle='REJECTED' THEN 1 ELSE 0 END) AS rejected,
+                  SUM(CASE WHEN lifecycle='SECURITY_REVIEW' THEN 1 ELSE 0 END)
+                    AS security_review,
+                  SUM(CASE WHEN lifecycle='SECURITY_BLOCKED' THEN 1 ELSE 0 END)
+                    AS security_blocked
                 FROM candidates
                 """
             ).fetchone()
@@ -246,5 +250,7 @@ class SQLiteStateStore:
             "candidates": int(totals["candidates"] or 0),
             "shortlisted": int(totals["shortlisted"] or 0),
             "rejected": int(totals["rejected"] or 0),
+            "security_review": int(totals["security_review"] or 0),
+            "security_blocked": int(totals["security_blocked"] or 0),
             "submitted": int(submitted["c"] or 0),
         }

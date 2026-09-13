@@ -3,6 +3,8 @@ from __future__ import annotations
 from typing import Any
 
 from researcher.models import Candidate, Contract, Need, utc_now
+from researcher.security_admission import FullTreeSecurityReport
+from researcher.security_gate import SecurityFinding, SecuritySeverity, SecurityVerdict
 
 
 def need(capability_id: str = "voice.stt") -> Need:
@@ -82,3 +84,48 @@ class FakeDiscovery:
     def discover(self, need: Need, limit: int = 8) -> list[Candidate]:
         self.calls += 1
         return self.candidates[:limit]
+
+
+class FakeSecurityScanner:
+    def __init__(
+        self,
+        verdict: SecurityVerdict = SecurityVerdict.CLEAR,
+        complete: bool = True,
+    ) -> None:
+        self.verdict = verdict
+        self.complete = complete
+        self.calls = 0
+
+    def scan(self, item: Candidate) -> FullTreeSecurityReport:
+        self.calls += 1
+        findings: tuple[SecurityFinding, ...] = ()
+        if self.verdict != SecurityVerdict.CLEAR:
+            findings = (
+                SecurityFinding(
+                    rule_id="fake_security_finding",
+                    severity=(
+                        SecuritySeverity.CRITICAL
+                        if self.verdict == SecurityVerdict.BLOCK
+                        else SecuritySeverity.REVIEW
+                    ),
+                    path="lib/example.dart",
+                    evidence="test-only security finding",
+                ),
+            )
+        return FullTreeSecurityReport(
+            repository=item.repository,
+            commit_sha=item.commit_sha,
+            tree_sha="f" * 40,
+            verdict=self.verdict,
+            complete=self.complete,
+            findings=findings,
+            total_entries=1,
+            blobs_seen=1,
+            relevant_blobs=1,
+            scanned_files=1,
+            scanned_bytes=32,
+            skipped_assets=0,
+            opaque_artifacts=(),
+            submodules=(),
+            symlinks=(),
+        )

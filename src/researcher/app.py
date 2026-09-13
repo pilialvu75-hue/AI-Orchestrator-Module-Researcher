@@ -11,6 +11,7 @@ from .github_api import GitHubApi
 from .library import GitHubLibrarySource
 from .rate_limit import RateLimitManager
 from .scoring import CandidateScorer
+from .security_admission import GitHubFullTreeSecurityScanner
 from .state import SQLiteStateStore
 from .submission import (
     DryRunSubmissionClient,
@@ -38,6 +39,7 @@ def build_app(config: Config) -> App:
     )
     rate_limits = RateLimitManager(state)
     discovery = GitHubDiscoveryProvider(api, rate_limits)
+    security_scanner = GitHubFullTreeSecurityScanner(api, rate_limits)
     dossiers = DossierStore(config.data_dir)
 
     submission: LibrarySubmissionClient
@@ -64,5 +66,6 @@ def build_app(config: Config) -> App:
         ComparisonEngine(),
         submission,
         config.mode,
+        security_scanner=security_scanner,
     )
     return App(config=config, state=state, engine=engine)

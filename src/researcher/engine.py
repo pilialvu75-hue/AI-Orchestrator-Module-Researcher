@@ -16,6 +16,8 @@ from .dossiers import DossierStore
 from .library import ContractSource, NeedSource
 from .models import Candidate, Dossier, Need, ResearchMode, utc_now
 from .scoring import CandidateScorer
+from .security_admission import CandidateSecurityScanner, FullTreeSecurityReport
+from .security_gate import SecurityVerdict
 from .state import SQLiteStateStore
 from .submission import LibrarySubmissionClient
 
@@ -36,6 +38,7 @@ class ResearchEngine:
         submission: LibrarySubmissionClient,
         mode: ResearchMode,
         shortlist_threshold: float = 0.58,
+        security_scanner: CandidateSecurityScanner | None = None,
     ) -> None:
         self.need_source = need_source
         self.contract_source = contract_source
@@ -48,6 +51,7 @@ class ResearchEngine:
         self.submission = submission
         self.mode = mode
         self.shortlist_threshold = shortlist_threshold
+        self.security_scanner = security_scanner
         self.state.set_mode(mode)
 
     def _rank_needs(self, needs: list[Need]) -> list[Need]:
@@ -91,9 +95,14 @@ class ResearchEngine:
         candidate: Candidate,
         contract: Any,
         lifecycle: str,
+        security_report: FullTreeSecurityReport | None = None,
     ) -> Dossier:
         fingerprint = candidate_fingerprint(need.capability_id, candidate)
         scores = self.scorer.score(need, candidate, contract)
+        security = security_evidence(candidate)
+        security["admission_gate"] = (
+            None if security_report is None else security_report.to_dict()
+        )
         return Dossier(
             schema_version=1,
             capability_id=need.capability_id,
@@ -103,7 +112,7 @@ class ResearchEngine:
             lifecycle=lifecycle,
             warnings=self._warnings(candidate),
             integration_estimate=integration_estimate(candidate, need),
-            security_evidence=security_evidence(candidate),
+            security_evidence=security,
             maintenance_evidence=maintenance_evidence(candidate),
             license_evidence=classify_license(candidate.license_spdx),
             dependency_evidence={
@@ -116,6 +125,43 @@ class ResearchEngine:
             benchmark_plan=self.benchmarks.plan(need, candidate),
             created_at=utc_now(),
         )
+
+    def _scan_candidate(self, candidate: Candidate) -> FullTreeSecurityReport:
+        if self.security_scanner is None:
+            return FullTreeSecurityReport.not_scanned(
+                candidate,
+                "no candidate security scanner configured",
+            )
+        return self.security_scanner.scan(candidate)
+
+    @staticmethod
+    def _pre_screen_qualified(
+        dossier: Dossier,
+        candidate: Candidate,
+        shortlist_threshold: float,
+    ) -> bool:
+        return (
+            dossier.scores.recommendation >= shortlist_threshold
+            and dossier.scores.license_fit >= 0.45
+            and not candidate.archived
+            and candidate.extra.get("source_stable") is not False
+        )
+
+    @staticmethod
+    def _rejection_reason(
+        lifecycle: str,
+        candidate: Candidate,
+        security_report: FullTreeSecurityReport,
+    ) -> str | None:
+        if lifecycle == "SHORTLISTED":
+            return None
+        if lifecycle == "SECURITY_BLOCKED":
+            return "security_gate_blocked"
+        if lifecycle == "SECURITY_REVIEW":
+            return f"security_review:{security_report.verdict.value.lower()}"
+        if candidate.extra.get("source_stable") is False:
+            return "unstable_source_ref"
+        return "pre_screen_threshold_or_policy"
 
     def run_cycle(self) -> dict[str, Any]:
         self.state.set_json("engine_state", "RUNNING")
@@ -176,27 +222,40 @@ class ResearchEngine:
                 fingerprint = candidate_fingerprint(need.capability_id, candidate)
                 if self.state.is_known_candidate(fingerprint):
                     continue
+
                 preliminary = self._dossier(need, candidate, contract, "SCREENED")
-                lifecycle = (
-                    "SHORTLISTED"
-                    if (
-                        preliminary.scores.recommendation >= self.shortlist_threshold
-                        and preliminary.scores.license_fit >= 0.45
-                        and not candidate.archived
-                        and candidate.extra.get("source_stable") is not False
-                    )
-                    else "REJECTED"
+                pre_screen_qualified = self._pre_screen_qualified(
+                    preliminary,
+                    candidate,
+                    self.shortlist_threshold,
                 )
-                dossier = self._dossier(need, candidate, contract, lifecycle)
-                dossier_path = self.dossiers.save_dossier(dossier)
-                rejection_reason = (
-                    None
-                    if lifecycle == "SHORTLISTED"
-                    else (
-                        "unstable_source_ref"
-                        if candidate.extra.get("source_stable") is False
-                        else "pre_screen_threshold_or_policy"
+                if pre_screen_qualified:
+                    security_report = self._scan_candidate(candidate)
+                    if security_report.admission_eligible:
+                        lifecycle = "SHORTLISTED"
+                    elif security_report.verdict == SecurityVerdict.BLOCK:
+                        lifecycle = "SECURITY_BLOCKED"
+                    else:
+                        lifecycle = "SECURITY_REVIEW"
+                else:
+                    security_report = FullTreeSecurityReport.not_scanned(
+                        candidate,
+                        "candidate did not pass preliminary scoring/policy",
                     )
+                    lifecycle = "REJECTED"
+
+                dossier = self._dossier(
+                    need,
+                    candidate,
+                    contract,
+                    lifecycle,
+                    security_report,
+                )
+                dossier_path = self.dossiers.save_dossier(dossier)
+                rejection_reason = self._rejection_reason(
+                    lifecycle,
+                    candidate,
+                    security_report,
                 )
                 self.state.upsert_candidate(
                     fingerprint,
@@ -221,6 +280,8 @@ class ResearchEngine:
             )
 
             shortlisted = [d for d in dossiers if d.lifecycle == "SHORTLISTED"]
+            security_review = [d for d in dossiers if d.lifecycle == "SECURITY_REVIEW"]
+            security_blocked = [d for d in dossiers if d.lifecycle == "SECURITY_BLOCKED"]
             shortlist_payload = {
                 "schema_version": 1,
                 "capability_id": need.capability_id,
@@ -268,6 +329,8 @@ class ResearchEngine:
                 "discovered": len(candidates),
                 "new_analyzed": len(dossiers),
                 "shortlisted": len(shortlisted),
+                "security_review": len(security_review),
+                "security_blocked": len(security_blocked),
                 "prepared_submissions": prepared,
                 "comparison": str(comparison_path),
             }
