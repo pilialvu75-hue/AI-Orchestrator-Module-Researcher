@@ -31,10 +31,42 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _queue_capability_status(app: App) -> None:
+    if app.diagnostics is None:
+        return
+    payload = status_payload(app.state)
+    rows = payload.get("capabilities", [])
+    if not isinstance(rows, list):
+        return
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        capability_id = str(row.get("capability_id") or "").strip()
+        if not capability_id:
+            continue
+        app.events.emit(
+            EventLevel.INFO,
+            "capability_status",
+            "capability_status",
+            {
+                "capability_id": capability_id,
+                "research_state": str(row.get("research_state") or "PENDING"),
+                "candidate_count": int(row.get("candidate_count") or 0),
+                "qualified_candidates": int(row.get("qualified_candidates") or 0),
+                "shortlisted": int(row.get("shortlisted") or 0),
+                "submitted": int(row.get("submitted") or 0),
+                "security_review": int(row.get("security_review") or 0),
+                "security_blocked": int(row.get("security_blocked") or 0),
+                "desired_candidates": max(1, int(row.get("desired_candidates") or 1)),
+            },
+        )
+
+
 def _sync_diagnostics(app: App) -> dict[str, object]:
     if app.diagnostics is None:
         return {"state": "DISABLED", "sent": 0}
     try:
+        _queue_capability_status(app)
         return app.diagnostics.sync()
     except Exception as exc:
         app.events.emit(
