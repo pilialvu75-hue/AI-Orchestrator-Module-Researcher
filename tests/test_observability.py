@@ -38,10 +38,10 @@ class ObservabilityTests(unittest.TestCase):
             {"capability_id": "voice.stt", "lifecycle": "SECURITY_REVIEW"},
         )
 
-    def test_event_logger_persists_local_and_public_views(self) -> None:
+    def test_event_logger_persists_local_and_public_views_when_opted_in(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = SQLiteStateStore(Path(tmp) / "state.db")
-            logger = EventLogger(state)
+            logger = EventLogger(state, diagnostics_enabled=True)
             event_id = logger.emit(
                 EventLevel.ERROR,
                 "research_engine",
@@ -64,10 +64,22 @@ class ObservabilityTests(unittest.TestCase):
             pending = state.pending_diagnostics()
             self.assertEqual([row["id"] for row in pending], [event_id])
 
-    def test_non_public_event_is_not_queued_for_diagnostics(self) -> None:
+    def test_diagnostics_disabled_never_queues_public_event(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state = SQLiteStateStore(Path(tmp) / "state.db")
             EventLogger(state).emit(
+                EventLevel.INFO,
+                "research_engine",
+                "need_selected",
+                {"capability_id": "voice.stt"},
+            )
+            self.assertEqual(state.pending_diagnostics(), [])
+            self.assertEqual(state.recent_events()[0]["diagnostics_state"], "SKIPPED")
+
+    def test_non_public_event_is_not_queued_for_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            EventLogger(state, diagnostics_enabled=True).emit(
                 EventLevel.DEBUG,
                 "internal",
                 "detail",
