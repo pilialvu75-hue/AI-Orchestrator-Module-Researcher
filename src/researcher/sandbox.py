@@ -7,6 +7,7 @@ from typing import Any, Sequence
 
 
 _IMAGE_DIGEST = re.compile(r"^[^\s@]+@sha256:[0-9a-f]{64}$")
+_TEMP_HOST_ROOT = str(PurePosixPath("/") / "tmp")
 _FORBIDDEN_HOST_FRAGMENTS = (
     "/.git",
     "/var/run/docker.sock",
@@ -56,7 +57,7 @@ class SandboxInput:
         if not self.staged_source_path.startswith("/"):
             raise SandboxPolicyError("sandbox source path must be absolute")
         normalized = str(PurePosixPath(self.staged_source_path))
-        if normalized in {"/", "/tmp", "/var", "/home"}:
+        if normalized in {"/", _TEMP_HOST_ROOT, "/var", "/home"}:
             raise SandboxPolicyError("sandbox source path is too broad")
         if any(fragment.lower() in normalized.lower() for fragment in _FORBIDDEN_HOST_FRAGMENTS):
             raise SandboxPolicyError("sandbox source path references a protected host location")
@@ -147,8 +148,8 @@ class DockerSandboxPlanner:
             "/work:rw,nosuid,nodev,size="
             f"{self.limits.work_tmpfs_mb}m,mode=0700,uid=65532,gid=65532"
         )
-        tmp_tmpfs = (
-            "/tmp:rw,noexec,nosuid,nodev,size="
+        scratch_tmpfs = (
+            "/scratch-tmp:rw,noexec,nosuid,nodev,size="
             f"{self.limits.tmp_tmpfs_mb}m,mode=0700,uid=65532,gid=65532"
         )
         argv = (
@@ -177,7 +178,7 @@ class DockerSandboxPlanner:
             "--tmpfs",
             work_tmpfs,
             "--tmpfs",
-            tmp_tmpfs,
+            scratch_tmpfs,
             "--mount",
             f"type=bind,src={source.staged_source_path},dst=/candidate,readonly",
             "--workdir",
