@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import platform
+import re
+import uuid
 from dataclasses import dataclass
 
+from . import __version__
 from .comparison import ComparisonEngine
 from .config import Config
 from .diagnostics_bridge import GitHubDiagnosticsBridge
@@ -24,6 +28,10 @@ from .vulnerability import OsvClient, OsvVulnerabilityScanner
 from .vulnerability_admission import GitHubVulnerabilityAdmissionScanner
 
 
+_ID = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
+_VERSION = re.compile(r"^[A-Za-z0-9._+/\-]{1,128}$")
+
+
 @dataclass
 class App:
     config: Config
@@ -33,6 +41,24 @@ class App:
     diagnostics: GitHubDiagnosticsBridge | None
 
 
+def _diagnostics_instance(config: Config, state: SQLiteStateStore) -> str:
+    existing = config.diagnostics_instance_id or state.get_json("diagnostics_instance_id")
+    if existing is None:
+        existing = str(uuid.uuid4())
+    value = str(existing)
+    if not _ID.fullmatch(value):
+        raise ValueError("DIAGNOSTICS_INSTANCE_ID must be a safe stable identifier")
+    state.set_json("diagnostics_instance_id", value)
+    return value
+
+
+def _producer_version(config: Config) -> str:
+    value = config.diagnostics_producer_version or __version__
+    if not _VERSION.fullmatch(value):
+        raise ValueError("Diagnostics producer version/commit is invalid")
+    return value
+
+
 def build_app(config: Config) -> App:
     config.data_dir.mkdir(parents=True, exist_ok=True)
     state = SQLiteStateStore(config.data_dir / "researcher.db")
@@ -40,7 +66,11 @@ def build_app(config: Config) -> App:
         config.diagnostics_enabled and config.diagnostics_github_token
     )
     events = EventLogger(state, diagnostics_enabled=diagnostics_opted_in)
-    api = GitHubApi(config.github_token, config.github_api_base)
+    api = GitHubApi(
+        config.github_token,
+        config.github_api_base,
+        uploads_base_url=config.github_uploads_base,
+    )
     library = GitHubLibrarySource(
         api,
         config.library_repository,
@@ -63,15 +93,21 @@ def build_app(config: Config) -> App:
             diagnostics_api = GitHubApi(
                 config.diagnostics_github_token,
                 config.github_api_base,
-                user_agent="AI-Orchestrator-Module-Researcher-Diagnostics/1.0",
+                user_agent="AI-Orchestrator-Module-Researcher-Diagnostics/2.0",
+                uploads_base_url=config.github_uploads_base,
             )
             diagnostics = GitHubDiagnosticsBridge(
                 diagnostics_api,
                 state,
                 config.diagnostics_repository,
-                config.diagnostics_tag,
+                instance_id=_diagnostics_instance(config, state),
+                producer_version=_producer_version(config),
+                platform_name=platform.system().lower(),
             )
-            state.set_json("diagnostics_status", {"state": "READY"})
+            state.set_json(
+                "diagnostics_status",
+                {"state": "READY", "tag": diagnostics.tag},
+            )
             events.emit(
                 EventLevel.INFO,
                 "diagnostics",
