@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "fingerprint": "9d43b86484630bbd45da751c9dea7c5df9f33a197738aba2c8e33873d08809a3",
+  "lifecycle": "SHORTLISTED",
+  "capability": {
+    "capability_id": "storage.secrets",
+    "contract_id": "storage.secrets.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop"],
+    "title": "Secure local storage / secrets abstraction"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "JohnGalt1717/webauthn_secure_storage",
+    "upstream_url": "https://github.com/JohnGalt1717/webauthn_secure_storage",
+    "commit_sha": "807eb716e506bcc48e7b5a739d2b2c93131cf6d0",
+    "tree_sha": "57d1b81377658b95218e33495f9cbc543e28b6fe",
+    "source_version": "0.2.3",
+    "source_tag": null,
+    "release_tag_verified": false,
+    "license": "MIT",
+    "platforms": ["android", "ios", "linux", "macos", "web", "windows"]
+  },
+  "evidence": {
+    "functional": {
+      "secure_storage": true,
+      "biometric_gate": true,
+      "android": "Android Keystore",
+      "apple": "Keychain",
+      "windows": "Credential Manager / DPAPI / Windows Hello",
+      "linux": "Secret Service with optional fprintd/libfido2",
+      "web": "WebAuthn PRF"
+    },
+    "quality": {
+      "tests_present": true,
+      "ci_present": true,
+      "security_policy_present": false,
+      "project_age": "young"
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "admission_gate": "NOT_RUN_FULL_SOURCE",
+      "certification_eligible": false,
+      "vulnerability_scan": "not_performed",
+      "notes": "Technically strong security model, but the project is young and has limited adoption. Requires deeper static, dependency and sandbox review before certification."
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "untrusted candidate code is not executed by Researcher"
+    }
+  },
+  "integration_assessment": {
+    "human_estimated_effort": "medium",
+    "adapter_model": "trusted adapter exposing only the storage.secrets.v1 subset",
+    "strengths": [
+      "hardware/OS-backed secret stores across target platforms",
+      "biometric-gated storage",
+      "explicit native desktop integrations",
+      "signed source commit",
+      "independent implementation from flutter_secure_storage"
+    ],
+    "weaknesses": [
+      "very young project with limited ecosystem adoption",
+      "larger capability surface than storage.secrets.v1",
+      "higher Flutter/Dart floor",
+      "no GitHub release object for 0.2.3",
+      "full-source security admission has not yet run"
+    ]
+  },
+  "scores": {
+    "functional_fit": 0.93,
+    "contract_fit": 0.78,
+    "maintenance": 0.82,
+    "security": 0.64,
+    "license_fit": 1.0,
+    "platform_fit": 1.0,
+    "test_quality": 0.82,
+    "integration_cost": 0.62,
+    "performance": 0.5,
+    "footprint": 0.58,
+    "documentation": 0.9,
+    "recommendation": 0.74
+  },
+  "recommendation": "SHORTLIST WITH CAUTION. Emerging hardware/biometric-focused alternative; requires stronger Library security validation than the mature default candidate."
+}
