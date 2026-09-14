@@ -129,8 +129,24 @@ authority.
 ## Project secrets and Library writes
 
 Secrets are runtime-only environment variables and must never be written to dossiers,
-status endpoints or logs. Real Library writes are fail-closed behind both `DRY_RUN=false`
-and `ALLOW_LIBRARY_WRITE=true`.
+status endpoints or logs. Source/research GitHub access and Library write access are separate
+trust domains.
+
+`GITHUB_TOKEN` is the source/research credential. Live Library delivery additionally requires
+a dedicated `LIBRARY_GITHUB_TOKEN`; it is never inferred from Diagnostics credentials. A
+fine-grained Library token should be restricted to `AI-Orchestrator-Module-Library` and only
+the permissions required by intake delivery: **Contents: Read and write** and
+**Pull requests: Read and write**.
+
+Real Library writes are fail-closed behind all three conditions:
+
+- `DRY_RUN=false`;
+- `ALLOW_LIBRARY_WRITE=true`;
+- non-empty `LIBRARY_GITHUB_TOKEN`.
+
+The manual pinned-intake workflow is `workflow_dispatch` only and requires an explicit write
+confirmation. Ordinary CI has read-only repository permissions and never publishes candidates.
+Workflow inputs are passed as data, not evaluated as shell fragments.
 
 Report security defects privately to the repository owner rather than publishing credentials
 or exploit details in an issue.
