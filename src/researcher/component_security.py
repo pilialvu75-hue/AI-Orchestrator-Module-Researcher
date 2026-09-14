@@ -15,12 +15,12 @@ class _ComponentTreeApi(GitHubApi):
 
     def __init__(
         self,
-        base: GitHubApi,
+        delegate: GitHubApi,
         repository: str,
         tree_sha: str,
         component_path: str,
     ) -> None:
-        self._base = base
+        self._delegate = delegate
         repo_path = "/".join(
             urllib.parse.quote(part, safe="") for part in repository.split("/", 1)
         )
@@ -29,7 +29,7 @@ class _ComponentTreeApi(GitHubApi):
         self._component_path = component_path
 
     def get(self, path: str) -> GitHubResponse:
-        response = self._base.get(path)
+        response: GitHubResponse = self._delegate.get(path)
         if path != self._tree_endpoint:
             return response
         payload = response.data if isinstance(response.data, dict) else {}
