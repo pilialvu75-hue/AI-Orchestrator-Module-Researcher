@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "capability_id": "storage.secrets",
+  "observed_at": "2026-09-14",
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "juliansteenbakker/flutter_secure_storage:flutter_secure_storage",
+      "repository": "juliansteenbakker/flutter_secure_storage",
+      "component_path": "flutter_secure_storage",
+      "commit_sha": "7ee0d6733b3e5179f6874eff34f6d9756c44c16e",
+      "tree_sha": "62403e7495af2c7aff8666c883276e2b01337d87",
+      "source_version": "11.1.1",
+      "release_tag": "flutter_secure_storage-v11.1.1",
+      "license": "BSD-3-Clause",
+      "workflow_run_id": 34903361920,
+      "workflow_head_sha": "e6652450db6006524bf54968dc143932072afa91",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 272,
+        "blobs_seen": 188,
+        "relevant_blobs": 100,
+        "scanned_files": 100,
+        "scanned_bytes": 492889,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "primary_manifest": "flutter_secure_storage/pubspec.yaml",
+        "auxiliary_manifest_notice": "flutter_secure_storage/example/pubspec.yaml was scanned as source but excluded from the primary package dependency/SBOM scope."
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:flutter_secure_storage_darwin:^0.4.0",
+          "version_unresolved:Pub:flutter_secure_storage_linux:'>=3.0.1 <5.0.0'",
+          "version_unresolved:Pub:flutter_secure_storage_platform_interface:^2.1.0",
+          "version_unresolved:Pub:flutter_secure_storage_web:^2.1.1",
+          "version_unresolved:Pub:flutter_secure_storage_windows:^4.2.2",
+          "version_unresolved:Pub:meta:^1.16.0"
+        ],
+        "reason": "No immutable lockfile or exact runtime resolution was available for the published package dependency ranges; Researcher does not invent versions."
+      }
+    },
+    {
+      "candidate": "JohnGalt1717/webauthn_secure_storage:webauthn_secure_storage",
+      "repository": "JohnGalt1717/webauthn_secure_storage",
+      "component_path": "webauthn_secure_storage",
+      "commit_sha": "807eb716e506bcc48e7b5a739d2b2c93131cf6d0",
+      "tree_sha": "57d1b81377658b95218e33495f9cbc543e28b6fe",
+      "source_version": "0.2.3",
+      "release_tag": null,
+      "license": "MIT",
+      "workflow_run_id": 34903361920,
+      "workflow_head_sha": "e6652450db6006524bf54968dc143932072afa91",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 201,
+        "blobs_seen": 136,
+        "relevant_blobs": 51,
+        "scanned_files": 51,
+        "scanned_bytes": 98564,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "primary_manifest": "webauthn_secure_storage/pubspec.yaml",
+        "auxiliary_manifest_notice": "webauthn_secure_storage/example/pubspec.yaml was scanned as source but excluded from the primary package dependency/SBOM scope."
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:webauthn_secure_storage_android:^0.2.0",
+          "version_unresolved:Pub:webauthn_secure_storage_darwin:^0.2.1",
+          "version_unresolved:Pub:webauthn_secure_storage_linux:^0.2.0",
+          "version_unresolved:Pub:webauthn_secure_storage_platform_interface:^0.2.0",
+          "version_unresolved:Pub:webauthn_secure_storage_web:^0.2.0",
+          "version_unresolved:Pub:webauthn_secure_storage_windows:^0.2.1"
+        ],
+        "reason": "No immutable lockfile or exact runtime resolution was available for the published package dependency ranges; Researcher does not invent versions."
+      }
+    }
+  ],
+  "decision": {
+    "source_security": "Both pinned package components are source-security CLEAR after generic detector corrections; neither candidate executed upstream code.",
+    "admission_status": "Both remain overall REVIEW because exact runtime dependency versions cannot be proven from package ranges alone, so OSV is intentionally not reported as checked.",
+    "research_ranking": "This security proof does not replace the existing functional/maturity comparison; flutter_secure_storage remains the previously researched mature default and webauthn_secure_storage the emerging independent alternative.",
+    "next_action": "Keep fail-closed vulnerability semantics. Add generic deterministic Pub dependency-resolution or range-aware vulnerability evidence before reconsidering the vulnerability gate; never invent resolved versions."
+  }
+}
