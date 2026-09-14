@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "capability_id": "voice.tts",
+  "contract_id": "voice.tts.v1",
+  "contract_version": "1.0",
+  "contract_detail_status": "logical_boundary_only",
+  "requested_targets": ["android", "desktop", "raspberry_pi"],
+  "decision": "PREFER_SHERPA_ONNX_KEEP_ESPEAK_NG_CONSTRAINED_FALLBACK",
+  "preferred_candidate": "k2-fsa/sherpa-onnx@v1.13.8",
+  "alternative_candidate": "espeak-ng/espeak-ng@1.52.0",
+  "screened_reference": "thewh1teagle/kokoro-onnx",
+  "rationale": [
+    "sherpa-onnx explicitly covers Android, desktop and Raspberry Pi upstream",
+    "sherpa-onnx provides Flutter/Dart bindings and neural offline TTS",
+    "eSpeak NG is independent, compact and explicitly supports Android plus desktop",
+    "eSpeak NG Raspberry Pi support is not claimed by this proof and requires explicit validation",
+    "eSpeak NG GPL-3.0-or-later requires distribution-policy review before Library adoption",
+    "Kokoro ONNX remains a quality-focused reference but current evidence does not establish the same explicit target matrix"
+  ],
+  "platform_observations": {
+    "required": {
+      "android": {
+        "sherpa_onnx": "explicit",
+        "espeak_ng": "explicit"
+      },
+      "desktop": {
+        "sherpa_onnx": "explicit Windows/macOS/Linux",
+        "espeak_ng": "explicit Windows/Mac/Linux"
+      },
+      "raspberry_pi": {
+        "sherpa_onnx": "explicit",
+        "espeak_ng": "architecture candidate; exact Pi validation pending"
+      }
+    },
+    "extended": {
+      "ios": {
+        "sherpa_onnx": "explicit",
+        "espeak_ng": "not claimed"
+      },
+      "macos": {
+        "sherpa_onnx": "explicit",
+        "espeak_ng": "explicit"
+      },
+      "embedded_arduino": "future capability family; intentionally out of this initial proof"
+    }
+  },
+  "safety": {
+    "upstream_code_executed": false,
+    "full_tree_admission_completed": false,
+    "sbom_generated": false,
+    "osv_checked": false,
+    "library_write": false,
+    "cantiere_write": false,
+    "certification_claimed": false
+  },
+  "next_steps": [
+    "run Researcher automatic Full-Tree/SBOM/OSV admission on selected candidates",
+    "benchmark first-audio latency, realtime factor, memory and pronunciation on actual targets",
+    "perform GPL distribution-policy review before any eSpeak NG promotion",
+    "submit only admitted candidates to Library intake for certification"
+  ]
+}
