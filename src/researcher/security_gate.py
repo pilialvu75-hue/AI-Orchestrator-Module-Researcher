@@ -52,6 +52,15 @@ class _Rule:
     pattern: re.Pattern[str]
 
 
+_SECRET_NAME = (
+    r"(?:GITHUB_TOKEN|OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|PRIVATE_KEY)"
+)
+_EXFIL_SINK = (
+    r"(?:requests\.(?:get|post|put|patch)|httpx\.(?:get|post|put|patch)|"
+    r"urllib\.request\.(?:Request|urlopen)|socket\.(?:send|sendall)|"
+    r"fetch\s*\(|axios\.(?:get|post|put|patch)|curl\b)"
+)
+
 _RULES: tuple[_Rule, ...] = (
     _Rule(
         "shell_download_execute",
@@ -65,8 +74,7 @@ _RULES: tuple[_Rule, ...] = (
         "credential_harvesting",
         SecuritySeverity.CRITICAL,
         re.compile(
-            r"(?:GITHUB_TOKEN|OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|PRIVATE_KEY)"
-            r".{0,120}(?:http|socket|upload|post|send)",
+            rf"{_EXFIL_SINK}.{{0,400}}{_SECRET_NAME}\b",
             re.IGNORECASE | re.DOTALL,
         ),
     ),
@@ -82,7 +90,19 @@ _RULES: tuple[_Rule, ...] = (
         "process_execution",
         SecuritySeverity.HIGH,
         re.compile(
-            r"(?:subprocess\.|os\.system\(|Process\.start\(|Runtime\.getRuntime\(\)\.exec|child_process)",
+            r"(?:subprocess\.|os\.system\(|Process\.start\(|"
+            r"Runtime\.getRuntime\(\)\.exec|child_process)",
+            re.IGNORECASE,
+        ),
+    ),
+    _Rule(
+        "tls_certificate_validation_bypass",
+        SecuritySeverity.HIGH,
+        re.compile(
+            r"(?:TrustAllX509TrustManager|acceptUntrustedCertificates|"
+            r"Bypassing\s+TLS\s+certificate\s+validation|"
+            r"badCertificateCallback\s*=|rejectUnauthorized\s*:\s*false|"
+            r"verify\s*=\s*false|setDefaultSSLSocketFactory\s*\()",
             re.IGNORECASE,
         ),
     ),
@@ -106,7 +126,8 @@ _RULES: tuple[_Rule, ...] = (
         "secret_environment_access",
         SecuritySeverity.REVIEW,
         re.compile(
-            r"(?:os\.environ|Platform\.environment|process\.env|System\.getenv)",
+            r"(?:os\.environ\b|Platform\.environment\b|process\.env\b|"
+            r"System\.getenv\b)",
             re.IGNORECASE,
         ),
     ),
