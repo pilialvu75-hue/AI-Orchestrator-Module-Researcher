@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "capability_id": "network.http",
+  "observed_at": "2026-09-14",
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "dart-lang/http:pkgs/http",
+      "repository": "dart-lang/http",
+      "component_path": "pkgs/http",
+      "commit_sha": "907782f5a792e7a5b0ed92f118c0ad91f3ecde51",
+      "tree_sha": "3adcab234342d84dfc2585c5a7a8d91e71148ecd",
+      "source_version": "1.6.0",
+      "release_tag": null,
+      "license": "BSD-3-Clause",
+      "workflow_run_id": 34904156158,
+      "workflow_head_sha": "30e03c6873796522f84d6abb7c96c22a3c3cbf77",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 60,
+        "blobs_seen": 53,
+        "relevant_blobs": 50,
+        "scanned_files": 50,
+        "scanned_bytes": 182620,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "primary_manifest": "pkgs/http/pubspec.yaml",
+        "runtime_dependencies": [
+          "async:^2.5.0",
+          "http_parser:^4.0.0",
+          "meta:^1.3.0",
+          "web:>=0.5.0 <2.0.0"
+        ],
+        "excluded_non_runtime_dependency": "http_client_conformance_tests is declared under dev_dependencies and therefore does not contaminate the runtime supply-chain verdict."
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:async:^2.5.0",
+          "version_unresolved:Pub:http_parser:^4.0.0",
+          "version_unresolved:Pub:meta:^1.3.0",
+          "version_unresolved:Pub:web:\">=0.5.0 <2.0.0\""
+        ],
+        "reason": "The published package declares runtime version ranges without an immutable lockfile; Researcher does not invent a consumer resolution."
+      }
+    },
+    {
+      "candidate": "cfug/dio:dio",
+      "repository": "cfug/dio",
+      "component_path": "dio",
+      "commit_sha": "4684e29dabaa2655606f1620a4ed316ee3f8c963",
+      "tree_sha": "9aacf40c7925ff27ba0c10c0ba88e140030f86b6",
+      "source_version": "5.11.1",
+      "release_tag": "dio_v5.11.1",
+      "license": "MIT",
+      "workflow_run_id": 34904156158,
+      "workflow_head_sha": "30e03c6873796522f84d6abb7c96c22a3c3cbf77",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "REVIEW",
+        "complete": true,
+        "admission_eligible": false,
+        "total_entries": 98,
+        "blobs_seen": 80,
+        "relevant_blobs": 69,
+        "scanned_files": 69,
+        "scanned_bytes": 407734,
+        "findings": [
+          {
+            "rule_id": "tls_certificate_validation_bypass",
+            "severity": "HIGH",
+            "path": "dio/test/exception_test.dart",
+            "evidence": "badCertificateCallback =",
+            "context": "test-only TLS behavior exercise"
+          },
+          {
+            "rule_id": "tls_certificate_validation_bypass",
+            "severity": "HIGH",
+            "path": "dio/test/pinning_test.dart",
+            "evidence": "badCertificateCallback =",
+            "context": "test-only certificate pinning/negative TLS exercise"
+          }
+        ],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "primary_manifest": "dio/pubspec.yaml",
+        "runtime_dependencies": [
+          "async:^2.8.2",
+          "collection:^1.16.0",
+          "http_parser:^4.0.0",
+          "meta:^1.5.0",
+          "mime:>=1.0.0 <3.0.0",
+          "path:^1.8.0",
+          "dio_web_adapter:>=1.1.0 <3.0.0"
+        ],
+        "excluded_non_runtime_dependency": "dio_test is declared under dev_dependencies and therefore does not contaminate the runtime supply-chain verdict."
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "earlier_security_or_supply_chain_gate_not_clear"
+        ],
+        "reason": "The source-security gate remains REVIEW because TLS validation bypass primitives exist in test code; vulnerability admission does not run past an uncleared earlier gate."
+      }
+    }
+  ],
+  "decision": {
+    "package_http_status": "Source-security and runtime supply chain are CLEAR; overall REVIEW is only the deterministic runtime-version/OSV gap.",
+    "dio_status": "Runtime supply chain is CLEAR; source remains REVIEW because TLS bypass primitives are present in test code. They are not silently ignored because future sandbox execution would still execute untrusted tests.",
+    "functional_ranking_unchanged": "This security evidence does not replace the existing functional comparison: package:http remains the preferred thin LEGO-oriented default and Dio remains the richer alternative.",
+    "next_action": "Keep vulnerability and test-code gates fail closed. Resolve Pub range evidence generically and define sandbox-aware handling for security-negative test fixtures before changing these verdicts."
+  }
+}

