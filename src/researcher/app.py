@@ -17,6 +17,7 @@ from .library import GitHubLibrarySource
 from .observability import EventLevel, EventLogger
 from .rate_limit import RateLimitManager
 from .restart_safe_engine import RestartSafeResearchEngine
+from .scoped_api import ScopedLibraryWriteApi
 from .scoring import CandidateScorer
 from .security_admission import GitHubFullTreeSecurityScanner
 from .state import SQLiteStateStore
@@ -148,8 +149,13 @@ def build_app(config: Config) -> App:
             raise RuntimeError(
                 "Fail-closed: real Library writes require LIBRARY_GITHUB_TOKEN"
             )
-        submission = GitHubIntakePrSubmissionClient(
+        submission_api = ScopedLibraryWriteApi(
+            source_api,
             library_api,
+            config.library_repository,
+        )
+        submission = GitHubIntakePrSubmissionClient(
+            submission_api,
             config.library_repository,
             state,
             config.library_ref,
