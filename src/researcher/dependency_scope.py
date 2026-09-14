@@ -63,6 +63,24 @@ def _npm_scopes(artifact: SourceArtifact) -> dict[DependencyKey, str]:
     return scopes
 
 
+def _record_scope(
+    scopes: dict[DependencyKey, str],
+    dependency_key: DependencyKey,
+    scope: str,
+) -> None:
+    current = scopes.get(dependency_key)
+    if current == "runtime":
+        return
+    if scope == "runtime":
+        scopes[dependency_key] = scope
+        return
+    if scope == "build" and current in {None, "development"}:
+        scopes[dependency_key] = scope
+        return
+    if scope == "development" and current is None:
+        scopes[dependency_key] = scope
+
+
 def _cargo_table_scopes(
     table: object,
     artifact: SourceArtifact,
@@ -81,9 +99,7 @@ def _cargo_table_scopes(
         for name in raw:
             if not isinstance(name, str) or not name:
                 continue
-            dependency_key = (artifact.path, name)
-            if scope != "development" or dependency_key not in scopes:
-                scopes[dependency_key] = scope
+            _record_scope(scopes, (artifact.path, name), scope)
 
 
 def _cargo_scopes(artifact: SourceArtifact) -> dict[DependencyKey, str]:
