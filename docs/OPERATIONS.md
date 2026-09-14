@@ -5,6 +5,8 @@
 - `once`: one cycle then exit; appropriate for external cron/schedulers.
 - `worker`: persistent daemon-style worker.
 - `dashboard`: read-only JSON health/status service.
+- `admit-pinned`: re-resolve one exact pre-researched GitHub commit, run the production
+  admission gates, and deliver it only if it reaches `SHORTLISTED`.
 
 Phase policy is independent from process mode:
 
@@ -17,6 +19,13 @@ Phase policy is independent from process mode:
 All durable work is in SQLite and JSON artifacts under `DATA_DIR`. Restarts do not discard
 candidate fingerprints, rejection reasons, submissions or scan history. The Library needs
 and contracts have a cache fallback for temporary Library/API outages.
+
+Live intake uses deterministic submission ids and branches. Before a write, the immutable
+submission intent is stored locally; retries reconcile the existing remote branch and pull
+request instead of creating duplicates. A fresh one-shot runner can also safely retry the
+same pinned candidate because remote branch/file/PR reconciliation is deterministic and
+fails closed on payload divergence. Long-running workers should still use persistent
+`DATA_DIR` storage so complete operational history survives restarts.
 
 ## Quota exhaustion
 
@@ -34,12 +43,38 @@ candidate counts, submissions, rate-limit state, last error and Researcher versi
 
 Keep `DRY_RUN=true` until the Library handshake is accepted.
 
-When authorized:
+Real Library delivery requires three independent conditions and a dedicated credential:
 
 ```bash
 export DRY_RUN=false
 export ALLOW_LIBRARY_WRITE=true
+export LIBRARY_GITHUB_TOKEN='<stored outside the repository>'
 ```
+
+`LIBRARY_GITHUB_TOKEN` must be dedicated to the Module Library. For a fine-grained GitHub
+token, select only `pilialvu75-hue/AI-Orchestrator-Module-Library` and grant the minimum
+repository permissions needed by the intake client: **Contents: Read and write** and
+**Pull requests: Read and write**. Do not reuse the Diagnostics token and do not store the
+token in dossiers, configuration files, workflow inputs or logs.
+
+`GITHUB_TOKEN` remains the source/research credential. Library reads prefer the dedicated
+Library token when configured; live Library writes refuse to start without it.
 
 The real client creates a dedicated Library branch and PR with paths restricted by code to
 `intake/<asset>/<version>/`. It never writes certified modules or the catalog.
+
+## Manual pinned intake workflow
+
+`.github/workflows/intake-pinned.yml` is deliberately `workflow_dispatch` only. Pushes and
+pull requests can never publish a candidate. Before using it, configure the Researcher
+repository secret `RESEARCHER_LIBRARY_TOKEN` with the least-privilege Library credential
+described above.
+
+The workflow requires an explicit `confirm_write=true` input and accepts capability,
+upstream `owner/name`, exact 40-character commit SHA, and optional release tag/version.
+Workflow inputs are passed through environment variables and a Bash argument array rather
+than interpolated into a shell command.
+
+The workflow performs the same Full-Tree, supply-chain and SBOM/OSV admission used by the
+normal engine. A result other than `SHORTLISTED` produces no Library submission. Candidate
+source code is not executed by this workflow.
