@@ -18,10 +18,10 @@ def _pub_scopes(artifact: SourceArtifact) -> dict[DependencyKey, str]:
             continue
         indent = len(raw_line) - len(raw_line.lstrip(" "))
         if indent == 0 and stripped.endswith(":"):
-            key = stripped[:-1].strip()
-            if key == "dependencies":
+            section_name = stripped[:-1].strip()
+            if section_name == "dependencies":
                 section = "runtime"
-            elif key == "dev_dependencies":
+            elif section_name == "dev_dependencies":
                 section = "development"
             else:
                 section = None
@@ -31,9 +31,9 @@ def _pub_scopes(artifact: SourceArtifact) -> dict[DependencyKey, str]:
         name = stripped.split(":", 1)[0].strip()
         if not name:
             continue
-        key = (artifact.path, name)
-        if section == "runtime" or key not in scopes:
-            scopes[key] = section
+        dependency_key = (artifact.path, name)
+        if section == "runtime" or dependency_key not in scopes:
+            scopes[dependency_key] = section
     return scopes
 
 
@@ -55,9 +55,11 @@ def _npm_scopes(artifact: SourceArtifact) -> dict[DependencyKey, str]:
     raw_dev = payload.get("devDependencies")
     if isinstance(raw_dev, dict):
         for name in raw_dev:
-            key = (artifact.path, str(name))
-            if isinstance(name, str) and name and key not in scopes:
-                scopes[key] = "development"
+            if not isinstance(name, str) or not name:
+                continue
+            dependency_key = (artifact.path, name)
+            if dependency_key not in scopes:
+                scopes[dependency_key] = "development"
     return scopes
 
 
@@ -79,9 +81,9 @@ def _cargo_table_scopes(
         for name in raw:
             if not isinstance(name, str) or not name:
                 continue
-            key = (artifact.path, name)
-            if scope != "development" or key not in scopes:
-                scopes[key] = scope
+            dependency_key = (artifact.path, name)
+            if scope != "development" or dependency_key not in scopes:
+                scopes[dependency_key] = scope
 
 
 def _cargo_scopes(artifact: SourceArtifact) -> dict[DependencyKey, str]:
