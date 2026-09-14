@@ -10,6 +10,7 @@ from .capability_status import status_payload
 from .config import Config
 from .dashboard import serve
 from .observability import EventLevel
+from .pinned_admission import resolve_and_admit_pinned_candidate
 from .scheduler import Scheduler
 
 
@@ -28,6 +29,33 @@ def _parser() -> argparse.ArgumentParser:
     events = sub.add_parser("events", help="Print recent structured local events")
     events.add_argument("--limit", type=int, default=100)
     sub.add_parser("diagnostics-sync", help="Sync pending public diagnostics if enabled")
+    pinned = sub.add_parser(
+        "admit-pinned",
+        help="Run V1 security admission for one exact pre-researched GitHub commit",
+    )
+    pinned.add_argument("--capability", required=True, dest="capability_id")
+    pinned.add_argument("--repository", required=True, help="GitHub owner/name")
+    pinned.add_argument(
+        "--commit",
+        required=True,
+        dest="commit_sha",
+        help="Exact 40-character Git commit SHA",
+    )
+    pinned.add_argument(
+        "--release-tag",
+        default=None,
+        help="Optional tag; admission verifies it resolves to the exact commit",
+    )
+    pinned.add_argument(
+        "--source-version",
+        default=None,
+        help="Optional human-readable upstream version recorded as evidence",
+    )
+    pinned.add_argument(
+        "--rescan",
+        action="store_true",
+        help="Re-run gates even if this capability/repository/commit is already known",
+    )
     return parser
 
 
@@ -89,6 +117,19 @@ def main() -> None:
 
     if args.command == "once":
         result = app.engine.run_cycle()
+        _sync_diagnostics(app)
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return
+    if args.command == "admit-pinned":
+        result = resolve_and_admit_pinned_candidate(
+            app,
+            args.capability_id,
+            args.repository,
+            args.commit_sha,
+            release_tag=args.release_tag,
+            source_version=args.source_version,
+            rescan=args.rescan,
+        )
         _sync_diagnostics(app)
         print(json.dumps(result, indent=2, sort_keys=True))
         return
