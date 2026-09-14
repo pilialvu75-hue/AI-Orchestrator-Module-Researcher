@@ -47,11 +47,18 @@ class GitHubLibrarySource:
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def _fetch_with_cache(self, remote_path: str, cache_name: str) -> tuple[dict[str, Any], bool]:
+    def _fetch_with_cache(
+        self,
+        remote_path: str,
+        cache_name: str,
+    ) -> tuple[dict[str, Any], bool]:
         cache_path = self.cache_dir / cache_name
         try:
             payload = self.api.get_json_file(self.repository, remote_path, self.ref)
-            cache_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+            cache_path.write_text(
+                json.dumps(payload, indent=2, sort_keys=True),
+                encoding="utf-8",
+            )
             return payload, False
         except GitHubApiError:
             if not cache_path.exists():
@@ -62,7 +69,10 @@ class GitHubLibrarySource:
             return cached, True
 
     @staticmethod
-    def _parse_need_items(payload: dict[str, Any], source_kind: str) -> tuple[list[Need], list[dict[str, Any]]]:
+    def _parse_need_items(
+        payload: dict[str, Any],
+        source_kind: str,
+    ) -> tuple[list[Need], list[dict[str, Any]]]:
         if not isinstance(payload.get("schema_version"), int) or payload["schema_version"] < 1:
             raise ValueError(f"Unsupported Library needs schema: {source_kind}")
         raw_items = payload.get("items")
@@ -128,7 +138,8 @@ class GitHubLibrarySource:
             for need, status_item in zip(parsed_needs, parsed_status, strict=True):
                 if need.capability_id in seen:
                     raise ValueError(
-                        f"Duplicate capability across Library need sources: {need.capability_id}"
+                        "Duplicate capability across Library need sources: "
+                        f"{need.capability_id}"
                     )
                 seen.add(need.capability_id)
                 merged_needs.append(need)
