@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "voice.stt",
+    "contract_id": "voice.stt.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "raspberry_pi"],
+    "title": "Speech-to-text integration bundle"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "k2-fsa/sherpa-onnx",
+    "project": "sherpa-onnx",
+    "owner": "k2-fsa",
+    "upstream_url": "https://github.com/k2-fsa/sherpa-onnx",
+    "commit_sha": "11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf",
+    "tree_sha": "6de2d2d8a1cd6d9b64554f42a8012739d93de881",
+    "source_version": "1.13.8",
+    "source_tag": "v1.13.8",
+    "release_tag_verified": true,
+    "license": "Apache-2.0",
+    "language": "C/C++ with Dart/Kotlin/Java and other bindings",
+    "platforms": ["android", "desktop", "raspberry_pi"]
+  },
+  "fingerprint": "dbd712492560b73ca19b0dbe20b2dae1be3d0d4a4f639318c984dfbdab246acf",
+  "evidence": {
+    "functional": {
+      "local_speech_to_text": true,
+      "streaming_asr": true,
+      "non_streaming_asr": true,
+      "multiple_asr_model_families": true,
+      "vad_available": true,
+      "spoken_language_identification_available": true,
+      "flutter_binding": true
+    },
+    "platform": {
+      "android": {
+        "supported": true,
+        "evidence": "upstream matrix plus prebuilt Android AAR and Flutter Android support"
+      },
+      "desktop": {
+        "supported": true,
+        "evidence": "Windows, macOS and Linux in upstream platform matrices"
+      },
+      "raspberry_pi": {
+        "supported_upstream": true,
+        "evidence": "Raspberry Pi explicitly listed by upstream and Linux aarch64 artifacts are published"
+      }
+    },
+    "maintenance": {
+      "archived": false,
+      "release": "v1.13.8",
+      "release_commit_verified_signature": true,
+      "release_date": "2026-09-10"
+    },
+    "quality": {
+      "prebuilt_android_artifact": true,
+      "prebuilt_linux_aarch64_artifact": true,
+      "multi_language_bindings": true,
+      "ci_release_automation_signal": true
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "full_tree_gate": "not_run_for_manual_proof",
+      "sbom": "not_generated_for_manual_proof",
+      "vulnerability_scan": "not_performed_for_manual_proof",
+      "certification_eligible": false
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "Researcher manual proof does not execute upstream candidate code"
+    }
+  },
+  "integration_assessment": {
+    "adapter_model": "Library-owned voice.stt.v1 adapter over sherpa-onnx streaming/offline recognizer primitives",
+    "estimated_effort": "medium",
+    "strengths": [
+      "explicit Android, desktop and Raspberry Pi support",
+      "streaming and non-streaming ASR",
+      "Flutter/Dart and native bindings",
+      "multiple ASR model families",
+      "prebuilt Android and Linux aarch64 artifacts",
+      "verified immutable release commit",
+      "permissive Apache-2.0 license"
+    ],
+    "weaknesses": [
+      "voice.stt.v1 is not detailed enough to define the final adapter API",
+      "model bundles have different file layouts and runtime requirements",
+      "exact model latency/accuracy/memory must be measured per target device",
+      "large feature surface requires a narrow STT-only adapter boundary"
+    ]
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST",
+  "scores": {
+    "functional_fit": 0.99,
+    "contract_fit": 0.93,
+    "maintenance": 0.97,
+    "security": 0.72,
+    "license_fit": 0.98,
+    "platform_fit": 1.0,
+    "test_quality": 0.94,
+    "integration_cost": 0.82,
+    "performance": 0.85,
+    "footprint": 0.78,
+    "documentation": 0.98,
+    "recommendation": 0.96
+  },
+  "recommendation": "Preferred voice.stt research candidate for a cross-platform offline-first stack, subject to security admission and target/model benchmarks."
+}
