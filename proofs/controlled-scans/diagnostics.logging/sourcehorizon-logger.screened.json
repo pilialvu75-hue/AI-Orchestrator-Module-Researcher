@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "capability_id": "diagnostics.logging",
+  "status": "SCREENED_ALTERNATIVE",
+  "candidate": {
+    "repository": "SourceHorizon/logger",
+    "source_version": "2.8.0",
+    "source_tag": "v2.8.0",
+    "commit_sha": "c4d65c3ecb2dbf275d32fc4ef0f2a7af3d45d0b7",
+    "tree_sha": "9e8324fa8fbacc266fc9813e303fa2764ba08f77",
+    "license": "MIT",
+    "platforms": ["android", "desktop", "web"],
+    "fingerprint": "b28ea7796d4a4a13923c61b418fc55e90f376a87bd1682f36e1ff9b215618b5c"
+  },
+  "assessment": {
+    "technically_valid": true,
+    "strengths": [
+      "active maintained Dart logger",
+      "MIT license",
+      "explicit Android/iOS/Linux/macOS/web/Windows support",
+      "log events, filters, printers and pluggable outputs",
+      "current CI and release automation"
+    ],
+    "reason_not_selected_in_top_two": "The selected pair provides a more useful architecture comparison: official minimal event primitive versus richer history/error-handling diagnostics. SourceHorizon/logger remains a valid fallback, not a rejected or unsafe candidate.",
+    "security_admission_performed": false,
+    "certification_eligible": false
+  }
+}

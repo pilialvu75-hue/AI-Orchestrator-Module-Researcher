@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "diagnostics.logging",
+    "contract_id": "diagnostics.logging.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "web"],
+    "title": "Structured logging and diagnostics"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "dart-lang/core",
+    "component_path": "pkgs/logging",
+    "project": "logging",
+    "owner": "dart-lang",
+    "upstream_url": "https://github.com/dart-lang/core",
+    "commit_sha": "8151b9f57fa3fee10421a19ce24470e143c0dee5",
+    "tree_sha": "5873e0f9715c30bc7701b3376d04b61cbaf75e48",
+    "source_version": "1.3.0",
+    "source_tag": "logging-v1.3.0",
+    "release_tag_verified": true,
+    "license": "BSD-3-Clause",
+    "license_file": "https://github.com/dart-lang/core/blob/8151b9f57fa3fee10421a19ce24470e143c0dee5/pkgs/logging/LICENSE",
+    "language": "Dart",
+    "platforms": ["android", "desktop", "web"]
+  },
+  "evidence": {
+    "functional": {
+      "named_loggers": true,
+      "severity_levels": true,
+      "structured_record_object": true,
+      "error_and_stacktrace": true,
+      "record_stream": true,
+      "hierarchical_configuration": true,
+      "persistent_history_builtin": false,
+      "remote_transport_builtin": false
+    },
+    "maintenance": {
+      "repository_archived": false,
+      "official_dart_monorepo": true,
+      "stable_tag_verified": true,
+      "release_commit_verified_signature": true,
+      "legacy_repo_archived_due_to_monorepo_migration": true
+    },
+    "quality": {
+      "tests_present": true,
+      "dedicated_ci_workflow_present": true,
+      "documentation_present": true,
+      "runtime_dependencies": 0
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "admission_gate": {
+        "status": "NOT_EXECUTED_MANUAL_PROOF",
+        "reason": "Full-Tree/SBOM/OSV admission belongs to the Researcher engine before lifecycle shortlist"
+      },
+      "certification_eligible": false
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "untrusted candidate code is not executed by the controlled proof"
+    }
+  },
+  "fingerprint": "5d62502040d91a67eeb88051386e4b2d58b7ca9fa42f8995352236e9653fbfd9",
+  "integration_assessment": {
+    "adapter_model": "diagnostics.logging.v1 adapter over package:logging LogRecord streams",
+    "human_estimated_effort": "low",
+    "strengths": [
+      "small neutral logging primitive",
+      "official Dart project provenance",
+      "no runtime package dependencies at the evaluated stable release",
+      "Android/desktop/web suitable pure-Dart boundary",
+      "named loggers, levels, errors and record stream are adapter-friendly",
+      "Library can own redaction, persistence and remote Diagnostics transport"
+    ],
+    "weaknesses": [
+      "does not provide persistent history itself",
+      "does not provide a remote diagnostics transport itself",
+      "component lives inside a monorepo and the adapter must retain pkgs/logging component identity"
+    ],
+    "additional_costs": [
+      "define Library-owned structured event projection without inventing contract semantics",
+      "connect the event stream to the existing redaction/persistence/Diagnostics adapters"
+    ]
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST",
+  "certification_eligible": false,
+  "scores": {
+    "functional_fit": 0.92,
+    "contract_fit": 0.91,
+    "maintenance": 0.96,
+    "security": 0.76,
+    "license_fit": 0.98,
+    "platform_fit": 1.0,
+    "test_quality": 0.94,
+    "integration_cost": 0.94,
+    "performance": 0.82,
+    "footprint": 0.98,
+    "documentation": 0.92,
+    "recommendation": 0.93,
+    "reasons": [
+      "diagnostics.logging.v1 is a logical boundary only",
+      "stable logging-v1.3.0 is pinned to an immutable verified commit",
+      "the package moved to the active official dart-lang/core monorepo",
+      "minimal pure-Dart event API avoids forcing a diagnostics backend",
+      "manual proof does not substitute for V1 security admission"
+    ]
+  },
+  "recommendation": "RESEARCH SHORTLIST. Preferred minimal diagnostics.logging base, pending engine security admission and Library normalization."
+}

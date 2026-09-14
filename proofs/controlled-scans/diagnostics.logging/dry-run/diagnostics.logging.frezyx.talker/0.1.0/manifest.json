@@ -1,0 +1,77 @@
+{
+  "id": "diagnostics.logging.frezyx.talker",
+  "name": "talker",
+  "version": "0.1.0",
+  "kind": "module",
+  "status": "discovered",
+  "description": "Researcher candidate adapter for diagnostics.logging.v1 using Talker 5.1.20.",
+  "tags": ["diagnostics.logging", "researcher-candidate", "dart", "talker"],
+  "capabilities": ["diagnostics.logging"],
+  "platforms": ["android", "desktop", "web"],
+  "languages": ["dart"],
+  "frameworks": [],
+  "entry_paths": ["packages/talker"],
+  "provenance": {
+    "origin": "researcher",
+    "source_repository": "https://github.com/Frezyx/talker",
+    "source_commit": "654391c1a81c6a0fa4a05d46562cc0d15241d964",
+    "source_tag": null,
+    "source_project_id": null,
+    "source_task_id": "d681e868bcf1e669718d5d5be3d7d481b5cc214261a3626b2862d748c5c62f05",
+    "license": "MIT",
+    "license_file": "provenance/LICENSE",
+    "retrieved_at": null
+  },
+  "validation": {
+    "score": 0.87,
+    "tests_passed": false,
+    "test_report": null,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "security": {
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null,
+    "notes": "Manual controlled proof only; Full-Tree/SBOM/OSV admission has not been executed for this proof."
+  },
+  "integration": {
+    "estimated_effort": "medium",
+    "adaptation_allowed": true,
+    "known_constraints": [
+      "5.1.20 has no corresponding GitHub tag and is pinned by immutable commit plus pubspec version",
+      "keep AI Orchestrator redaction/persistence/remote Diagnostics policy outside optional Talker integrations"
+    ],
+    "adapter_notes": "Use the core Talker package only unless Library normalization explicitly approves optional integrations."
+  },
+  "connector": {
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0",
+    "provides": [
+      {
+        "capability_id": "diagnostics.logging",
+        "contract_id": "diagnostics.logging.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "integration_mode": "adapter",
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"type": "none", "path": null}
+  },
+  "payload": {
+    "type": "upstream_reference",
+    "path": null,
+    "sha256": null,
+    "upstream_repository": "https://github.com/Frezyx/talker",
+    "upstream_commit": "654391c1a81c6a0fa4a05d46562cc0d15241d964"
+  },
+  "quality": {
+    "reuse_count": 0,
+    "successful_integrations": 0,
+    "failed_integrations": 0,
+    "last_used_at": null
+  },
+  "deprecation": {"reason": null, "replacement": null}
+}

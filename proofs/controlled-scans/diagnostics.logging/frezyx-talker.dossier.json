@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "diagnostics.logging",
+    "contract_id": "diagnostics.logging.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "web"],
+    "title": "Structured logging and diagnostics"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "Frezyx/talker",
+    "component_path": "packages/talker",
+    "project": "talker",
+    "owner": "Frezyx",
+    "upstream_url": "https://github.com/Frezyx/talker",
+    "commit_sha": "654391c1a81c6a0fa4a05d46562cc0d15241d964",
+    "tree_sha": "02461fc347953734556f66ef3c4c5e8749134c7e",
+    "source_version": "5.1.20",
+    "source_tag": null,
+    "release_tag_verified": false,
+    "source_tag_note": "No v5.1.20 Git ref exists; version is pinned from packages/talker/pubspec.yaml at the immutable commit.",
+    "license": "MIT",
+    "license_file": "https://github.com/Frezyx/talker/blob/654391c1a81c6a0fa4a05d46562cc0d15241d964/LICENSE",
+    "language": "Dart",
+    "platforms": ["android", "desktop", "web"]
+  },
+  "dependencies": [
+    {"name": "talker_logger", "version": "^5.1.20"}
+  ],
+  "evidence": {
+    "functional": {
+      "severity_levels": true,
+      "custom_log_types": true,
+      "error_and_exception_handling": true,
+      "history": true,
+      "history_limit_configuration": true,
+      "console_output": true,
+      "ecosystem_integrations": true
+    },
+    "maintenance": {
+      "repository_archived": false,
+      "repository_active_in_2026": true,
+      "release_commit_message": "Release v5.1.20",
+      "release_commit_verified_signature": false,
+      "github_tag_for_5_1_20": false
+    },
+    "quality": {
+      "tests_present": true,
+      "multiple_ci_workflows_present": true,
+      "documentation_present": true,
+      "codecov_signal_present": true
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "admission_gate": {
+        "status": "NOT_EXECUTED_MANUAL_PROOF",
+        "reason": "Full-Tree/SBOM/OSV admission belongs to the Researcher engine before lifecycle shortlist"
+      },
+      "certification_eligible": false
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "untrusted candidate code is not executed by the controlled proof"
+    }
+  },
+  "fingerprint": "d681e868bcf1e669718d5d5be3d7d481b5cc214261a3626b2862d748c5c62f05",
+  "integration_assessment": {
+    "adapter_model": "diagnostics.logging.v1 adapter over Talker records/history/error handling",
+    "human_estimated_effort": "medium",
+    "strengths": [
+      "richer diagnostic behavior than a minimal logger",
+      "error and exception handling integrated with logging",
+      "bounded in-memory history support",
+      "custom log types and broad integration ecosystem",
+      "active repository and permissive MIT license",
+      "Dart core package keeps the main logging layer portable"
+    ],
+    "weaknesses": [
+      "larger conceptual and dependency surface than package:logging",
+      "history/error-handling policy could overlap with AI Orchestrator-owned diagnostics policy",
+      "5.1.20 has no matching GitHub tag and must remain commit-pinned",
+      "wider Talker family includes optional framework/network integrations not required by the capability"
+    ],
+    "additional_costs": [
+      "keep redaction and public Diagnostics projection under AI Orchestrator control",
+      "avoid coupling diagnostics.logging.v1 to optional Talker Flutter/integration packages"
+    ]
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST",
+  "certification_eligible": false,
+  "scores": {
+    "functional_fit": 0.97,
+    "contract_fit": 0.88,
+    "maintenance": 0.92,
+    "security": 0.7,
+    "license_fit": 1.0,
+    "platform_fit": 0.98,
+    "test_quality": 0.94,
+    "integration_cost": 0.78,
+    "performance": 0.68,
+    "footprint": 0.68,
+    "documentation": 0.96,
+    "recommendation": 0.87,
+    "reasons": [
+      "rich logging/history/error-handling feature set",
+      "active MIT project with extensive docs and CI surface",
+      "immutable 5.1.20 commit is available but no corresponding Git tag exists",
+      "broader behavior creates more adapter/policy surface than the preferred minimal primitive",
+      "manual proof does not substitute for V1 security admission"
+    ]
+  },
+  "recommendation": "RESEARCH SHORTLIST. Rich diagnostics alternative, pending engine security admission and Library normalization."
+}
