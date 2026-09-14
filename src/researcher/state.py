@@ -9,6 +9,10 @@ from typing import Any, Iterator
 from .models import ResearchMode, utc_now
 
 
+_PENDING_SUBMISSION_STATES = {"PREPARED", "DELIVERING", "RETRY"}
+_TERMINAL_SUBMISSION_STATES = {"SUBMITTED", "DRY_RUN_PREPARED", "MERGED"}
+
+
 class SQLiteStateStore:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -24,6 +28,34 @@ class SQLiteStateStore:
             conn.commit()
         finally:
             conn.close()
+
+    @staticmethod
+    def _submission_columns(conn: sqlite3.Connection) -> set[str]:
+        return {
+            str(row["name"])
+            for row in conn.execute("PRAGMA table_info(submissions)").fetchall()
+        }
+
+    def _migrate_submissions(self, conn: sqlite3.Connection) -> None:
+        columns = self._submission_columns(conn)
+        migrations = {
+            "payload_json": "payload_json TEXT NOT NULL DEFAULT '{}'",
+            "branch": "branch TEXT",
+            "pull_request_url": "pull_request_url TEXT",
+            "attempts": "attempts INTEGER NOT NULL DEFAULT 0",
+            "last_error": "last_error TEXT",
+            "updated_at": "updated_at TEXT NOT NULL DEFAULT ''",
+        }
+        for name, declaration in migrations.items():
+            if name not in columns:
+                conn.execute(f"ALTER TABLE submissions ADD COLUMN {declaration}")
+        conn.execute(
+            """
+            UPDATE submissions
+            SET updated_at=created_at
+            WHERE updated_at IS NULL OR updated_at=''
+            """
+        )
 
     def _init(self) -> None:
         with self._connect() as conn:
@@ -53,7 +85,13 @@ class SQLiteStateStore:
                     submission_id TEXT NOT NULL,
                     state TEXT NOT NULL,
                     target_path TEXT NOT NULL,
-                    created_at TEXT NOT NULL
+                    payload_json TEXT NOT NULL DEFAULT '{}',
+                    branch TEXT,
+                    pull_request_url TEXT,
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    last_error TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS scans (
                     capability_id TEXT PRIMARY KEY,
@@ -76,6 +114,13 @@ class SQLiteStateStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_events_diagnostics
                     ON events(diagnostics_state, diagnostics_next_attempt_at, id);
+                """
+            )
+            self._migrate_submissions(conn)
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_submissions_state
+                ON submissions(state, updated_at)
                 """
             )
 
@@ -281,6 +326,170 @@ class SQLiteStateStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    @staticmethod
+    def _encode_submission_payload(payload: dict[str, Any]) -> str:
+        return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+    def reserve_submission(
+        self,
+        fingerprint: str,
+        capability_id: str,
+        submission_id: str,
+        target_path: str,
+        payload: dict[str, Any],
+        *,
+        branch: str | None = None,
+    ) -> bool:
+        """Durably record an immutable delivery intent before any remote side effect."""
+
+        encoded = self._encode_submission_payload(payload)
+        now = utc_now()
+        with self._connect() as conn:
+            existing = conn.execute(
+                "SELECT * FROM submissions WHERE fingerprint=?", (fingerprint,)
+            ).fetchone()
+            if existing is not None:
+                if (
+                    str(existing["capability_id"]) != capability_id
+                    or str(existing["submission_id"]) != submission_id
+                    or str(existing["target_path"]) != target_path
+                ):
+                    raise RuntimeError("Stored submission identity diverges from retry intent")
+                stored_payload = str(existing["payload_json"] or "{}")
+                if stored_payload not in {"", "{}"} and stored_payload != encoded:
+                    raise RuntimeError("Stored submission payload diverges from retry intent")
+                if stored_payload in {"", "{}"}:
+                    if str(existing["state"]) in _PENDING_SUBMISSION_STATES:
+                        raise RuntimeError("Legacy pending submission has no recoverable payload")
+                    return False
+                if branch and existing["branch"] not in {None, "", branch}:
+                    raise RuntimeError("Stored submission branch diverges from retry intent")
+                return False
+            conn.execute(
+                """
+                INSERT INTO submissions(
+                    fingerprint, capability_id, submission_id, state, target_path,
+                    payload_json, branch, pull_request_url, attempts, last_error,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, 'PREPARED', ?, ?, ?, NULL, 0, NULL, ?, ?)
+                """,
+                (
+                    fingerprint,
+                    capability_id,
+                    submission_id,
+                    target_path,
+                    encoded,
+                    branch,
+                    now,
+                    now,
+                ),
+            )
+        return True
+
+    def mark_submission_attempt(self, fingerprint: str) -> bool:
+        now = utc_now()
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT state FROM submissions WHERE fingerprint=?", (fingerprint,)
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("Submission attempt has no durable intent")
+            if str(row["state"]) in _TERMINAL_SUBMISSION_STATES:
+                return False
+            conn.execute(
+                """
+                UPDATE submissions
+                SET state='DELIVERING', attempts=attempts+1, last_error=NULL, updated_at=?
+                WHERE fingerprint=?
+                """,
+                (now, fingerprint),
+            )
+        return True
+
+    def mark_submission_retry(self, fingerprint: str, error: str) -> None:
+        message = str(error).replace("\x00", "")[:1000]
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT state FROM submissions WHERE fingerprint=?", (fingerprint,)
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("Submission retry has no durable intent")
+            if str(row["state"]) in _TERMINAL_SUBMISSION_STATES:
+                return
+            conn.execute(
+                """
+                UPDATE submissions
+                SET state='RETRY', last_error=?, updated_at=?
+                WHERE fingerprint=?
+                """,
+                (message, utc_now(), fingerprint),
+            )
+
+    def complete_submission(
+        self,
+        fingerprint: str,
+        state: str,
+        *,
+        branch: str | None = None,
+        pull_request_url: str | None = None,
+    ) -> None:
+        if state not in _TERMINAL_SUBMISSION_STATES:
+            raise ValueError(f"Invalid terminal submission state: {state}")
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM submissions WHERE fingerprint=?", (fingerprint,)
+            ).fetchone()
+            if row is None:
+                raise RuntimeError("Submission completion has no durable intent")
+            conn.execute(
+                """
+                UPDATE submissions
+                SET state=?,
+                    branch=COALESCE(?, branch),
+                    pull_request_url=COALESCE(?, pull_request_url),
+                    last_error=NULL,
+                    updated_at=?
+                WHERE fingerprint=?
+                """,
+                (state, branch, pull_request_url, utc_now(), fingerprint),
+            )
+
+    def pending_submissions(self, limit: int = 100) -> list[dict[str, Any]]:
+        bounded = max(1, min(limit, 500))
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM submissions
+                WHERE state IN ('PREPARED', 'DELIVERING', 'RETRY')
+                ORDER BY created_at ASC LIMIT ?
+                """,
+                (bounded,),
+            ).fetchall()
+        result: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            raw = str(item.pop("payload_json") or "{}")
+            payload = json.loads(raw)
+            if not isinstance(payload, dict) or not payload:
+                raise RuntimeError(
+                    f"Pending submission {item['submission_id']} has no recoverable payload"
+                )
+            item["payload"] = payload
+            result.append(item)
+        return result
+
+    def submission_row(self, fingerprint: str) -> dict[str, Any] | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM submissions WHERE fingerprint=?", (fingerprint,)
+            ).fetchone()
+        if row is None:
+            return None
+        item = dict(row)
+        raw = str(item.pop("payload_json") or "{}")
+        item["payload"] = json.loads(raw)
+        return item
+
     def mark_submission(
         self,
         fingerprint: str,
@@ -289,19 +498,37 @@ class SQLiteStateStore:
         state: str,
         target_path: str,
     ) -> bool:
+        """Compatibility acknowledgement used by the engine after submit() returns."""
+
         with self._connect() as conn:
             existing = conn.execute(
-                "SELECT fingerprint FROM submissions WHERE fingerprint=?", (fingerprint,)
+                "SELECT * FROM submissions WHERE fingerprint=?", (fingerprint,)
             ).fetchone()
-            if existing:
+        if existing is not None:
+            same_identity = (
+                str(existing["capability_id"]) == capability_id
+                and str(existing["submission_id"]) == submission_id
+                and str(existing["target_path"]) == target_path
+            )
+            if not same_identity:
                 return False
+            current = str(existing["state"])
+            if current in _PENDING_SUBMISSION_STATES and state in _TERMINAL_SUBMISSION_STATES:
+                self.complete_submission(fingerprint, state)
+                return True
+            return False
+
+        now = utc_now()
+        with self._connect() as conn:
             conn.execute(
                 """
                 INSERT INTO submissions(
-                    fingerprint, capability_id, submission_id, state, target_path, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    fingerprint, capability_id, submission_id, state, target_path,
+                    payload_json, branch, pull_request_url, attempts, last_error,
+                    created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, '{}', NULL, NULL, 0, NULL, ?, ?)
                 """,
-                (fingerprint, capability_id, submission_id, state, target_path, utc_now()),
+                (fingerprint, capability_id, submission_id, state, target_path, now, now),
             )
         return True
 
@@ -364,7 +591,16 @@ class SQLiteStateStore:
                 FROM candidates
                 """
             ).fetchone()
-            submitted = conn.execute("SELECT COUNT(*) AS c FROM submissions").fetchone()
+            submission_counts = conn.execute(
+                """
+                SELECT
+                  SUM(CASE WHEN state IN ('SUBMITTED','DRY_RUN_PREPARED','MERGED')
+                           THEN 1 ELSE 0 END) AS completed,
+                  SUM(CASE WHEN state IN ('PREPARED','DELIVERING','RETRY')
+                           THEN 1 ELSE 0 END) AS pending
+                FROM submissions
+                """
+            ).fetchone()
             event_counts = conn.execute(
                 """
                 SELECT COUNT(*) AS total,
@@ -389,7 +625,8 @@ class SQLiteStateStore:
             "rejected": int(totals["rejected"] or 0),
             "security_review": int(totals["security_review"] or 0),
             "security_blocked": int(totals["security_blocked"] or 0),
-            "submitted": int(submitted["c"] or 0),
+            "submitted": int(submission_counts["completed"] or 0),
+            "submissions_pending": int(submission_counts["pending"] or 0),
             "events": int(event_counts["total"] or 0),
             "diagnostics_pending": int(event_counts["pending"] or 0),
         }

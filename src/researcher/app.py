@@ -16,6 +16,7 @@ from .github_api import GitHubApi
 from .library import GitHubLibrarySource
 from .observability import EventLevel, EventLogger
 from .rate_limit import RateLimitManager
+from .restart_safe_engine import RestartSafeResearchEngine
 from .scoring import CandidateScorer
 from .security_admission import GitHubFullTreeSecurityScanner
 from .state import SQLiteStateStore
@@ -139,10 +140,11 @@ def build_app(config: Config) -> App:
         submission = GitHubIntakePrSubmissionClient(
             api,
             config.library_repository,
+            state,
             config.library_ref,
         )
 
-    engine = ResearchEngine(
+    engine = RestartSafeResearchEngine(
         library,
         library,
         discovery,

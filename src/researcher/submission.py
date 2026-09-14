@@ -9,6 +9,7 @@ from typing import Any, Protocol
 
 from .github_api import GitHubApi, GitHubApiError
 from .models import Candidate, Contract, Dossier, Need, utc_now
+from .state import SQLiteStateStore
 
 
 class LibrarySubmissionClient(Protocol):
@@ -26,12 +27,7 @@ def _slug(value: str) -> str:
 
 
 def _license_source_path(candidate: Candidate) -> str:
-    """Resolve a license path pinned to the candidate's immutable commit.
-
-    Discovery emits a GitHub blob URL containing repository + exact commit. We
-    intentionally reject the mutable `/license` API shape here because Library
-    provenance must remain reproducible after submission.
-    """
+    """Resolve a license path pinned to the candidate's immutable commit."""
 
     raw = str(candidate.license_file_url or "").strip()
     if not raw:
@@ -64,9 +60,6 @@ def build_manifest(
         if need.capability_id.startswith(("ai.", "voice."))
         else "module"
     )
-    # Fail closed before preparing an intake that Library normalization could
-    # never accept. The original immutable source is retained in the dossier;
-    # the manifest points to the materialized copy inside this intake.
     _license_source_path(candidate)
     if not str(candidate.license_spdx or "").strip():
         raise RuntimeError("Researcher candidate has no identified license")
@@ -162,6 +155,36 @@ def _submission_paths(manifest: dict[str, Any]) -> tuple[str, str, str]:
     )
 
 
+def _submission_package(
+    need: Need,
+    contract: Contract,
+    standard_version: str,
+    dossier: Dossier,
+) -> dict[str, Any]:
+    manifest = build_manifest(need, contract, standard_version, dossier)
+    submission_id = f"{_slug(manifest['id'])}-{dossier.fingerprint[:12]}"
+    branch = f"researcher/intake/{submission_id}"
+    target, dossier_target, license_target = _submission_paths(manifest)
+    candidate = dossier.candidate
+    return {
+        "schema_version": 1,
+        "submission_id": submission_id,
+        "fingerprint": dossier.fingerprint,
+        "capability_id": need.capability_id,
+        "branch": branch,
+        "target_path": target,
+        "dossier_path": dossier_target,
+        "license_path": license_target,
+        "manifest": manifest,
+        "dossier": dossier.to_dict(),
+        "license_source": {
+            "repository": candidate.repository,
+            "commit": candidate.commit_sha,
+            "path": _license_source_path(candidate),
+        },
+    }
+
+
 @dataclass
 class DryRunSubmissionClient:
     store: Any
@@ -173,41 +196,42 @@ class DryRunSubmissionClient:
         standard_version: str,
         dossier: Dossier,
     ) -> dict[str, Any]:
-        manifest = build_manifest(need, contract, standard_version, dossier)
-        submission_id = f"{_slug(manifest['id'])}-{dossier.fingerprint[:12]}"
-        target, dossier_target, license_target = _submission_paths(manifest)
-        path = self.store.save_submission_payload(
-            submission_id,
-            {
-                "submission_id": submission_id,
-                "dry_run": True,
-                "target_path": target,
-                "manifest": manifest,
-                "dossier": dossier.to_dict(),
-                "package": {
-                    "manifest_path": target,
-                    "dossier_path": dossier_target,
-                    "license_path": license_target,
-                    "license_source_repository": dossier.candidate.repository,
-                    "license_source_commit": dossier.candidate.commit_sha,
-                    "license_source_path": _license_source_path(dossier.candidate),
-                },
-                "prepared_at": utc_now(),
-            },
-        )
+        package = _submission_package(need, contract, standard_version, dossier)
+        submission_id = str(package["submission_id"])
+        target = str(package["target_path"])
+        payload = {
+            **package,
+            "dry_run": True,
+            "prepared_at": utc_now(),
+        }
+        path = self.store.save_submission_payload(submission_id, payload)
         return {
             "submission_id": submission_id,
             "state": "DRY_RUN_PREPARED",
             "target_path": target,
             "local_path": str(path),
-            "manifest": manifest,
+            "manifest": package["manifest"],
         }
 
 
 class GitHubIntakePrSubmissionClient:
-    def __init__(self, api: GitHubApi, library_repository: str, base_ref: str = "main") -> None:
+    """Restart-safe and idempotent Library intake delivery.
+
+    The exact immutable package is persisted to SQLite before the first GitHub
+    write. A retry therefore never rebuilds payload from mutable Library state:
+    it reconciles the same branch, the same three intake files and the same PR.
+    """
+
+    def __init__(
+        self,
+        api: GitHubApi,
+        library_repository: str,
+        state: SQLiteStateStore,
+        base_ref: str = "main",
+    ) -> None:
         self.api = api
         self.library_repository = library_repository
+        self.state = state
         self.base_ref = base_ref
 
     def _optional_get(self, path: str) -> Any | None:
@@ -218,13 +242,58 @@ class GitHubIntakePrSubmissionClient:
                 return None
             raise
 
-    def _license_bytes(self, candidate: Candidate) -> bytes:
-        source_path = _license_source_path(candidate)
+    @staticmethod
+    def _validate_package(package: dict[str, Any]) -> None:
+        if int(package.get("schema_version", 0)) != 1:
+            raise RuntimeError("Unsupported durable submission package")
+        submission_id = str(package.get("submission_id") or "")
+        fingerprint = str(package.get("fingerprint") or "")
+        branch = str(package.get("branch") or "")
+        manifest = package.get("manifest")
+        dossier = package.get("dossier")
+        license_source = package.get("license_source")
+        if not submission_id or not fingerprint or not isinstance(manifest, dict):
+            raise RuntimeError("Durable submission package is incomplete")
+        if not isinstance(dossier, dict) or not isinstance(license_source, dict):
+            raise RuntimeError("Durable submission package provenance is incomplete")
+        if branch != f"researcher/intake/{submission_id}":
+            raise RuntimeError("Durable submission branch identity is invalid")
+        if str(manifest.get("status")) != "discovered":
+            raise RuntimeError("Researcher may submit only discovered intake candidates")
+        provenance = manifest.get("provenance")
+        if not isinstance(provenance, dict) or str(provenance.get("source_task_id")) != fingerprint:
+            raise RuntimeError("Durable submission fingerprint does not match manifest")
+        target, dossier_target, license_target = _submission_paths(manifest)
+        if str(package.get("target_path")) != target:
+            raise RuntimeError("Durable submission manifest path is invalid")
+        if str(package.get("dossier_path")) != dossier_target:
+            raise RuntimeError("Durable submission dossier path is invalid")
+        if str(package.get("license_path")) != license_target:
+            raise RuntimeError("Durable submission license path is invalid")
+        for path in (target, dossier_target, license_target):
+            if not path.startswith("intake/") or "/../" in path or "\\" in path:
+                raise RuntimeError("Durable submission escaped Library intake")
+        repository = str(license_source.get("repository") or "")
+        commit = str(license_source.get("commit") or "")
+        source_path = str(license_source.get("path") or "")
+        if (
+            repository.count("/") != 1
+            or not re.fullmatch(r"[0-9a-f]{40}", commit)
+            or not source_path
+            or source_path.startswith("../")
+            or "/../" in source_path
+            or "\\" in source_path
+        ):
+            raise RuntimeError("Durable submission license provenance is invalid")
+
+    def _license_bytes_from_package(self, package: dict[str, Any]) -> bytes:
+        source = package["license_source"]
+        repository = str(source["repository"])
+        source_path = str(source["path"])
+        commit = str(source["commit"])
         encoded = urllib.parse.quote(source_path, safe="/")
-        ref = urllib.parse.quote(candidate.commit_sha, safe="")
-        response = self.api.get(
-            f"/repos/{candidate.repository}/contents/{encoded}?ref={ref}"
-        )
+        ref = urllib.parse.quote(commit, safe="")
+        response = self.api.get(f"/repos/{repository}/contents/{encoded}?ref={ref}")
         data = response.data if isinstance(response.data, dict) else {}
         if str(data.get("encoding", "")).lower() != "base64":
             raise RuntimeError("Immutable license content is not base64 encoded")
@@ -275,7 +344,10 @@ class GitHubIntakePrSubmissionClient:
         )
         if existing is not None:
             return
-        base = self.api.get(f"/repos/{self.library_repository}/git/ref/heads/{self.base_ref}")
+        encoded_base = urllib.parse.quote(self.base_ref, safe="")
+        base = self.api.get(
+            f"/repos/{self.library_repository}/git/ref/heads/{encoded_base}"
+        )
         base_data = base.data if isinstance(base.data, dict) else {}
         obj = base_data.get("object")
         if not isinstance(obj, dict) or not obj.get("sha"):
@@ -285,53 +357,122 @@ class GitHubIntakePrSubmissionClient:
             {"ref": f"refs/heads/{branch}", "sha": str(obj["sha"])},
         )
 
-    def _existing_open_pr(self, branch: str) -> dict[str, Any] | None:
+    def _existing_pr(self, branch: str) -> dict[str, Any] | None:
         owner = self.library_repository.split("/", 1)[0]
         query = urllib.parse.urlencode(
             {
-                "state": "open",
+                "state": "all",
                 "head": f"{owner}:{branch}",
                 "base": self.base_ref,
-                "per_page": "10",
+                "per_page": "20",
             }
         )
         data = self.api.get(f"/repos/{self.library_repository}/pulls?{query}").data
         if not isinstance(data, list):
             raise RuntimeError("Library pull request lookup returned invalid data")
-        for item in data:
-            if isinstance(item, dict):
+        candidates = [item for item in data if isinstance(item, dict)]
+        for item in candidates:
+            if str(item.get("state")) == "open":
                 return item
-        return None
+        for item in candidates:
+            if item.get("merged_at"):
+                return item
+        return candidates[0] if candidates else None
 
-    def submit(
+    def _assert_branch_scope(
         self,
-        need: Need,
-        contract: Contract,
-        standard_version: str,
-        dossier: Dossier,
-    ) -> dict[str, Any]:
-        manifest = build_manifest(need, contract, standard_version, dossier)
-        submission_id = f"{_slug(manifest['id'])}-{dossier.fingerprint[:12]}"
-        branch = f"researcher/intake/{submission_id}"
-        target, dossier_target, license_target = _submission_paths(manifest)
-        license_bytes = self._license_bytes(dossier.candidate)
+        package: dict[str, Any],
+        *,
+        require_complete: bool,
+    ) -> None:
+        branch = str(package["branch"])
+        encoded_base = urllib.parse.quote(self.base_ref, safe="")
+        encoded_branch = urllib.parse.quote(branch, safe="")
+        response = self.api.get(
+            f"/repos/{self.library_repository}/compare/{encoded_base}...{encoded_branch}"
+        )
+        data = response.data if isinstance(response.data, dict) else {}
+        files = data.get("files")
+        if not isinstance(files, list):
+            raise RuntimeError("Unable to verify Researcher intake branch scope")
+        allowed = {
+            str(package["target_path"]),
+            str(package["dossier_path"]),
+            str(package["license_path"]),
+        }
+        changed = {
+            str(item.get("filename"))
+            for item in files
+            if isinstance(item, dict) and item.get("filename")
+        }
+        unexpected = changed - allowed
+        if unexpected:
+            raise RuntimeError(
+                "Researcher intake branch contains unexpected changes: "
+                + ", ".join(sorted(unexpected))
+            )
+        if require_complete and changed != allowed:
+            raise RuntimeError("Researcher intake branch is missing expected intake files")
+        for item in files:
+            if isinstance(item, dict) and str(item.get("status")) == "removed":
+                raise RuntimeError("Researcher intake branch must not delete Library files")
+
+    @staticmethod
+    def _result_from_pr(package: dict[str, Any], pr_data: dict[str, Any]) -> dict[str, Any]:
+        merged = bool(pr_data.get("merged_at"))
+        state = "MERGED" if merged else "SUBMITTED"
+        return {
+            "submission_id": package["submission_id"],
+            "state": state,
+            "target_path": package["target_path"],
+            "license_path": package["license_path"],
+            "branch": package["branch"],
+            "pull_request_url": pr_data.get("html_url"),
+            "manifest": package["manifest"],
+        }
+
+    def _deliver_package(self, package: dict[str, Any]) -> dict[str, Any]:
+        self._validate_package(package)
+        branch = str(package["branch"])
+        existing_pr = self._existing_pr(branch)
+        if existing_pr is not None and existing_pr.get("merged_at"):
+            return self._result_from_pr(package, existing_pr)
+        if existing_pr is not None and str(existing_pr.get("state")) == "closed":
+            raise RuntimeError(
+                "Existing Researcher intake PR is closed without merge; refusing duplicate PR"
+            )
 
         self._ensure_branch(branch)
-        self._ensure_file(target, _json_bytes(manifest), branch, submission_id)
+        self._assert_branch_scope(package, require_complete=False)
+        license_bytes = self._license_bytes_from_package(package)
         self._ensure_file(
-            dossier_target,
-            _json_bytes(dossier.to_dict()),
+            str(package["target_path"]),
+            _json_bytes(package["manifest"]),
             branch,
-            submission_id,
+            str(package["submission_id"]),
         )
-        self._ensure_file(license_target, license_bytes, branch, submission_id)
+        self._ensure_file(
+            str(package["dossier_path"]),
+            _json_bytes(package["dossier"]),
+            branch,
+            str(package["submission_id"]),
+        )
+        self._ensure_file(
+            str(package["license_path"]),
+            license_bytes,
+            branch,
+            str(package["submission_id"]),
+        )
+        self._assert_branch_scope(package, require_complete=True)
 
-        existing_pr = self._existing_open_pr(branch)
         if existing_pr is None:
             pr = self.api.post(
                 f"/repos/{self.library_repository}/pulls",
                 {
-                    "title": f"Researcher intake: {manifest['name']} for {need.capability_id}",
+                    "title": (
+                        f"Researcher intake: {package['manifest']['name']} "
+                        f"for {package['capability_id']}"
+                    ),
                     "head": branch,
                     "base": self.base_ref,
                     "body": (
@@ -343,13 +484,68 @@ class GitHubIntakePrSubmissionClient:
             pr_data = pr.data if isinstance(pr.data, dict) else {}
         else:
             pr_data = existing_pr
+        if not pr_data.get("html_url"):
+            raise RuntimeError("Library intake PR was not confirmed by GitHub")
+        return self._result_from_pr(package, pr_data)
 
-        return {
-            "submission_id": submission_id,
-            "state": "SUBMITTED",
-            "target_path": target,
-            "license_path": license_target,
-            "branch": branch,
-            "pull_request_url": pr_data.get("html_url"),
-            "manifest": manifest,
-        }
+    def submit(
+        self,
+        need: Need,
+        contract: Contract,
+        standard_version: str,
+        dossier: Dossier,
+    ) -> dict[str, Any]:
+        package = _submission_package(need, contract, standard_version, dossier)
+        fingerprint = str(package["fingerprint"])
+        self.state.reserve_submission(
+            fingerprint,
+            str(package["capability_id"]),
+            str(package["submission_id"]),
+            str(package["target_path"]),
+            package,
+            branch=str(package["branch"]),
+        )
+        if not self.state.mark_submission_attempt(fingerprint):
+            row = self.state.submission_row(fingerprint)
+            if row is None:
+                raise RuntimeError("Terminal submission state disappeared")
+            return {
+                "submission_id": row["submission_id"],
+                "state": row["state"],
+                "target_path": row["target_path"],
+                "branch": row.get("branch"),
+                "pull_request_url": row.get("pull_request_url"),
+                "manifest": package["manifest"],
+            }
+        try:
+            return self._deliver_package(package)
+        except Exception as exc:
+            self.state.mark_submission_retry(fingerprint, str(exc))
+            raise
+
+    def resume_pending(self) -> list[dict[str, Any]]:
+        """Reconcile every interrupted delivery using its persisted immutable package."""
+
+        resumed: list[dict[str, Any]] = []
+        for row in self.state.pending_submissions():
+            fingerprint = str(row["fingerprint"])
+            package = row["payload"]
+            if not self.state.mark_submission_attempt(fingerprint):
+                continue
+            try:
+                result = self._deliver_package(package)
+                self.state.complete_submission(
+                    fingerprint,
+                    str(result["state"]),
+                    branch=str(result.get("branch") or package["branch"]),
+                    pull_request_url=(
+                        None
+                        if result.get("pull_request_url") is None
+                        else str(result["pull_request_url"])
+                    ),
+                )
+                resumed.append(result)
+            except Exception as exc:
+                self.state.mark_submission_retry(fingerprint, str(exc))
+                raise
+        return resumed
