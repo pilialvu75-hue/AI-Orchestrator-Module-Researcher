@@ -1,0 +1,79 @@
+{
+  "id": "release.update_manager.mantreshkhurana.app-updater",
+  "name": "app_updater",
+  "version": "0.1.0",
+  "kind": "integration_bundle",
+  "status": "discovered",
+  "description": "Researcher partial candidate for discovery/policy/store-handoff stages of release.update_manager.v1 using app_updater 2.1.0.",
+  "tags": ["release.update_manager", "researcher-candidate", "partial-component", "update-policy", "flutter"],
+  "capabilities": ["release.update_manager"],
+  "platforms": ["android", "desktop"],
+  "languages": ["dart"],
+  "frameworks": ["flutter"],
+  "entry_paths": [],
+  "dependencies": [],
+  "provenance": {
+    "origin": "researcher",
+    "source_repository": "https://github.com/mantreshkhurana/app_updater",
+    "source_commit": "e7c140749339fb1838bb83ca9c8e2a5c6a73bd1e",
+    "source_tag": "2.1.0",
+    "source_project_id": null,
+    "source_task_id": "b0a640bf389be222528676eefe3f7c410735df586d0468104dae624e6edafea5",
+    "license": "MIT",
+    "license_file": "provenance/LICENSE",
+    "retrieved_at": null
+  },
+  "validation": {
+    "score": 0.78,
+    "tests_passed": false,
+    "test_report": null,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "security": {
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null,
+    "notes": "Manual controlled proof only; Full-Tree/SBOM/OSV admission has not been executed for this proof."
+  },
+  "integration": {
+    "estimated_effort": "medium",
+    "adaptation_allowed": true,
+    "known_constraints": [
+      "contract detail gap: this candidate covers discovery/policy/store handoff, not the entire update lifecycle",
+      "durable persistent artifact transfer is not provided by this candidate",
+      "Library must own exact direct-install/apply semantics and integrity policy"
+    ],
+    "adapter_notes": "Use behind a Library-owned release.update_manager orchestrator for version discovery, policy and store handoff."
+  },
+  "connector": {
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0",
+    "provides": [
+      {
+        "capability_id": "release.update_manager",
+        "contract_id": "release.update_manager.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "integration_mode": "adapter",
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"type": "none", "path": null}
+  },
+  "payload": {
+    "type": "upstream_reference",
+    "path": null,
+    "sha256": null,
+    "upstream_repository": "https://github.com/mantreshkhurana/app_updater",
+    "upstream_commit": "e7c140749339fb1838bb83ca9c8e2a5c6a73bd1e"
+  },
+  "quality": {
+    "reuse_count": 0,
+    "successful_integrations": 0,
+    "failed_integrations": 0,
+    "last_used_at": null
+  },
+  "deprecation": {"reason": null, "replacement": null}
+}
