@@ -456,16 +456,14 @@ class SQLiteStateStore:
 
     def pending_submissions(self, limit: int = 100) -> list[dict[str, Any]]:
         bounded = max(1, min(limit, 500))
-        placeholders = ",".join("?" for _ in _PENDING_SUBMISSION_STATES)
-        states = tuple(sorted(_PENDING_SUBMISSION_STATES))
         with self._connect() as conn:
             rows = conn.execute(
-                f"""
+                """
                 SELECT * FROM submissions
-                WHERE state IN ({placeholders})
+                WHERE state IN ('PREPARED', 'DELIVERING', 'RETRY')
                 ORDER BY created_at ASC LIMIT ?
                 """,
-                (*states, bounded),
+                (bounded,),
             ).fetchall()
         result: list[dict[str, Any]] = []
         for row in rows:
