@@ -114,29 +114,38 @@ _RULES: tuple[_Rule, ...] = (
             re.IGNORECASE,
         ),
     ),
-    _Rule(
-        "suspicious_obfuscation",
-        SecuritySeverity.REVIEW,
-        re.compile(
-            r"(?:base64(?:decode|Decode)?|fromCharCode|String\.fromCharCodes)\s*\(",
-            re.IGNORECASE,
-        ),
-    ),
-    _Rule(
-        "secret_environment_access",
-        SecuritySeverity.REVIEW,
-        re.compile(
-            r"(?:os\.environ\b|Platform\.environment\b|process\.env\b|"
-            r"System\.getenv\b)",
-            re.IGNORECASE,
-        ),
-    ),
 )
 
 _PUB_OVERRIDE = re.compile(
     r"(?m)^\s*dependency_overrides\s*:\s*(?:#.*)?$",
     re.IGNORECASE,
 )
+_ENV_ACCESS = re.compile(
+    r"(?:os\.environ\b|Platform\.environment\b|process\.env\b|System\.getenv\b)",
+    re.IGNORECASE,
+)
+_SECRET_ENV_HINT = re.compile(
+    r"(?:SECRET|TOKEN|PASSWORD|PASSWD|PRIVATE[_-]?KEY|API[_-]?KEY|"
+    r"CREDENTIAL|AWS_|GITHUB_|OPENAI_)",
+    re.IGNORECASE,
+)
+_NETWORK_SINK = re.compile(_EXFIL_SINK, re.IGNORECASE)
+_ENCODING_PRIMITIVE = re.compile(
+    r"(?:base64(?:decode|Decode)?|base64\.b64decode|fromCharCode|"
+    r"String\.fromCharCodes)\s*\(",
+    re.IGNORECASE,
+)
+_EXECUTION_OR_NETWORK_SINK = re.compile(
+    rf"(?:{_EXFIL_SINK}|eval\s*\(|exec\s*\(|subprocess\.|os\.system\(|"
+    r"Process\.start\(|Runtime\.getRuntime\(\)\.exec|child_process)",
+    re.IGNORECASE,
+)
+
+
+def _context(content: str, match: re.Match[str], radius: int = 600) -> str:
+    start = max(0, match.start() - radius)
+    end = min(len(content), match.end() + radius)
+    return content[start:end]
 
 
 def _configuration_findings(artifact: SourceArtifact) -> list[SecurityFinding]:
@@ -160,6 +169,54 @@ def _configuration_findings(artifact: SourceArtifact) -> list[SecurityFinding]:
     ]
 
 
+def _environment_findings(artifact: SourceArtifact) -> list[SecurityFinding]:
+    """Review secret-like environment access, not benign platform/environment probes."""
+    findings: list[SecurityFinding] = []
+    secret_reported = False
+    exfil_reported = False
+    for match in _ENV_ACCESS.finditer(artifact.content):
+        nearby = _context(artifact.content, match)
+        if not secret_reported and _SECRET_ENV_HINT.search(nearby):
+            findings.append(
+                SecurityFinding(
+                    rule_id="secret_environment_access",
+                    severity=SecuritySeverity.REVIEW,
+                    path=artifact.path,
+                    evidence="environment access near secret-like identifier",
+                )
+            )
+            secret_reported = True
+        if not exfil_reported and _NETWORK_SINK.search(nearby):
+            findings.append(
+                SecurityFinding(
+                    rule_id="environment_exfiltration_requires_review",
+                    severity=SecuritySeverity.HIGH,
+                    path=artifact.path,
+                    evidence="environment access near outbound network operation",
+                )
+            )
+            exfil_reported = True
+    return findings
+
+
+def _obfuscation_findings(artifact: SourceArtifact) -> list[SecurityFinding]:
+    """Treat encoding primitives as suspicious only when coupled to a risky sink."""
+    for match in _ENCODING_PRIMITIVE.finditer(artifact.content):
+        nearby = _context(artifact.content, match)
+        if _EXECUTION_OR_NETWORK_SINK.search(nearby) is None:
+            continue
+        excerpt = " ".join(match.group(0).split())[:240]
+        return [
+            SecurityFinding(
+                rule_id="suspicious_obfuscation",
+                severity=SecuritySeverity.REVIEW,
+                path=artifact.path,
+                evidence=excerpt,
+            )
+        ]
+    return []
+
+
 def scan_source_artifacts(artifacts: Iterable[SourceArtifact]) -> SecurityGateResult:
     """Static pre-screen only. Never executes candidate content."""
     material = tuple(artifacts)
@@ -173,6 +230,8 @@ def scan_source_artifacts(artifacts: Iterable[SourceArtifact]) -> SecurityGateRe
     findings: list[SecurityFinding] = []
     for artifact in material:
         findings.extend(_configuration_findings(artifact))
+        findings.extend(_environment_findings(artifact))
+        findings.extend(_obfuscation_findings(artifact))
         for rule in _RULES:
             match = rule.pattern.search(artifact.content)
             if match is None:
