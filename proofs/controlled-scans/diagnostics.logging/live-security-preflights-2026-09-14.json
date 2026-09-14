@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "capability_id": "diagnostics.logging",
+  "observed_at": "2026-09-14",
+  "certification_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "dart-lang/core:pkgs/logging",
+      "repository": "dart-lang/core",
+      "component_path": "pkgs/logging",
+      "commit_sha": "8151b9f57fa3fee10421a19ce24470e143c0dee5",
+      "tree_sha": "5873e0f9715c30bc7701b3376d04b61cbaf75e48",
+      "source_version": "1.3.0",
+      "release_tag": "logging-v1.3.0",
+      "license": "BSD-3-Clause",
+      "workflow_run_id": 34856436067,
+      "workflow_head_sha": "17507fd1f3c4599960d8b107370efd8e0926f642",
+      "state": "CLEAR",
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 18,
+        "blobs_seen": 13,
+        "relevant_blobs": 8,
+        "scanned_files": 8,
+        "scanned_bytes": 39182,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "runtime_dependencies": [],
+        "note": "Only development dependencies were present and were excluded from the runtime SBOM."
+      },
+      "vulnerability": {
+        "verdict": "CLEAR",
+        "database": "OSV",
+        "database_checked": true,
+        "admission_eligible": true,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": []
+      }
+    },
+    {
+      "candidate": "Frezyx/talker:packages/talker",
+      "repository": "Frezyx/talker",
+      "component_path": "packages/talker",
+      "commit_sha": "654391c1a81c6a0fa4a05d46562cc0d15241d964",
+      "tree_sha": "02461fc347953734556f66ef3c4c5e8749134c7e",
+      "source_version": "5.1.20",
+      "release_tag": null,
+      "license": "MIT",
+      "workflow_run_id": 34884033420,
+      "workflow_head_sha": "811a097ce459853197ec9b495c62325562b8461a",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "REVIEW",
+        "complete": false,
+        "admission_eligible": false,
+        "total_entries": 53,
+        "blobs_seen": 44,
+        "relevant_blobs": 40,
+        "scanned_files": 40,
+        "scanned_bytes": 79835,
+        "findings": [
+          {
+            "rule_id": "symlink_requires_review",
+            "severity": "HIGH",
+            "path": "packages/talker/README.md"
+          },
+          {
+            "rule_id": "pub_dependency_override_requires_review",
+            "severity": "REVIEW",
+            "path": "packages/talker/pubspec_overrides.yaml",
+            "detail": "talker_logger is overridden to the sibling path ../talker_logger"
+          }
+        ],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": [
+          "packages/talker/README.md"
+        ]
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "known_reporting_gap": "pubspec_overrides.yaml is blocked by the source security gate but is not yet represented as a supply-chain manifest."
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "unresolved": [
+          "earlier_security_or_supply_chain_gate_not_clear"
+        ]
+      }
+    },
+    {
+      "candidate": "SourceHorizon/logger",
+      "repository": "SourceHorizon/logger",
+      "component_path": null,
+      "commit_sha": "c4d65c3ecb2dbf275d32fc4ef0f2a7af3d45d0b7",
+      "tree_sha": "9e8324fa8fbacc266fc9813e303fa2764ba08f77",
+      "source_version": "2.8.0",
+      "release_tag": "v2.8.0",
+      "license": "MIT",
+      "workflow_run_id": 34884197544,
+      "workflow_head_sha": "4e4de1ff822ee28638c3489792185db1c58c3b29",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 64,
+        "blobs_seen": 52,
+        "relevant_blobs": 42,
+        "scanned_files": 42,
+        "scanned_bytes": 86818,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "runtime_dependencies": [
+          "meta:^1.0.0",
+          "clock:^1.1.0"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:clock:^1.1.0",
+          "version_unresolved:Pub:meta:^1.0.0"
+        ],
+        "reason": "No immutable lockfile or exact runtime resolution was available; Researcher does not invent package-manager resolution."
+      }
+    }
+  ],
+  "decision": {
+    "preferred_security_clear_candidate": "dart-lang/core:pkgs/logging",
+    "talker_status": "Retained as a richer research candidate but not admission-clear as the selected component.",
+    "sourcehorizon_status": "Source-security clear; retained as a credible fallback pending deterministic runtime dependency resolution.",
+    "next_action": "Keep fail-closed semantics. Do not substitute low-maintenance candidates merely to obtain a second green result."
+  }
+}
