@@ -37,7 +37,7 @@ Preferred **transfer component**.
 - tree: `6f795119953a5a7ef99a07d01169ae6f87c3fec6`
 - source tag: not asserted; GitHub latest-release endpoint did not provide a release object during proof
 - pubspec version: 9.6.1
-- license: BSD-3-Clause (with bundled localstore MIT notice)
+- license file: BSD-3-Clause text, with a bundled localstore MIT notice; the live resolver currently reports no repository SPDX value
 - requested target coverage: Android + Linux/macOS/Windows
 - evidence: persistent database tracking, reconciliation after suspension/closure, pause/resume/cancel,
   offline holding/resume, retries and background transfers
@@ -68,13 +68,34 @@ update package that obtains the latest version/binary URL and opens the download
 Library need requires Android **and** desktop, it is kept as a screened reference rather than one of the two
 primary cross-target components.
 
+## Live source-security preflight — 2026-09-14
+
+The manual research above has now been followed by immutable, non-executing live source preflights using
+Researcher main `3b4e886dcce645005054156685ae09494d203f4a`. The complete recorded evidence is in
+`live-security-preflights-2026-09-14.json`.
+
+- `background_downloader` remains **REVIEW**. Its primary package supply chain is CLEAR after separating
+  auxiliary example/test manifests, but the full source scan still reports explicit untrusted-certificate
+  controls, an opaque test ZIP, and two obfuscation-like string-construction findings. These are not waived.
+- `app_updater` is **source-security CLEAR** and its primary package supply chain is CLEAR. Overall state
+  remains **REVIEW** because no immutable root lockfile resolves five runtime version ranges; OSV therefore
+  fails closed instead of inventing exact dependency versions.
+- `updat` remains **REVIEW** because the full source scan observes `Process.start(...)`. Its primary package
+  supply chain is CLEAR, but process execution still requires explicit review.
+
+Nested `example/` manifests remain part of full source scanning. They are merely excluded from the primary
+package dependency/SBOM scope when an exact root package manifest exists. If a primary manifest cannot be
+proven or read, Researcher preserves the recursive fail-closed verdict.
+
 ## Safety and lifecycle
 
-This is controlled Researcher evidence only.
+This remains controlled Researcher evidence only.
 
 - no upstream candidate code was executed;
-- Full-Tree / supply-chain / SBOM / OSV admission was not performed by the engine for these manual proof records;
-- dossiers therefore remain `SCREENED` and `certification_eligible=false`;
+- full-tree static security and primary-package supply-chain analysis were performed on exact immutable commits;
+- OSV is consulted only when exact SBOM resolution permits it; unresolved versions remain REVIEW;
+- the historical manual dossiers remain `SCREENED` and are not rewritten to imply certification;
 - dry-run manifests remain `discovered`, `tests_passed=false`, `security.reviewed=false`;
-- no Library or Cantiere write is part of this proof;
-- Researcher does not resolve the contract detail gap on behalf of Library.
+- no Library or Cantiere read/write is part of the live source preflight;
+- no candidate is certified and the `release.update_manager.v1` contract detail gap remains unresolved;
+- Researcher does not resolve that contract gap on behalf of Library.

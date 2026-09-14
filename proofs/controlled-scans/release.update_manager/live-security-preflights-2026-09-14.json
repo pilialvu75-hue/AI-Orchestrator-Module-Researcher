@@ -1,0 +1,214 @@
+{
+  "schema_version": 1,
+  "capability_id": "release.update_manager",
+  "observed_at": "2026-09-14",
+  "researcher_main_sha": "3b4e886dcce645005054156685ae09494d203f4a",
+  "workflow_run_id": 34888472924,
+  "workflow_head_sha": "e692fbdee2a72cc888688244480f646fb04ebd63",
+  "certification_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "781flyingdutchman/background_downloader",
+      "repository": "781flyingdutchman/background_downloader",
+      "component_path": null,
+      "commit_sha": "e3b88c4bdbc11fedca2a5c89bc3bba8d1bd539d1",
+      "tree_sha": "6f795119953a5a7ef99a07d01169ae6f87c3fec6",
+      "source_version": "9.6.1",
+      "release_tag": null,
+      "resolver_license": null,
+      "license_file_observation": "BSD-3-Clause text with an additional bundled localstore MIT notice",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "REVIEW",
+        "complete": false,
+        "admission_eligible": false,
+        "total_entries": 437,
+        "blobs_seen": 325,
+        "relevant_blobs": 205,
+        "scanned_files": 205,
+        "scanned_bytes": 1881821,
+        "findings": [
+          {
+            "rule_id": "opaque_or_precompiled_artifact",
+            "severity": "HIGH",
+            "path": "example/assets/5MB-test.ZIP"
+          },
+          {
+            "rule_id": "tls_certificate_validation_bypass",
+            "severity": "HIGH",
+            "path": "android/src/main/kotlin/com/bbflight/background_downloader/BDPlugin.kt",
+            "evidence": "acceptUntrustedCertificates"
+          },
+          {
+            "rule_id": "tls_certificate_validation_bypass",
+            "severity": "HIGH",
+            "path": "android/src/main/kotlin/com/bbflight/background_downloader/Helpers.kt",
+            "evidence": "acceptUntrustedCertificates"
+          },
+          {
+            "rule_id": "suspicious_obfuscation",
+            "severity": "REVIEW",
+            "path": "example/integration_test/uri_operations_test.dart",
+            "evidence": "String.fromCharCodes("
+          },
+          {
+            "rule_id": "tls_certificate_validation_bypass",
+            "severity": "HIGH",
+            "path": "lib/src/desktop/desktop_downloader.dart",
+            "evidence": "badCertificateCallback ="
+          },
+          {
+            "rule_id": "suspicious_obfuscation",
+            "severity": "REVIEW",
+            "path": "lib/src/task.dart",
+            "evidence": "String.fromCharCodes("
+          }
+        ],
+        "opaque_artifacts": [
+          "example/assets/5MB-test.ZIP"
+        ],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "manifests_analyzed": [
+          "pubspec.yaml"
+        ],
+        "lockfiles_present": [],
+        "auxiliary_dependency_files": [
+          "example/pubspec.yaml",
+          "test_server/requirements.txt"
+        ],
+        "note": "Auxiliary manifests were still scanned as source but were excluded from the primary package SBOM scope."
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "unresolved": [
+          "earlier_security_or_supply_chain_gate_not_clear"
+        ]
+      }
+    },
+    {
+      "candidate": "mantreshkhurana/app_updater",
+      "repository": "mantreshkhurana/app_updater",
+      "component_path": null,
+      "commit_sha": "e7c140749339fb1838bb83ca9c8e2a5c6a73bd1e",
+      "tree_sha": "f5c9cc1fe63168c6c507c7d100f639449d036791",
+      "source_version": "2.1.0",
+      "release_tag": "2.1.0",
+      "resolver_license": "MIT",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 212,
+        "blobs_seen": 147,
+        "relevant_blobs": 54,
+        "scanned_files": 54,
+        "scanned_bytes": 196292,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "manifests_analyzed": [
+          "pubspec.yaml"
+        ],
+        "lockfiles_present": [],
+        "auxiliary_dependency_files": [
+          "example/pubspec.lock",
+          "example/pubspec.yaml"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:http:^1.6.0",
+          "version_unresolved:Pub:package_info_plus:^9.0.0",
+          "version_unresolved:Pub:shared_preferences:^2.5.4",
+          "version_unresolved:Pub:url_launcher:^6.3.2",
+          "version_unresolved:Pub:xml:^6.6.1"
+        ],
+        "reason": "No immutable root lockfile or exact runtime dependency resolution was available; Researcher does not invent package-manager resolution."
+      }
+    },
+    {
+      "candidate": "aguilaair/updat",
+      "repository": "aguilaair/updat",
+      "component_path": null,
+      "commit_sha": "552d064303a39d28ec5ba82b6edad94d7209f5a0",
+      "tree_sha": "1bbb2c382f6271cd3901ce5d47e15d4e71376618",
+      "source_version": "1.4.0",
+      "release_tag": "1.4.0",
+      "resolver_license": "MPL-2.0",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "REVIEW",
+        "complete": true,
+        "admission_eligible": false,
+        "total_entries": 128,
+        "blobs_seen": 91,
+        "relevant_blobs": 43,
+        "scanned_files": 43,
+        "scanned_bytes": 99818,
+        "findings": [
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "lib/utils/open_link.dart",
+            "evidence": "Process.start("
+          }
+        ],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "manifests_analyzed": [
+          "pubspec.yaml"
+        ],
+        "lockfiles_present": [],
+        "auxiliary_dependency_files": [
+          "example/pubspec.lock",
+          "example/pubspec.yaml"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "unresolved": [
+          "earlier_security_or_supply_chain_gate_not_clear"
+        ]
+      }
+    }
+  ],
+  "decision": {
+    "contract_detail_gap_remains": true,
+    "complete_cross_platform_update_manager_found": false,
+    "background_downloader_status": "Retained as the strongest transfer component but requires security review for explicit untrusted-certificate controls, an opaque test ZIP, and obfuscation-like string construction findings.",
+    "app_updater_status": "Source and primary supply-chain gates are clear; retained as discovery/policy/store-handoff candidate pending deterministic runtime dependency resolution before OSV can be trusted.",
+    "updat_status": "Retained as a desktop apply-flow reference; Process.start requires explicit security review and it does not satisfy Android plus desktop coverage by itself.",
+    "next_action": "Keep components separate and fail closed. Do not claim release.update_manager.v1 certification until the Library resolves the contract-detail gap and candidate-specific REVIEW items are cleared."
+  }
+}
