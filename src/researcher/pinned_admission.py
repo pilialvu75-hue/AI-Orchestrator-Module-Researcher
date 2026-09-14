@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import json
 import re
 import urllib.parse
 from typing import TYPE_CHECKING, Any
 
 from .dedup import candidate_fingerprint
 from .github_api import GitHubApi, GitHubResponse
-from .models import Candidate, utc_now
+from .models import Candidate, Dossier, utc_now
 from .rate_limit import RateLimitManager
 from .security_admission import FullTreeSecurityReport
 from .security_gate import SecurityVerdict
@@ -40,6 +41,7 @@ _LICENSE_FILES = {
     "license.txt",
 }
 _TEST_DIRS = {"test", "tests", "spec", "specs"}
+_TERMINAL_SUBMISSION_STATES = {"SUBMITTED", "DRY_RUN_PREPARED", "MERGED"}
 
 
 class PinnedCandidateResolver:
@@ -174,6 +176,8 @@ class PinnedCandidateResolver:
         tree_data = tree_response.data if isinstance(tree_response.data, dict) else {}
         if str(tree_data.get("sha") or "") != tree_sha:
             raise RuntimeError("resolved tree identity mismatch")
+        if bool(tree_data.get("truncated", False)):
+            raise RuntimeError("resolved tree is truncated; fail closed")
         signals = self._tree_signals(repository, commit_sha, tree_sha, tree_data)
 
         verified_tag: str | None = None
@@ -207,6 +211,13 @@ class PinnedCandidateResolver:
         topics = topics_raw if isinstance(topics_raw, list) else []
         name = str(meta.get("name") or repository.split("/", 1)[1])
         default_branch = str(meta.get("default_branch") or "main")
+        source_stable: bool | None = None
+        if source_version:
+            lowered = source_version.lower()
+            source_stable = not any(
+                marker in lowered
+                for marker in ("alpha", "beta", "-rc", ".dev", "snapshot", "wip")
+            )
 
         return Candidate(
             provider="github",
@@ -251,16 +262,69 @@ class PinnedCandidateResolver:
                 "provenance_tree_sha": tree_sha,
                 "release_tag_verified": verified_tag is not None,
                 "source_version": source_version,
+                "source_stable": source_stable,
                 "pinned_admission": True,
             },
         )
 
 
-def _existing_candidate(app: App, capability_id: str, fingerprint: str) -> dict[str, Any] | None:
+def _existing_candidate(
+    app: App,
+    capability_id: str,
+    fingerprint: str,
+) -> dict[str, Any] | None:
     for row in app.state.candidate_rows(capability_id):
         if str(row.get("fingerprint") or "") == fingerprint:
             return row
     return None
+
+
+def _submission_summary(app: App, fingerprint: str) -> dict[str, Any] | None:
+    row = app.state.submission_row(fingerprint)
+    if row is None:
+        return None
+    return {
+        "submission_id": row.get("submission_id"),
+        "state": row.get("state"),
+        "target_path": row.get("target_path"),
+        "branch": row.get("branch"),
+        "pull_request_url": row.get("pull_request_url"),
+    }
+
+
+def _resume_pending(app: App) -> list[dict[str, Any]]:
+    resume = getattr(app.engine.submission, "resume_pending", None)
+    if not callable(resume):
+        return []
+    value = resume()
+    if not isinstance(value, list):
+        return []
+    return [
+        {
+            "submission_id": item.get("submission_id"),
+            "state": item.get("state"),
+            "target_path": item.get("target_path"),
+        }
+        for item in value
+        if isinstance(item, dict)
+    ]
+
+
+def _persist_dossier(app: App, dossier: Dossier, *, replace: bool) -> str:
+    path = app.engine.dossiers.save_dossier(dossier)
+    if replace:
+        path.write_text(
+            json.dumps(dossier.to_dict(), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+    return str(path)
+
+
+def _delivery_flags(submission: dict[str, Any] | None) -> tuple[bool, bool]:
+    if submission is None:
+        return False, False
+    state = str(submission.get("state") or "")
+    return state in {"SUBMITTED", "MERGED"}, state == "DRY_RUN_PREPARED"
 
 
 def admit_pinned_candidate(
@@ -270,14 +334,15 @@ def admit_pinned_candidate(
     *,
     rescan: bool = False,
 ) -> dict[str, Any]:
-    """Run the V1 admission gates for one immutable candidate, without submitting it."""
+    """Run V1 admission gates and deliver eligible candidates through intake safely."""
 
     engine = app.engine
+    resumed = _resume_pending(app)
     needs, snapshot = engine.need_source.load_needs()
     need = next((item for item in needs if item.capability_id == capability_id), None)
     if need is None:
         raise ValueError(f"unknown Library capability: {capability_id}")
-    contracts, _standard_version = engine.contract_source.load_contracts()
+    contracts, standard_version = engine.contract_source.load_contracts()
     contract = contracts.get(capability_id)
     if contract is None:
         raise RuntimeError(f"Library contract gap for {capability_id}")
@@ -286,15 +351,25 @@ def admit_pinned_candidate(
     fingerprint = candidate_fingerprint(capability_id, candidate)
     existing = _existing_candidate(app, capability_id, fingerprint)
     if existing is not None and not rescan:
+        submission = _submission_summary(app, fingerprint)
+        lifecycle = str(existing.get("lifecycle") or "UNKNOWN")
+        if lifecycle == "SHORTLISTED" and submission is None:
+            dossier = engine.dossiers.load_dossier(capability_id, fingerprint)
+            engine._submit_dossier(need, contract, standard_version, dossier)
+            submission = _submission_summary(app, fingerprint)
+        submitted, dry_run_prepared = _delivery_flags(submission)
         return {
             "state": "EXISTING",
             "capability_id": capability_id,
             "fingerprint": fingerprint,
             "repository": candidate.repository,
             "commit_sha": candidate.commit_sha,
-            "lifecycle": str(existing.get("lifecycle") or "UNKNOWN"),
+            "lifecycle": lifecycle,
             "dossier_path": existing.get("dossier_path"),
-            "submitted": False,
+            "submission": submission,
+            "submitted": submitted,
+            "dry_run_prepared": dry_run_prepared,
+            "resumed_submissions": resumed,
             "executed_untrusted_code": False,
         }
 
@@ -342,7 +417,7 @@ def admit_pinned_candidate(
         security_report,
         vulnerability_admission,
     )
-    dossier_path = engine.dossiers.save_dossier(dossier)
+    dossier_path = _persist_dossier(app, dossier, replace=rescan)
     rejection_reason = engine._rejection_reason(
         lifecycle,
         candidate,
@@ -356,9 +431,15 @@ def admit_pinned_candidate(
         candidate.commit_sha,
         lifecycle,
         dossier.scores.recommendation,
-        str(dossier_path),
+        dossier_path,
         rejection_reason,
     )
+
+    submission = None
+    if lifecycle == "SHORTLISTED":
+        engine._submit_dossier(need, contract, standard_version, dossier)
+        submission = _submission_summary(app, fingerprint)
+
     supply_chain = security_report.supply_chain
     app.events.emit(
         "INFO",
@@ -373,8 +454,12 @@ def admit_pinned_candidate(
                 None if supply_chain is None else supply_chain.verdict.value
             ),
             "vulnerability_verdict": vulnerability_admission.report.verdict.value,
+            "delivery_state": (
+                None if submission is None else submission.get("state")
+            ),
         },
     )
+    submitted, dry_run_prepared = _delivery_flags(submission)
 
     return {
         "state": "ADMISSION_COMPLETE",
@@ -388,8 +473,11 @@ def admit_pinned_candidate(
         "recommendation_score": dossier.scores.recommendation,
         "security": security_report.to_dict(),
         "vulnerability": vulnerability_admission.to_dict(),
-        "dossier_path": str(dossier_path),
-        "submitted": False,
+        "dossier_path": dossier_path,
+        "submission": submission,
+        "submitted": submitted,
+        "dry_run_prepared": dry_run_prepared,
+        "resumed_submissions": resumed,
         "executed_untrusted_code": False,
     }
 
