@@ -1,0 +1,67 @@
+name: Preflight release.update_manager candidates v2
+
+on:
+  push:
+    branches:
+      - preflight-release-update-manager-v2
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+
+      - name: Preflight background_downloader 9.6.1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/preflight-background-downloader
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository 781flyingdutchman/background_downloader \
+            --commit e3b88c4bdbc11fedca2a5c89bc3bba8d1bd539d1 \
+            --source-version 9.6.1
+
+      - name: Preflight app_updater 2.1.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/preflight-app-updater
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository mantreshkhurana/app_updater \
+            --commit e7c140749339fb1838bb83ca9c8e2a5c6a73bd1e \
+            --release-tag 2.1.0 \
+            --source-version 2.1.0
+
+      - name: Preflight updat 1.4.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/preflight-updat
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository aguilaair/updat \
+            --commit 552d064303a39d28ec5ba82b6edad94d7209f5a0 \
+            --release-tag 1.4.0 \
+            --source-version 1.4.0
