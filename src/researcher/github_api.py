@@ -10,6 +10,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from . import __version__
+
 
 class GitHubApiError(RuntimeError):
     def __init__(
@@ -34,14 +36,14 @@ class GitHubApi:
         self,
         token: str | None,
         base_url: str = "https://api.github.com",
-        user_agent: str = "AI-Orchestrator-Module-Researcher/0.1.0",
+        user_agent: str | None = None,
         timeout_seconds: int = 20,
         uploads_base_url: str = "https://uploads.github.com",
     ) -> None:
         self._token = token
         self._base = self._validated_base_url(base_url)
         self._uploads_base = self._validated_uploads_base_url(uploads_base_url)
-        self._user_agent = user_agent
+        self._user_agent = user_agent or f"AI-Orchestrator-Module-Researcher/{__version__}"
         self._timeout = timeout_seconds
 
     @staticmethod
