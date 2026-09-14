@@ -379,7 +379,12 @@ class GitHubIntakePrSubmissionClient:
                 return item
         return candidates[0] if candidates else None
 
-    def _assert_branch_scope(self, package: dict[str, Any]) -> None:
+    def _assert_branch_scope(
+        self,
+        package: dict[str, Any],
+        *,
+        require_complete: bool,
+    ) -> None:
         branch = str(package["branch"])
         encoded_base = urllib.parse.quote(self.base_ref, safe="")
         encoded_branch = urllib.parse.quote(branch, safe="")
@@ -400,10 +405,14 @@ class GitHubIntakePrSubmissionClient:
             for item in files
             if isinstance(item, dict) and item.get("filename")
         }
-        if changed != allowed:
+        unexpected = changed - allowed
+        if unexpected:
             raise RuntimeError(
-                "Researcher intake branch contains unexpected or missing changes"
+                "Researcher intake branch contains unexpected changes: "
+                + ", ".join(sorted(unexpected))
             )
+        if require_complete and changed != allowed:
+            raise RuntimeError("Researcher intake branch is missing expected intake files")
         for item in files:
             if isinstance(item, dict) and str(item.get("status")) == "removed":
                 raise RuntimeError("Researcher intake branch must not delete Library files")
@@ -433,8 +442,9 @@ class GitHubIntakePrSubmissionClient:
                 "Existing Researcher intake PR is closed without merge; refusing duplicate PR"
             )
 
-        license_bytes = self._license_bytes_from_package(package)
         self._ensure_branch(branch)
+        self._assert_branch_scope(package, require_complete=False)
+        license_bytes = self._license_bytes_from_package(package)
         self._ensure_file(
             str(package["target_path"]),
             _json_bytes(package["manifest"]),
@@ -453,7 +463,7 @@ class GitHubIntakePrSubmissionClient:
             branch,
             str(package["submission_id"]),
         )
-        self._assert_branch_scope(package)
+        self._assert_branch_scope(package, require_complete=True)
 
         if existing_pr is None:
             pr = self.api.post(
