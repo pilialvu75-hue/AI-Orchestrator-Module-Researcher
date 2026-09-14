@@ -5,6 +5,7 @@ import binascii
 import urllib.parse
 from dataclasses import replace
 
+from .dependency_scope import dependency_scope_map
 from .github_api import GitHubApi, GitHubApiError, GitHubResponse
 from .models import Candidate
 from .rate_limit import RateLimitManager
@@ -18,16 +19,23 @@ from .supply_chain import (
     analyze_supply_chain,
 )
 
+_DEPENDENCY_FINDING_RULES = {
+    "git_dependency_requires_review",
+    "git_dependency_unpinned",
+    "non_registry_dependency_requires_review",
+    "path_dependency_requires_review",
+}
+_NON_RUNTIME_SCOPES = {"development", "build"}
+
 
 class PrimarySupplyChainScopeRefiner:
-    """Refine dependency scope without narrowing the full source security scan.
+    """Refine package dependency scope without narrowing the source scan.
 
-    The full immutable repository/component tree is still scanned by the normal
-    security gate. When that tree contains a supported dependency manifest at
-    the admitted package root, only dependency files at that same root define
-    the candidate's primary SBOM/supply-chain scope. Nested example/test
-    manifests remain visible as auxiliary evidence but cannot by themselves
-    contaminate the primary package dependency verdict.
+    The full immutable repository/component tree remains visible to the source
+    security gate. Dependency admission is narrower: only dependency files at
+    the admitted package root define the primary SBOM, and dependencies proven
+    to belong only to development/build sections cannot contaminate the runtime
+    supply-chain verdict. Auxiliary manifests remain visible as NOTICE evidence.
 
     If a primary root manifest cannot be proven or read, the original report is
     returned unchanged (fail closed).
@@ -117,6 +125,53 @@ class PrimarySupplyChainScopeRefiner:
             return SecurityVerdict.REVIEW
         return SecurityVerdict.CLEAR
 
+    @staticmethod
+    def _runtime_supply_chain(
+        supply_chain: SupplyChainReport,
+        artifacts: tuple[SourceArtifact, ...],
+    ) -> SupplyChainReport:
+        """Drop only dependencies proven to be dev/build scoped.
+
+        Unknown scopes remain in the report. Dependency-specific findings are
+        removed only when the same manifest/name pair is explicitly classified
+        as development/build by the manifest parser. Package-wide findings such
+        as lifecycle hooks are never suppressed here.
+        """
+        scopes = dependency_scope_map(artifacts)
+        excluded = {
+            key for key, scope in scopes.items() if scope in _NON_RUNTIME_SCOPES
+        }
+        dependencies = tuple(
+            item
+            for item in supply_chain.dependencies
+            if (item.manifest_path, item.name) not in excluded
+        )
+
+        def keep_finding(finding: SupplyChainFinding) -> bool:
+            if finding.rule_id not in _DEPENDENCY_FINDING_RULES:
+                return True
+            for path, name in excluded:
+                if finding.path == path and finding.evidence.startswith(f"{name}:"):
+                    return False
+            return True
+
+        findings = tuple(item for item in supply_chain.findings if keep_finding(item))
+        severities = {item.severity for item in findings}
+        if SupplyChainSeverity.BLOCK in severities:
+            verdict = SupplyChainVerdict.BLOCK
+        elif SupplyChainSeverity.REVIEW in severities:
+            verdict = SupplyChainVerdict.REVIEW
+        else:
+            verdict = SupplyChainVerdict.CLEAR
+        return SupplyChainReport(
+            verdict=verdict,
+            manifests_analyzed=supply_chain.manifests_analyzed,
+            lockfiles_present=supply_chain.lockfiles_present,
+            dependencies=dependencies,
+            findings=findings,
+            executed_untrusted_code=supply_chain.executed_untrusted_code,
+        )
+
     def refine(
         self,
         candidate: Candidate,
@@ -149,8 +204,6 @@ class PrimarySupplyChainScopeRefiner:
                 - set(primary_paths)
             )
         )
-        if not auxiliary_paths:
-            return report
 
         artifacts: list[SourceArtifact] = []
         try:
@@ -162,7 +215,11 @@ class PrimarySupplyChainScopeRefiner:
         except (GitHubApiError, ValueError):
             return report
 
-        refined = analyze_supply_chain(tuple(artifacts))
+        material = tuple(artifacts)
+        refined = self._runtime_supply_chain(
+            analyze_supply_chain(material),
+            material,
+        )
         notices = tuple(
             SupplyChainFinding(
                 rule_id="auxiliary_dependency_file_out_of_primary_scope",
