@@ -11,6 +11,11 @@ from .rate_limit import RateLimitManager
 from .security_admission import FullTreeSecurityReport, GitHubFullTreeSecurityScanner
 
 
+def _is_explicit_empty_blob(item: dict[str, Any]) -> bool:
+    """Empty blobs cannot contain executable/source content and need no decoding."""
+    return item.get("type") == "blob" and item.get("size") == 0
+
+
 class _ComponentTreeApi(GitHubApi):
     """Filter exactly one recursive tree response to an admitted component subtree."""
 
@@ -42,6 +47,7 @@ class _ComponentTreeApi(GitHubApi):
             item
             for item in entries
             if isinstance(item, dict)
+            and not _is_explicit_empty_blob(item)
             and (
                 str(item.get("path") or "") == self._component_path
                 or str(item.get("path") or "").startswith(prefix)

