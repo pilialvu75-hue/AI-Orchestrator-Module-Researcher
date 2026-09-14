@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "voice.tts",
+    "contract_id": "voice.tts.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "raspberry_pi"],
+    "title": "Text-to-speech integration bundle"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "k2-fsa/sherpa-onnx",
+    "project": "sherpa-onnx",
+    "owner": "k2-fsa",
+    "upstream_url": "https://github.com/k2-fsa/sherpa-onnx",
+    "commit_sha": "11afbd009a7f8c08f4bcf2fc1b265d0df4670fbf",
+    "tree_sha": "6de2d2d8a1cd6d9b64554f42a8012739d93de881",
+    "source_version": "1.13.8",
+    "source_tag": "v1.13.8",
+    "release_tag_verified": true,
+    "license": "Apache-2.0",
+    "language": "C/C++ with Dart/Kotlin/Java and other bindings",
+    "platforms": ["android", "desktop", "raspberry_pi"]
+  },
+  "fingerprint": "6ac38c0e1a6c29ec4430ae3a5310aa6f683c79af40a95845ba318857a428fe17",
+  "evidence": {
+    "functional": {
+      "local_text_to_speech": true,
+      "offline_runtime": true,
+      "multiple_tts_model_families": true,
+      "flutter_binding": true,
+      "audio_generation": true
+    },
+    "platform": {
+      "android": {
+        "supported": true,
+        "evidence": "upstream matrix includes Android and Flutter Android"
+      },
+      "desktop": {
+        "supported": true,
+        "evidence": "Windows, macOS and Linux are explicit upstream targets"
+      },
+      "raspberry_pi": {
+        "supported_upstream": true,
+        "evidence": "Raspberry Pi is explicitly listed upstream and Linux aarch64 artifacts are published"
+      },
+      "extended": {
+        "ios": true,
+        "macos": true,
+        "note": "recorded as extended evidence; current Library need does not yet require iOS separately"
+      }
+    },
+    "maintenance": {
+      "archived": false,
+      "release": "v1.13.8",
+      "release_commit_verified_signature": true,
+      "release_date": "2026-09-10"
+    },
+    "quality": {
+      "prebuilt_android_artifact": true,
+      "prebuilt_linux_aarch64_artifact": true,
+      "multi_language_bindings": true,
+      "ci_release_automation_signal": true
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "full_tree_gate": "not_run_for_manual_proof",
+      "sbom": "not_generated_for_manual_proof",
+      "vulnerability_scan": "not_performed_for_manual_proof",
+      "certification_eligible": false
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "Researcher manual proof does not execute upstream candidate code"
+    }
+  },
+  "integration_assessment": {
+    "adapter_model": "Library-owned voice.tts.v1 adapter over sherpa-onnx offline TTS primitives",
+    "estimated_effort": "medium",
+    "strengths": [
+      "explicit Android, desktop and Raspberry Pi support",
+      "Flutter/Dart and native bindings",
+      "offline neural TTS support",
+      "prebuilt Android and Linux aarch64 artifacts",
+      "verified immutable release commit",
+      "permissive Apache-2.0 license"
+    ],
+    "weaknesses": [
+      "voice.tts.v1 is not detailed enough to define the final adapter API",
+      "voice/model packages vary in file layout, language coverage and size",
+      "latency, first-audio delay, realtime factor and pronunciation require device/model benchmarks",
+      "broad runtime surface should be narrowed to TTS-only behavior"
+    ]
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST",
+  "scores": {
+    "functional_fit": 0.99,
+    "contract_fit": 0.93,
+    "maintenance": 0.97,
+    "security": 0.72,
+    "license_fit": 0.98,
+    "platform_fit": 1.0,
+    "test_quality": 0.94,
+    "integration_cost": 0.84,
+    "performance": 0.87,
+    "footprint": 0.76,
+    "documentation": 0.98,
+    "recommendation": 0.97
+  },
+  "recommendation": "Preferred voice.tts research candidate for a cross-platform offline-first stack, subject to security admission and target/voice benchmarks."
+}
