@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .models import Dossier
+from .models import Candidate, Dossier, ScoreCard
 
 
 class DossierStore:
@@ -15,16 +15,79 @@ class DossierStore:
     def _safe(value: str) -> str:
         return "".join(ch if ch.isalnum() or ch in "._-" else "_" for ch in value)
 
+    def _dossier_path(self, capability_id: str, fingerprint: str) -> Path:
+        folder = self.data_dir / "discoveries" / self._safe(capability_id)
+        return folder / f"{self._safe(fingerprint)}.json"
+
     def save_dossier(self, dossier: Dossier) -> Path:
-        folder = self.data_dir / "discoveries" / self._safe(dossier.capability_id)
-        folder.mkdir(parents=True, exist_ok=True)
-        path = folder / f"{dossier.fingerprint}.json"
+        path = self._dossier_path(dossier.capability_id, dossier.fingerprint)
+        path.parent.mkdir(parents=True, exist_ok=True)
         if not path.exists():
             path.write_text(
                 json.dumps(dossier.to_dict(), indent=2, sort_keys=True),
                 encoding="utf-8",
             )
         return path
+
+    def load_dossier(self, capability_id: str, fingerprint: str) -> Dossier:
+        """Load a locally persisted dossier for restart recovery.
+
+        The path is reconstructed from trusted identifiers rather than accepting an
+        arbitrary persisted filesystem path. Any malformed or mismatched dossier
+        fails closed instead of being submitted to the Library.
+        """
+
+        path = self._dossier_path(capability_id, fingerprint)
+        if not path.is_file():
+            raise RuntimeError(
+                f"Persisted dossier missing for {capability_id}:{fingerprint}"
+            )
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(
+                f"Persisted dossier unreadable for {capability_id}:{fingerprint}"
+            ) from exc
+        if not isinstance(raw, dict):
+            raise RuntimeError("Persisted dossier is not a JSON object")
+
+        try:
+            candidate_raw = dict(raw["candidate"])
+            candidate_raw["topics"] = tuple(candidate_raw.get("topics", ()))
+            candidate = Candidate(**candidate_raw)
+
+            scores_raw = dict(raw["scores"])
+            scores_raw["reasons"] = tuple(scores_raw.get("reasons", ()))
+            scores = ScoreCard(**scores_raw)
+
+            dossier = Dossier(
+                schema_version=int(raw["schema_version"]),
+                capability_id=str(raw["capability_id"]),
+                candidate=candidate,
+                fingerprint=str(raw["fingerprint"]),
+                scores=scores,
+                lifecycle=str(raw["lifecycle"]),
+                warnings=tuple(str(item) for item in raw.get("warnings", ())),
+                integration_estimate=dict(raw["integration_estimate"]),
+                security_evidence=dict(raw["security_evidence"]),
+                maintenance_evidence=dict(raw["maintenance_evidence"]),
+                license_evidence=dict(raw["license_evidence"]),
+                dependency_evidence=dict(raw["dependency_evidence"]),
+                benchmark_plan=dict(raw["benchmark_plan"]),
+                created_at=str(raw["created_at"]),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError(
+                f"Persisted dossier schema invalid for {capability_id}:{fingerprint}"
+            ) from exc
+
+        if dossier.schema_version != 1:
+            raise RuntimeError("Unsupported persisted dossier schema version")
+        if dossier.capability_id != capability_id or dossier.fingerprint != fingerprint:
+            raise RuntimeError("Persisted dossier identity mismatch")
+        if dossier.lifecycle != "SHORTLISTED":
+            raise RuntimeError("Only persisted SHORTLISTED dossiers may be recovered")
+        return dossier
 
     def save_comparison(self, capability_id: str, payload: dict[str, Any]) -> Path:
         folder = self.data_dir / "comparisons"
