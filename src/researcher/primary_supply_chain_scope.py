@@ -5,7 +5,7 @@ import binascii
 import urllib.parse
 from dataclasses import replace
 
-from .github_api import GitHubApi, GitHubApiError
+from .github_api import GitHubApi, GitHubApiError, GitHubResponse
 from .models import Candidate
 from .rate_limit import RateLimitManager
 from .security_admission import FullTreeSecurityReport
@@ -60,7 +60,7 @@ class PrimarySupplyChainScopeRefiner:
             raise ValueError(f"Invalid GitHub repository name: {repository}")
         return "/".join(urllib.parse.quote(part, safe="") for part in parts)
 
-    def _get(self, path: str):
+    def _get(self, path: str) -> GitHubResponse | None:
         decision = self.rate_limits.decision()
         if not decision.allowed:
             return None
