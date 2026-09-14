@@ -6,6 +6,7 @@ from typing import Any
 from .component_candidate import normalize_component_path
 from .github_api import GitHubApi, GitHubResponse
 from .models import Candidate
+from .primary_supply_chain_scope import PrimarySupplyChainScopeRefiner
 from .rate_limit import RateLimitManager
 from .security_admission import FullTreeSecurityReport, GitHubFullTreeSecurityScanner
 
@@ -54,12 +55,13 @@ class _ComponentTreeApi(GitHubApi):
 
 
 class ComponentAwareGitHubSecurityScanner:
-    """Use the existing fail-closed scanner, optionally on an explicit component subtree."""
+    """Use the fail-closed full scan and refine only proven package dependency scope."""
 
     def __init__(self, api: GitHubApi, rate_limits: RateLimitManager) -> None:
         self.api = api
         self.rate_limits = rate_limits
         self.root_scanner = GitHubFullTreeSecurityScanner(api, rate_limits)
+        self.supply_chain_refiner = PrimarySupplyChainScopeRefiner(api, rate_limits)
 
     def scan(self, candidate: Candidate) -> FullTreeSecurityReport:
         component_path = normalize_component_path(
@@ -68,7 +70,8 @@ class ComponentAwareGitHubSecurityScanner:
             else str(candidate.extra["component_path"])
         )
         if component_path is None:
-            return self.root_scanner.scan(candidate)
+            report = self.root_scanner.scan(candidate)
+            return self.supply_chain_refiner.refine(candidate, report)
 
         tree_sha = str(candidate.extra.get("provenance_tree_sha") or "")
         if len(tree_sha) != 40:
@@ -86,4 +89,5 @@ class ComponentAwareGitHubSecurityScanner:
             scoped_api,
             self.rate_limits,
         )
-        return scanner.scan(candidate)
+        report = scanner.scan(candidate)
+        return self.supply_chain_refiner.refine(candidate, report)
