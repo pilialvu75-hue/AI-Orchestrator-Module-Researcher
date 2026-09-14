@@ -4,11 +4,12 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 
 from researcher.comparison import ComparisonEngine
 from researcher.dossiers import DossierStore
 from researcher.engine import ResearchEngine
-from researcher.models import ResearchMode
+from researcher.models import Contract, Dossier, Need, ResearchMode
 from researcher.scoring import CandidateScorer
 from researcher.state import SQLiteStateStore
 from researcher.submission import DryRunSubmissionClient
@@ -21,6 +22,17 @@ from helpers import (
     candidate,
     need,
 )
+
+
+class CrashBeforeSubmissionClient:
+    def submit(
+        self,
+        need: Need,
+        contract: Contract,
+        standard_version: str,
+        dossier: Dossier,
+    ) -> dict[str, Any]:
+        raise RuntimeError("simulated crash before durable submission intent")
 
 
 class E2ETests(unittest.TestCase):
@@ -61,6 +73,7 @@ class E2ETests(unittest.TestCase):
             self.assertEqual(scanner.calls, 2)
             self.assertEqual(vulnerability_scanner.calls, 2)
             self.assertEqual(state.count_qualified("voice.stt"), 2)
+            self.assertEqual(state.count_completed_submissions("voice.stt"), 2)
             pending = list((data / "submissions" / "pending").glob("*.json"))
             self.assertEqual(len(pending), 2)
             for path in pending:
@@ -73,6 +86,80 @@ class E2ETests(unittest.TestCase):
             self.assertEqual(second["state"], "IDLE")
             self.assertEqual(second["mode"], "MAINTENANCE")
             self.assertEqual(len(list((data / "submissions" / "pending").glob("*.json"))), 2)
+
+    def test_shortlists_orphaned_before_submission_are_recovered_after_restart(self) -> None:
+        n = need()
+        library = FakeLibrary([n])
+        first_discovery = FakeDiscovery(
+            [
+                candidate("orphan-alpha", "1" * 40),
+                candidate("orphan-beta", "2" * 40, "Apache-2.0"),
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            db = data / "state.db"
+            first_state = SQLiteStateStore(db)
+            first_dossiers = DossierStore(data)
+            first_engine = ResearchEngine(
+                library,
+                library,
+                first_discovery,
+                first_state,
+                first_dossiers,
+                CandidateScorer(),
+                ComparisonEngine(),
+                CrashBeforeSubmissionClient(),
+                ResearchMode.SEEDING,
+                shortlist_threshold=0.40,
+                security_scanner=FakeSecurityScanner(),
+                vulnerability_scanner=FakeVulnerabilityScanner(),
+            )
+
+            with self.assertRaisesRegex(RuntimeError, "before durable submission"):
+                first_engine.run_cycle()
+            self.assertEqual(first_state.count_qualified("voice.stt"), 2)
+            self.assertEqual(first_state.count_completed_submissions("voice.stt"), 0)
+            self.assertEqual(len(first_state.orphan_shortlist_rows("voice.stt")), 2)
+
+            restarted_state = SQLiteStateStore(db)
+            restarted_dossiers = DossierStore(data)
+            restarted_discovery = FakeDiscovery([])
+            restarted_scanner = FakeSecurityScanner()
+            restarted_vulnerability = FakeVulnerabilityScanner()
+            restarted_engine = ResearchEngine(
+                library,
+                library,
+                restarted_discovery,
+                restarted_state,
+                restarted_dossiers,
+                CandidateScorer(),
+                ComparisonEngine(),
+                DryRunSubmissionClient(restarted_dossiers),
+                ResearchMode.SEEDING,
+                shortlist_threshold=0.40,
+                security_scanner=restarted_scanner,
+                vulnerability_scanner=restarted_vulnerability,
+            )
+
+            recovered = restarted_engine.run_cycle()
+            self.assertEqual(recovered["state"], "COMPLETED")
+            self.assertEqual(len(recovered["recovered_submissions"]), 2)
+            self.assertEqual(len(recovered["prepared_submissions"]), 2)
+            self.assertEqual(recovered["discovered"], 0)
+            self.assertEqual(restarted_discovery.calls, 0)
+            self.assertEqual(restarted_scanner.calls, 0)
+            self.assertEqual(restarted_vulnerability.calls, 0)
+            self.assertEqual(restarted_state.count_completed_submissions("voice.stt"), 2)
+            self.assertEqual(restarted_state.orphan_shortlist_rows("voice.stt"), [])
+            self.assertEqual(
+                len(list((data / "submissions" / "pending").glob("*.json"))),
+                2,
+            )
+
+            idle = restarted_engine.run_cycle()
+            self.assertEqual(idle["state"], "IDLE")
+            self.assertEqual(idle["mode"], "MAINTENANCE")
 
     def test_missing_security_scanner_fails_closed_before_submission(self) -> None:
         n = need()
