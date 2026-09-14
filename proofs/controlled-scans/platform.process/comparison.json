@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.process",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_status": "needed",
+  "priority": "high",
+  "desired_candidates": 2,
+  "required_targets": ["windows", "linux", "macos", "raspberry_pi"],
+  "contract": {
+    "contract_id": "platform.process.v1",
+    "contract_version": "1.0",
+    "status": "draft",
+    "known_boundary": "Local process execution boundary with argv, cwd, environment, stdout/stderr streaming, cancellation and exit status.",
+    "detail_gap": "Security policy for executables, shell use, inherited environment, process trees, limits and privilege boundaries is not authoritative yet."
+  },
+  "candidates": [
+    {
+      "id": "dart-lang/tools:pkgs/process",
+      "version": "5.0.6",
+      "license": "BSD-3-Clause",
+      "independence": "Dart project implementation; independent from process_run.",
+      "fit": {
+        "argv": "strong",
+        "cwd": "strong",
+        "environment": "strong",
+        "stdout_stderr_streaming": "strong via Process returned by start",
+        "cancellation": "strong primitive via process kill / killPid",
+        "exit_status": "strong",
+        "mockability": "strong through ProcessManager abstraction",
+        "shell_surface": "optional runInShell flag rather than shell-first API"
+      },
+      "security_preflight": "REVIEW",
+      "source_security": "REVIEW: intended Process.start primitive",
+      "supply_chain": "CLEAR",
+      "vulnerability_gate": "NOT_ANALYZED because security review is required first",
+      "role": "preferred narrow architecture primitive"
+    },
+    {
+      "id": "tekartik/process_run.dart:packages/process_run",
+      "version": "1.3.6",
+      "license": "BSD-2-Clause",
+      "independence": "Independent tekartik implementation.",
+      "fit": {
+        "process_execution": "strong",
+        "cross_platform_shell_helpers": "strong",
+        "executable_discovery": "strong",
+        "environment_helpers": "strong",
+        "surface_area": "larger than the draft boundary",
+        "macos_sandbox_note": "upstream documents sandbox entitlement implications for process execution"
+      },
+      "security_preflight": "REVIEW",
+      "source_security": "REVIEW: intended Process.start primitive",
+      "supply_chain": "CLEAR",
+      "vulnerability_gate": "NOT_ANALYZED because security review is required first",
+      "role": "richer independent alternative"
+    }
+  ],
+  "decision": {
+    "preferred": "dart-lang/tools:pkgs/process",
+    "alternative": "tekartik/process_run.dart:packages/process_run",
+    "submission_ready": false,
+    "certification_asserted": false,
+    "reason": "Both expose the intended high-impact process primitive. Automated review correctly remains fail-closed; the narrower mockable ProcessManager is the cleaner default boundary pending explicit policy and sandbox validation."
+  }
+}
