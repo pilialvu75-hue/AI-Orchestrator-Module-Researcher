@@ -308,6 +308,13 @@ class SQLiteStateStore:
         return row is not None
 
     def count_qualified(self, capability_id: str) -> int:
+        """Count locally qualified candidates, regardless of delivery state.
+
+        Kept for scoring/inspection compatibility. Seeding completion uses
+        count_completed_submissions() so an orphan shortlist cannot masquerade as
+        delivered Library coverage.
+        """
+
         with self._connect() as conn:
             row = conn.execute(
                 """
@@ -317,6 +324,36 @@ class SQLiteStateStore:
                 (capability_id,),
             ).fetchone()
         return int(row["c"]) if row else 0
+
+    def count_completed_submissions(self, capability_id: str) -> int:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT COUNT(*) AS c FROM submissions
+                WHERE capability_id=?
+                  AND state IN ('SUBMITTED', 'DRY_RUN_PREPARED', 'MERGED')
+                """,
+                (capability_id,),
+            ).fetchone()
+        return int(row["c"]) if row else 0
+
+    def orphan_shortlist_rows(self, capability_id: str) -> list[dict[str, Any]]:
+        """Return shortlisted candidates that never reached durable submission intent."""
+
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT c.*
+                FROM candidates AS c
+                LEFT JOIN submissions AS s ON s.fingerprint=c.fingerprint
+                WHERE c.capability_id=?
+                  AND c.lifecycle='SHORTLISTED'
+                  AND s.fingerprint IS NULL
+                ORDER BY c.score DESC, c.first_seen_at ASC
+                """,
+                (capability_id,),
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def candidate_rows(self, capability_id: str) -> list[dict[str, Any]]:
         with self._connect() as conn:

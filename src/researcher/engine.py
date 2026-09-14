@@ -84,12 +84,13 @@ class ResearchEngine:
             active = [
                 need
                 for need in active
-                if self.state.count_qualified(need.capability_id) < need.desired_candidates
+                if self.state.count_completed_submissions(need.capability_id)
+                < need.desired_candidates
             ]
 
         def key(need: Need) -> tuple[int, int, str]:
-            qualified = self.state.count_qualified(need.capability_id)
-            shortage = max(0, need.desired_candidates - qualified)
+            completed = self.state.count_completed_submissions(need.capability_id)
+            shortage = max(0, need.desired_candidates - completed)
             last_scan = self.state.last_scan(need.capability_id) or ""
             return (_PRIORITY.get(need.priority, 99), -shortage, last_scan)
 
@@ -252,6 +253,61 @@ class ResearchEngine:
             return "unstable_source_ref"
         return "pre_screen_threshold_or_policy"
 
+    def _submit_dossier(
+        self,
+        need: Need,
+        contract: Any,
+        standard_version: str,
+        dossier: Dossier,
+    ) -> dict[str, Any] | None:
+        submission_result = self.submission.submit(
+            need,
+            contract,
+            standard_version,
+            dossier,
+        )
+        if not self.state.mark_submission(
+            dossier.fingerprint,
+            need.capability_id,
+            str(submission_result["submission_id"]),
+            str(submission_result["state"]),
+            str(submission_result["target_path"]),
+        ):
+            return None
+        return {
+            "submission_id": submission_result["submission_id"],
+            "state": submission_result["state"],
+            "target_path": submission_result["target_path"],
+        }
+
+    def _recover_orphan_shortlists(
+        self,
+        need: Need,
+        contract: Any,
+        standard_version: str,
+        slots: int,
+    ) -> list[dict[str, Any]]:
+        if slots <= 0:
+            return []
+        recovered: list[dict[str, Any]] = []
+        rows = self.state.orphan_shortlist_rows(need.capability_id)
+        for row in rows[:slots]:
+            fingerprint = str(row["fingerprint"])
+            dossier = self.dossiers.load_dossier(need.capability_id, fingerprint)
+            if dossier.candidate.repository != str(row["repository"]):
+                raise RuntimeError("Persisted orphan dossier repository mismatch")
+            if dossier.candidate.commit_sha != str(row["commit_sha"]):
+                raise RuntimeError("Persisted orphan dossier commit mismatch")
+            summary = self._submit_dossier(
+                need,
+                contract,
+                standard_version,
+                dossier,
+            )
+            if summary is not None:
+                recovered.append(summary)
+        return recovered
+
     def run_cycle(self) -> dict[str, Any]:
         self.state.set_json("engine_state", "RUNNING")
         self.state.set_json("last_error", None)
@@ -286,7 +342,6 @@ class ResearchEngine:
                 "need_selected",
                 {"capability_id": need.capability_id, "mode": self.mode.value},
             )
-            qualified_before = self.state.count_qualified(need.capability_id)
             contract = contracts.get(need.capability_id)
             if contract is None:
                 gap = {
@@ -313,6 +368,63 @@ class ResearchEngine:
                     "capability_id": need.capability_id,
                     "contract_gap": str(path),
                 }
+
+            completed_before = self.state.count_completed_submissions(need.capability_id)
+            initial_slots = max(0, need.desired_candidates - completed_before)
+            recovered = self._recover_orphan_shortlists(
+                need,
+                contract,
+                standard_version,
+                initial_slots,
+            )
+            if recovered:
+                self._emit(
+                    EventLevel.INFO,
+                    "orphan_shortlists_recovered",
+                    {
+                        "capability_id": need.capability_id,
+                        "recovered": len(recovered),
+                        "result": "COMPLETED",
+                    },
+                )
+
+            completed_after_recovery = self.state.count_completed_submissions(
+                need.capability_id
+            )
+            if (
+                self.mode != ResearchMode.IMPROVEMENT
+                and completed_after_recovery >= need.desired_candidates
+            ):
+                self.state.update_scan(need.capability_id, success=True)
+                result = {
+                    "state": "COMPLETED",
+                    "mode": self.mode.value,
+                    "capability_id": need.capability_id,
+                    "discovered": 0,
+                    "new_analyzed": 0,
+                    "shortlisted": 0,
+                    "security_review": 0,
+                    "security_blocked": 0,
+                    "recovered_submissions": recovered,
+                    "prepared_submissions": recovered,
+                    "comparison": None,
+                }
+                self.state.set_json("last_cycle", {"at": utc_now(), **result})
+                self._emit(
+                    EventLevel.INFO,
+                    "cycle_completed",
+                    {
+                        "capability_id": need.capability_id,
+                        "mode": self.mode.value,
+                        "result": "COMPLETED",
+                        "shortlisted": 0,
+                        "security_review": 0,
+                        "security_blocked": 0,
+                        "prepared_submissions": len(recovered),
+                        "recovered_submissions": len(recovered),
+                    },
+                )
+                return result
 
             candidates = self.discovery.discover(
                 need,
@@ -432,29 +544,19 @@ class ResearchEngine:
             self.dossiers.save_shortlist(need.capability_id, shortlist_payload)
 
             prepared: list[dict[str, Any]] = []
-            slots = max(0, need.desired_candidates - qualified_before)
+            completed_now = self.state.count_completed_submissions(need.capability_id)
+            slots = max(0, need.desired_candidates - completed_now)
             for dossier in shortlisted[:slots]:
-                submission_result = self.submission.submit(
+                summary = self._submit_dossier(
                     need,
                     contract,
                     standard_version,
                     dossier,
                 )
-                if self.state.mark_submission(
-                    dossier.fingerprint,
-                    need.capability_id,
-                    str(submission_result["submission_id"]),
-                    str(submission_result["state"]),
-                    str(submission_result["target_path"]),
-                ):
-                    prepared.append(
-                        {
-                            "submission_id": submission_result["submission_id"],
-                            "state": submission_result["state"],
-                            "target_path": submission_result["target_path"],
-                        }
-                    )
+                if summary is not None:
+                    prepared.append(summary)
 
+            all_prepared = [*recovered, *prepared]
             self.state.update_scan(need.capability_id, success=True)
             result = {
                 "state": "COMPLETED",
@@ -465,7 +567,8 @@ class ResearchEngine:
                 "shortlisted": len(shortlisted),
                 "security_review": len(security_review),
                 "security_blocked": len(security_blocked),
-                "prepared_submissions": prepared,
+                "recovered_submissions": recovered,
+                "prepared_submissions": all_prepared,
                 "comparison": str(comparison_path),
             }
             self.state.set_json("last_cycle", {"at": utc_now(), **result})
@@ -479,7 +582,8 @@ class ResearchEngine:
                     "shortlisted": len(shortlisted),
                     "security_review": len(security_review),
                     "security_blocked": len(security_blocked),
-                    "prepared_submissions": len(prepared),
+                    "prepared_submissions": len(all_prepared),
+                    "recovered_submissions": len(recovered),
                 },
             )
             return result
