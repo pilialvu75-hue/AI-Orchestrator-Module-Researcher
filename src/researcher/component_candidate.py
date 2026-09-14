@@ -8,6 +8,7 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from .github_api import GitHubApi, GitHubResponse
+from .license_provenance import ImmutableLicenseEvidenceResolver
 from .models import Candidate
 from .pinned_admission import PinnedCandidateResolver, admit_pinned_candidate
 from .rate_limit import RateLimitManager
@@ -155,6 +156,7 @@ class ComponentCandidateResolver:
         self.api = api
         self.rate_limits = rate_limits
         self.base = PinnedCandidateResolver(api, rate_limits)
+        self.license_evidence = ImmutableLicenseEvidenceResolver(api, rate_limits)
 
     def _get(self, path: str) -> GitHubResponse:
         decision = self.rate_limits.decision()
@@ -296,6 +298,7 @@ class ComponentCandidateResolver:
             release_tag=release_tag,
             source_version=source_version,
         )
+        candidate = self.license_evidence.enrich(candidate)
         normalized = normalize_component_path(component_path)
         if normalized is None:
             return candidate
