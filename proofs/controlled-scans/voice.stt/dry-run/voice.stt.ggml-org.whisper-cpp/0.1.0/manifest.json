@@ -1,0 +1,79 @@
+{
+  "id": "voice.stt.ggml-org.whisper-cpp",
+  "name": "whisper.cpp",
+  "version": "0.1.0",
+  "kind": "integration_bundle",
+  "status": "discovered",
+  "description": "Researcher candidate adapter for voice.stt.v1 using whisper.cpp v1.9.4.",
+  "tags": ["voice.stt", "researcher-candidate", "offline", "whisper", "native"],
+  "capabilities": ["voice.stt"],
+  "platforms": ["android", "desktop", "raspberry_pi"],
+  "languages": ["c", "cpp"],
+  "frameworks": [],
+  "entry_paths": [],
+  "dependencies": [],
+  "provenance": {
+    "origin": "researcher",
+    "source_repository": "https://github.com/ggml-org/whisper.cpp",
+    "source_commit": "927cfce34f31707e17f2bff35c349632fb9e2c3a",
+    "source_tag": "v1.9.4",
+    "source_project_id": null,
+    "source_task_id": "96882d2eaeb17d62b721d1cb817d3a00388334458f5fd4288bf2978697ea472d",
+    "license": "MIT",
+    "license_file": "provenance/LICENSE",
+    "retrieved_at": null
+  },
+  "validation": {
+    "score": 0.93,
+    "tests_passed": false,
+    "test_report": null,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "security": {
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null,
+    "notes": "Manual controlled proof only; Full-Tree/SBOM/OSV admission and target/model benchmarks have not been executed for this proof."
+  },
+  "integration": {
+    "estimated_effort": "medium",
+    "adaptation_allowed": true,
+    "known_constraints": [
+      "voice.stt.v1 is currently a logical boundary only and no engine-specific API is implied",
+      "Whisper model size and quantization must be selected per device",
+      "real-time/partial-result behavior requires adapter-level validation"
+    ],
+    "adapter_notes": "Normalize native whisper.cpp transcription behavior behind the future detailed Library STT contract."
+  },
+  "connector": {
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0",
+    "provides": [
+      {
+        "capability_id": "voice.stt",
+        "contract_id": "voice.stt.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "integration_mode": "adapter",
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"type": "none", "path": null}
+  },
+  "payload": {
+    "type": "upstream_reference",
+    "path": null,
+    "sha256": null,
+    "upstream_repository": "https://github.com/ggml-org/whisper.cpp",
+    "upstream_commit": "927cfce34f31707e17f2bff35c349632fb9e2c3a"
+  },
+  "quality": {
+    "reuse_count": 0,
+    "successful_integrations": 0,
+    "failed_integrations": 0,
+    "last_used_at": null
+  },
+  "deprecation": {"reason": null, "replacement": null}
+}

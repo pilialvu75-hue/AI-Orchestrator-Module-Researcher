@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "capability_id": "voice.stt",
+  "contract_id": "voice.stt.v1",
+  "contract_version": "1.0",
+  "requested_targets": ["android", "desktop", "raspberry_pi"],
+  "decision": "PREFER_SHERPA_ONNX_KEEP_WHISPER_CPP_ALTERNATIVE",
+  "contract_detail_status": "logical_boundary_only",
+  "candidates": [
+    {
+      "repository": "k2-fsa/sherpa-onnx",
+      "version": "1.13.8",
+      "engine_profile": "multi-model streaming/offline ASR",
+      "lifecycle": "SCREENED",
+      "research_recommendation": "SHORTLIST",
+      "recommendation_score": 0.96,
+      "preferred": true,
+      "certification_eligible": false
+    },
+    {
+      "repository": "ggml-org/whisper.cpp",
+      "version": "1.9.4",
+      "engine_profile": "dedicated Whisper native ASR",
+      "lifecycle": "SCREENED",
+      "research_recommendation": "SHORTLIST",
+      "recommendation_score": 0.93,
+      "preferred": false,
+      "certification_eligible": false
+    }
+  ],
+  "platform_evidence": {
+    "android": {
+      "k2-fsa/sherpa-onnx": "explicit Android/Flutter support and release AAR",
+      "ggml-org/whisper.cpp": "Android explicitly listed with native example"
+    },
+    "desktop": {
+      "k2-fsa/sherpa-onnx": "Windows/macOS/Linux matrices",
+      "ggml-org/whisper.cpp": "Linux/Windows/macOS explicitly listed"
+    },
+    "raspberry_pi": {
+      "k2-fsa/sherpa-onnx": "Raspberry Pi explicitly listed plus Linux aarch64 artifact",
+      "ggml-org/whisper.cpp": "Raspberry Pi explicitly listed upstream"
+    }
+  },
+  "tradeoffs": {
+    "k2-fsa/sherpa-onnx": [
+      "streaming and non-streaming ASR",
+      "multiple model families and Dart/Flutter bindings",
+      "larger feature surface than STT alone"
+    ],
+    "ggml-org/whisper.cpp": [
+      "compact dedicated Whisper implementation",
+      "quantization and broad native acceleration",
+      "less model-family diversity and different streaming semantics"
+    ]
+  },
+  "safety": {
+    "untrusted_code_executed": false,
+    "full_tree_admission_run": false,
+    "sbom_osv_admission_run": false,
+    "library_write": false,
+    "cantiere_write": false
+  }
+}
