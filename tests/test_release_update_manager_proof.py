@@ -66,7 +66,8 @@ class ReleaseUpdateManagerProofTest(unittest.TestCase):
             self.assertEqual(manifest["platforms"], ["android", "desktop"])
             self.assertFalse(manifest["validation"]["tests_passed"])
             self.assertFalse(manifest["security"]["reviewed"])
-            self.assertIn("contract detail gap", " ".join(manifest["integration"]["known_constraints"]))
+            constraints = " ".join(manifest["integration"]["known_constraints"])
+            self.assertIn("contract detail gap", constraints)
             self.assertEqual(
                 manifest["connector"]["provides"][0]["contract_id"],
                 "release.update_manager.v1",
