@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "release.update_manager",
+    "contract_id": "release.update_manager.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop"],
+    "title": "Update/download manager"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "mantreshkhurana/app_updater",
+    "project": "app_updater",
+    "owner": "mantreshkhurana",
+    "upstream_url": "https://github.com/mantreshkhurana/app_updater",
+    "commit_sha": "e7c140749339fb1838bb83ca9c8e2a5c6a73bd1e",
+    "tree_sha": "f5c9cc1fe63168c6c507c7d100f639449d036791",
+    "source_version": "2.1.0",
+    "source_tag": "2.1.0",
+    "release_tag_verified": true,
+    "license": "MIT",
+    "language": "Dart/Flutter",
+    "platforms": ["android", "desktop"]
+  },
+  "fingerprint": "b0a640bf389be222528676eefe3f7c410735df586d0468104dae624e6edafea5",
+  "evidence": {
+    "functional": {
+      "component_role": "discovery_policy_store_handoff",
+      "version_check": true,
+      "release_notes": true,
+      "force_update_policy": true,
+      "skip_version_policy": true,
+      "check_frequency": true,
+      "github_releases": true,
+      "store_handoff": true,
+      "durable_artifact_transfer": false,
+      "cross_platform_installer": false
+    },
+    "platform": {
+      "android": true,
+      "linux": true,
+      "macos": true,
+      "windows": true,
+      "ios": true
+    },
+    "maintenance": {
+      "archived": false,
+      "version": "2.1.0",
+      "release_tag_verified": true,
+      "source_commit_verified_signature": false
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "full_tree_gate": "not_run_for_manual_proof",
+      "sbom": "not_generated_for_manual_proof",
+      "vulnerability_scan": "not_performed_for_manual_proof",
+      "certification_eligible": false
+    }
+  },
+  "integration_assessment": {
+    "contract_detail_gap": true,
+    "role": "discovery/policy/store-handoff subcomponent",
+    "estimated_effort": "medium",
+    "strengths": [
+      "Android plus Linux/macOS/Windows update discovery surface",
+      "force/skip/frequency policy primitives",
+      "release notes and GitHub Releases integration",
+      "store-oriented handoff for platform updates",
+      "permissive MIT license"
+    ],
+    "weaknesses": [
+      "not a durable background artifact transfer engine",
+      "not treated as a platform installer",
+      "release commit is unsigned",
+      "Library must define policy ownership and exact apply semantics"
+    ],
+    "adapter_model": "compose as update discovery/policy and store-handoff stage behind a Library-owned update orchestrator"
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST_AS_DISCOVERY_POLICY_COMPONENT",
+  "scores": {
+    "functional_fit": 0.74,
+    "contract_fit": 0.57,
+    "maintenance": 0.76,
+    "security": 0.62,
+    "license_fit": 1.0,
+    "platform_fit": 0.96,
+    "test_quality": 0.72,
+    "integration_cost": 0.72,
+    "documentation": 0.93,
+    "recommendation": 0.78
+  },
+  "recommendation": "Useful discovery/policy/store-handoff component, but not a complete release.update_manager implementation."
+}
