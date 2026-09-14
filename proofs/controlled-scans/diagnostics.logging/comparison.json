@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "capability_id": "diagnostics.logging",
+  "contract_id": "diagnostics.logging.v1",
+  "contract_version": "1.0",
+  "targets": ["android", "desktop", "web"],
+  "decision": {
+    "preferred": "dart-lang/core:pkgs/logging",
+    "alternative": "Frezyx/talker:packages/talker",
+    "screened_fallback": "SourceHorizon/logger",
+    "rationale": "package:logging is the preferred neutral event primitive; Talker is the independent richer diagnostics/history alternative. SourceHorizon/logger remains a technically valid fallback."
+  },
+  "candidates": [
+    {
+      "repository": "dart-lang/core",
+      "component_path": "pkgs/logging",
+      "version": "1.3.0",
+      "commit_sha": "8151b9f57fa3fee10421a19ce24470e143c0dee5",
+      "fingerprint": "5d62502040d91a67eeb88051386e4b2d58b7ca9fa42f8995352236e9653fbfd9",
+      "research_recommendation": "SHORTLIST",
+      "lifecycle": "SCREENED",
+      "certification_eligible": false,
+      "recommendation_score": 0.93,
+      "profile": "minimal-official-primitive"
+    },
+    {
+      "repository": "Frezyx/talker",
+      "component_path": "packages/talker",
+      "version": "5.1.20",
+      "commit_sha": "654391c1a81c6a0fa4a05d46562cc0d15241d964",
+      "fingerprint": "d681e868bcf1e669718d5d5be3d7d481b5cc214261a3626b2862d748c5c62f05",
+      "research_recommendation": "SHORTLIST",
+      "lifecycle": "SCREENED",
+      "certification_eligible": false,
+      "recommendation_score": 0.87,
+      "profile": "rich-diagnostics-history"
+    }
+  ],
+  "safety": {
+    "candidate_code_executed": false,
+    "full_tree_admission_executed": false,
+    "sbom_osv_admission_executed": false,
+    "library_write_performed": false,
+    "note": "Research shortlist evidence is not engine lifecycle shortlist or Library certification."
+  }
+}
