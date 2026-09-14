@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "ai.local_inference",
+    "contract_id": "ai.local_inference.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "raspberry_pi"],
+    "title": "Local LLM runtime integration bundle"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "ggml-org/llama.cpp",
+    "project": "llama.cpp",
+    "owner": "ggml-org",
+    "upstream_url": "https://github.com/ggml-org/llama.cpp",
+    "commit_sha": "5266f24da75dc449bd56cbed7addb9c8e4a6a73e",
+    "tree_sha": "0424752fbbc3bb01469ec830a30f2bc035497cd4",
+    "source_version": "0.4.0",
+    "source_tag": "v0.4.0",
+    "release_tag_verified": true,
+    "license": "MIT",
+    "language": "C/C++",
+    "platforms": ["android", "desktop", "raspberry_pi"]
+  },
+  "fingerprint": "7eda7763ca61d3f55303613226d47c1630897e956b9a7aaf9f9b4b440058a687",
+  "evidence": {
+    "functional": {
+      "local_llm_inference": true,
+      "model_ecosystem": "GGUF/ggml",
+      "quantized_models": true,
+      "token_streaming": true,
+      "cpu_inference": true,
+      "gpu_backends": ["CUDA", "HIP", "Metal", "Vulkan", "SYCL"],
+      "cpu_gpu_hybrid": true,
+      "server_api_available": true
+    },
+    "platform": {
+      "android": {
+        "supported": true,
+        "evidence": "upstream Android binding plus NDK arm64-v8a cross-build documentation"
+      },
+      "desktop": {
+        "supported": true,
+        "evidence": "native desktop builds and multiple CPU/GPU backends"
+      },
+      "raspberry_pi": {
+        "architecture_candidate": true,
+        "evidence": "Linux/ARM64 native architecture path",
+        "raspberry_pi_specific_tested": false
+      }
+    },
+    "maintenance": {
+      "archived": false,
+      "release": "v0.4.0",
+      "release_commit_verified_signature": true,
+      "release_date": "2026-09-04"
+    },
+    "quality": {
+      "tests_present": true,
+      "ci_present": true,
+      "release_workflow_present": true,
+      "android_release_build_signal": true
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "full_tree_gate": "not_run_for_manual_proof",
+      "sbom": "not_generated_for_manual_proof",
+      "vulnerability_scan": "not_performed_for_manual_proof",
+      "certification_eligible": false
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "Researcher manual proof does not execute upstream candidate code"
+    }
+  },
+  "integration_assessment": {
+    "adapter_model": "Library-owned ai.local_inference.v1 adapter over native llama.cpp model/session/tokenization/generation primitives",
+    "estimated_effort": "medium",
+    "strengths": [
+      "mature native local-inference runtime",
+      "GGUF and low-bit quantization ecosystem",
+      "explicit Android arm64 build/binding path",
+      "broad desktop CPU/GPU backend support",
+      "Linux ARM64 architecture path suitable for Raspberry Pi host validation",
+      "verified immutable release commit",
+      "permissive MIT license"
+    ],
+    "weaknesses": [
+      "Library contract is not detailed enough to define a final adapter API yet",
+      "Raspberry Pi hardware/OS/performance has not been independently tested in this proof",
+      "native ABI/backend packaging differs by target and requires platform-specific integration",
+      "model/runtime compatibility and memory limits vary substantially by device"
+    ]
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST",
+  "scores": {
+    "functional_fit": 0.98,
+    "contract_fit": 0.91,
+    "maintenance": 0.98,
+    "security": 0.72,
+    "license_fit": 1.0,
+    "platform_fit": 0.94,
+    "test_quality": 0.96,
+    "integration_cost": 0.78,
+    "performance": 0.92,
+    "footprint": 0.86,
+    "documentation": 0.97,
+    "recommendation": 0.95
+  },
+  "recommendation": "Preferred general-purpose ai.local_inference research candidate, subject to engine security admission and per-target host validation."
+}
