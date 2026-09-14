@@ -52,7 +52,7 @@ class _Rule:
     pattern: re.Pattern[str]
 
 
-_SECRET_NAME = (
+_SECRET_NAME = (  # nosec B105 - regex matches identifier names, not credential values
     r"(?:GITHUB_TOKEN|OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|PRIVATE_KEY)"
 )
 _EXFIL_SINK = (
