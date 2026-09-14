@@ -42,11 +42,12 @@ class ScopedLibraryWriteApiTest(unittest.TestCase):
             library,  # type: ignore[arg-type]
             "owner/library",
         )
+        upstream_path = "/repos/upstream/project/contents/LICENSE?ref=abc"
 
-        result = api.get("/repos/upstream/project/contents/LICENSE?ref=abc")
+        result = api.get(upstream_path)
 
         self.assertEqual(result.data, {"api": "source"})
-        self.assertEqual(source.calls, [("GET", "/repos/upstream/project/contents/LICENSE?ref=abc")])
+        self.assertEqual(source.calls, [("GET", upstream_path)])
         self.assertEqual(library.calls, [])
 
     def test_library_read_and_write_use_library_api(self) -> None:
