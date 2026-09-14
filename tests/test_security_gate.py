@@ -53,6 +53,49 @@ class SecurityGateTests(unittest.TestCase):
         self.assertFalse(result.certification_eligible)
         self.assertIn("secret_environment_access", {item.rule_id for item in result.findings})
 
+    def test_pubspec_overrides_requires_review(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="packages/talker/pubspec_overrides.yaml",
+                    content=(
+                        "dependency_overrides:\n"
+                        "  talker_logger:\n"
+                        "    path: ../talker_logger\n"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.REVIEW)
+        self.assertFalse(result.certification_eligible)
+        finding = next(
+            item
+            for item in result.findings
+            if item.rule_id == "pub_dependency_override_requires_review"
+        )
+        self.assertEqual(finding.path, "packages/talker/pubspec_overrides.yaml")
+
+    def test_dependency_overrides_inside_pubspec_requires_review(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="pubspec.yaml",
+                    content=(
+                        "name: demo\n"
+                        "dependencies:\n"
+                        "  safe: ^1.0.0\n"
+                        "dependency_overrides:\n"
+                        "  safe: 1.0.1\n"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.REVIEW)
+        self.assertIn(
+            "pub_dependency_override_requires_review",
+            {item.rule_id for item in result.findings},
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
