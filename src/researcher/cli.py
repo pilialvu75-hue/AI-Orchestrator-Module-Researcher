@@ -12,6 +12,33 @@ from .config import Config
 from .dashboard import serve
 from .observability import EventLevel
 from .scheduler import Scheduler
+from .source_preflight import run_source_preflight
+from .state import SQLiteStateStore
+
+
+def _add_pinned_source_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--repository", required=True, help="GitHub owner/name")
+    parser.add_argument(
+        "--commit",
+        required=True,
+        dest="commit_sha",
+        help="Exact 40-character Git commit SHA",
+    )
+    parser.add_argument(
+        "--component-path",
+        default=None,
+        help="Optional safe repository subdirectory for a monorepo component",
+    )
+    parser.add_argument(
+        "--release-tag",
+        default=None,
+        help="Optional tag; preflight verifies it resolves to the exact commit",
+    )
+    parser.add_argument(
+        "--source-version",
+        default=None,
+        help="Optional human-readable upstream version recorded as evidence",
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -29,33 +56,22 @@ def _parser() -> argparse.ArgumentParser:
     events = sub.add_parser("events", help="Print recent structured local events")
     events.add_argument("--limit", type=int, default=100)
     sub.add_parser("diagnostics-sync", help="Sync pending public diagnostics if enabled")
+
+    preflight = sub.add_parser(
+        "preflight-pinned",
+        help=(
+            "Verify one exact upstream source with static security, supply-chain "
+            "and OSV gates without accessing the Library"
+        ),
+    )
+    _add_pinned_source_arguments(preflight)
+
     pinned = sub.add_parser(
         "admit-pinned",
         help="Run V1 security admission for one exact pre-researched GitHub commit",
     )
     pinned.add_argument("--capability", required=True, dest="capability_id")
-    pinned.add_argument("--repository", required=True, help="GitHub owner/name")
-    pinned.add_argument(
-        "--commit",
-        required=True,
-        dest="commit_sha",
-        help="Exact 40-character Git commit SHA",
-    )
-    pinned.add_argument(
-        "--component-path",
-        default=None,
-        help="Optional safe repository subdirectory for a monorepo component",
-    )
-    pinned.add_argument(
-        "--release-tag",
-        default=None,
-        help="Optional tag; admission verifies it resolves to the exact commit",
-    )
-    pinned.add_argument(
-        "--source-version",
-        default=None,
-        help="Optional human-readable upstream version recorded as evidence",
-    )
+    _add_pinned_source_arguments(pinned)
     pinned.add_argument(
         "--rescan",
         action="store_true",
@@ -118,6 +134,22 @@ def _status(app: App) -> dict[str, object]:
 def main() -> None:
     args = _parser().parse_args()
     config = Config.from_env()
+
+    if args.command == "preflight-pinned":
+        config.data_dir.mkdir(parents=True, exist_ok=True)
+        state = SQLiteStateStore(config.data_dir / "researcher.db")
+        result = run_source_preflight(
+            config,
+            state,
+            args.repository,
+            args.commit_sha,
+            component_path=args.component_path,
+            release_tag=args.release_tag,
+            source_version=args.source_version,
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
+        return
+
     app = build_app(config)
 
     if args.command == "once":
