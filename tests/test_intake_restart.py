@@ -224,6 +224,34 @@ class IntakeRestartTests(unittest.TestCase):
             self.assertEqual(completed["state"], "SUBMITTED")
             self.assertEqual(completed["attempts"], 2)
 
+    def test_contaminated_existing_branch_is_rejected_before_any_file_write(self) -> None:
+        dossier = dossier_for("contaminated")
+        submission_id = (
+            "voice.stt.example.contaminated-" + dossier.fingerprint[:12]
+        )
+        branch = f"researcher/intake/{submission_id}"
+        api = FakeGitHubApi()
+        api.branches.add(branch)
+        api.files[(branch, "unrelated.txt")] = b"must stay untouched\n"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            client = GitHubIntakePrSubmissionClient(api, "library/repo", state, "main")
+            with self.assertRaisesRegex(RuntimeError, "unexpected changes"):
+                client.submit(need(), contract(), "1.0.0", dossier)
+
+            self.assertEqual(api.put_calls, 0)
+            self.assertEqual(api.pr_creations, 0)
+            self.assertEqual(len(api.files), 1)
+            self.assertEqual(
+                api.files[(branch, "unrelated.txt")],
+                b"must stay untouched\n",
+            )
+            row = state.submission_row(dossier.fingerprint)
+            self.assertIsNotNone(row)
+            assert row is not None
+            self.assertEqual(row["state"], "RETRY")
+
     def test_persisted_payload_is_immutable_across_retry(self) -> None:
         dossier = dossier_for("immutable")
         api = FakeGitHubApi()
