@@ -121,13 +121,39 @@ _PUB_OVERRIDE = re.compile(
     re.IGNORECASE,
 )
 _ENV_ACCESS = re.compile(
-    r"(?:os\.environ\b|Platform\.environment\b|process\.env\b|System\.getenv\b)",
+    r"(?:os\.environ\b|os\.getenv\b|Platform\.environment\b|process\.env\b|"
+    r"System\.getenv\b)",
     re.IGNORECASE,
 )
 _SECRET_ENV_HINT = re.compile(
     r"(?:SECRET|TOKEN|PASSWORD|PASSWD|PRIVATE[_-]?KEY|API[_-]?KEY|"
     r"CREDENTIAL|AWS_|GITHUB_|OPENAI_)",
     re.IGNORECASE,
+)
+_ENV_NAME_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(
+        r"Platform\.environment\s*(?:\[\s*['\"]([^'\"]+)['\"]\s*\]|"
+        r"\.containsKey\(\s*['\"]([^'\"]+)['\"]\s*\))",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"os\.environ\s*(?:\[\s*['\"]([^'\"]+)['\"]\s*\]|"
+        r"\.get\(\s*['\"]([^'\"]+)['\"])",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"os\.getenv\s*\(\s*['\"]([^'\"]+)['\"]",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"process\.env(?:\.([A-Za-z_][A-Za-z0-9_]*)|"
+        r"\[\s*['\"]([^'\"]+)['\"]\s*\])",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"System\.getenv\s*\(\s*['\"]([^'\"]+)['\"]",
+        re.IGNORECASE,
+    ),
 )
 _NETWORK_SINK = re.compile(_EXFIL_SINK, re.IGNORECASE)
 _ENCODING_PRIMITIVE = re.compile(
@@ -169,33 +195,50 @@ def _configuration_findings(artifact: SourceArtifact) -> list[SecurityFinding]:
     ]
 
 
+def _direct_environment_names(content: str) -> tuple[str, ...]:
+    names: list[str] = []
+    for pattern in _ENV_NAME_PATTERNS:
+        for match in pattern.finditer(content):
+            value = next((group for group in match.groups() if group), None)
+            if value:
+                names.append(value)
+    return tuple(names)
+
+
 def _environment_findings(artifact: SourceArtifact) -> list[SecurityFinding]:
-    """Review secret-like environment access, not benign platform/environment probes."""
+    """Review actual secret env keys or broad env access adjacent to outbound traffic."""
     findings: list[SecurityFinding] = []
-    secret_reported = False
-    exfil_reported = False
+    secret_name = next(
+        (
+            name
+            for name in _direct_environment_names(artifact.content)
+            if _SECRET_ENV_HINT.search(name)
+        ),
+        None,
+    )
+    if secret_name is not None:
+        findings.append(
+            SecurityFinding(
+                rule_id="secret_environment_access",
+                severity=SecuritySeverity.REVIEW,
+                path=artifact.path,
+                evidence=f"environment key resembles a secret: {secret_name[:120]}",
+            )
+        )
+
     for match in _ENV_ACCESS.finditer(artifact.content):
         nearby = _context(artifact.content, match)
-        if not secret_reported and _SECRET_ENV_HINT.search(nearby):
-            findings.append(
-                SecurityFinding(
-                    rule_id="secret_environment_access",
-                    severity=SecuritySeverity.REVIEW,
-                    path=artifact.path,
-                    evidence="environment access near secret-like identifier",
-                )
+        if _NETWORK_SINK.search(nearby) is None:
+            continue
+        findings.append(
+            SecurityFinding(
+                rule_id="environment_exfiltration_requires_review",
+                severity=SecuritySeverity.HIGH,
+                path=artifact.path,
+                evidence="environment access near outbound network operation",
             )
-            secret_reported = True
-        if not exfil_reported and _NETWORK_SINK.search(nearby):
-            findings.append(
-                SecurityFinding(
-                    rule_id="environment_exfiltration_requires_review",
-                    severity=SecuritySeverity.HIGH,
-                    path=artifact.path,
-                    evidence="environment access near outbound network operation",
-                )
-            )
-            exfil_reported = True
+        )
+        break
     return findings
 
 
