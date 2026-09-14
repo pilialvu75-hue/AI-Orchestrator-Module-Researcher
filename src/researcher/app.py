@@ -17,6 +17,7 @@ from .library import GitHubLibrarySource
 from .observability import EventLevel, EventLogger
 from .rate_limit import RateLimitManager
 from .restart_safe_engine import RestartSafeResearchEngine
+from .scoped_api import ScopedLibraryWriteApi
 from .scoring import CandidateScorer
 from .security_admission import GitHubFullTreeSecurityScanner
 from .state import SQLiteStateStore
@@ -67,22 +68,29 @@ def build_app(config: Config) -> App:
         config.diagnostics_enabled and config.diagnostics_github_token
     )
     events = EventLogger(state, diagnostics_enabled=diagnostics_opted_in)
-    api = GitHubApi(
+
+    source_api = GitHubApi(
         config.github_token,
         config.github_api_base,
         uploads_base_url=config.github_uploads_base,
     )
+    library_api = GitHubApi(
+        config.library_github_token or config.github_token,
+        config.github_api_base,
+        user_agent=f"AI-Orchestrator-Module-Researcher-Library/{__version__}",
+        uploads_base_url=config.github_uploads_base,
+    )
     library = GitHubLibrarySource(
-        api,
+        library_api,
         config.library_repository,
         config.library_ref,
         config.data_dir / "cache",
     )
     rate_limits = RateLimitManager(state)
-    discovery = GitHubDiscoveryProvider(api, rate_limits)
-    security_scanner = GitHubFullTreeSecurityScanner(api, rate_limits)
+    discovery = GitHubDiscoveryProvider(source_api, rate_limits)
+    security_scanner = GitHubFullTreeSecurityScanner(source_api, rate_limits)
     vulnerability_scanner = GitHubVulnerabilityAdmissionScanner(
-        api,
+        source_api,
         rate_limits,
         OsvVulnerabilityScanner(OsvClient()),
     )
@@ -137,8 +145,17 @@ def build_app(config: Config) -> App:
             raise RuntimeError(
                 "Fail-closed: DRY_RUN=false requires ALLOW_LIBRARY_WRITE=true"
             )
+        if not config.library_github_token:
+            raise RuntimeError(
+                "Fail-closed: real Library writes require LIBRARY_GITHUB_TOKEN"
+            )
+        submission_api = ScopedLibraryWriteApi(
+            source_api,
+            library_api,
+            config.library_repository,
+        )
         submission = GitHubIntakePrSubmissionClient(
-            api,
+            submission_api,
             config.library_repository,
             state,
             config.library_ref,
