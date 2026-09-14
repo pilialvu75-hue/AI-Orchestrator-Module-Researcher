@@ -50,3 +50,18 @@ jobs:
             --commit e7c140749339fb1838bb83ca9c8e2a5c6a73bd1e \
             --release-tag 2.1.0 \
             --source-version 2.1.0
+
+      - name: Preflight updat 1.4.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/preflight-updat
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository aguilaair/updat \
+            --commit 552d064303a39d28ec5ba82b6edad94d7209f5a0 \
+            --release-tag 1.4.0 \
+            --source-version 1.4.0
