@@ -131,7 +131,10 @@ def _configuration_findings(artifact: SourceArtifact) -> list[SecurityFinding]:
             rule_id="pub_dependency_override_requires_review",
             severity=SecuritySeverity.REVIEW,
             path=artifact.path,
-            evidence="dependency_overrides changes package resolution and may reference code outside the admitted component",
+            evidence=(
+                "dependency_overrides changes package resolution and may reference "
+                "code outside the admitted component"
+            ),
         )
     ]
 
