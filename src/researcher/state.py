@@ -114,11 +114,15 @@ class SQLiteStateStore:
                 );
                 CREATE INDEX IF NOT EXISTS idx_events_diagnostics
                     ON events(diagnostics_state, diagnostics_next_attempt_at, id);
-                CREATE INDEX IF NOT EXISTS idx_submissions_state
-                    ON submissions(state, updated_at);
                 """
             )
             self._migrate_submissions(conn)
+            conn.execute(
+                """
+                CREATE INDEX IF NOT EXISTS idx_submissions_state
+                ON submissions(state, updated_at)
+                """
+            )
 
     def set_json(self, key: str, value: Any) -> None:
         now = utc_now()
@@ -496,12 +500,7 @@ class SQLiteStateStore:
         state: str,
         target_path: str,
     ) -> bool:
-        """Compatibility acknowledgement used by the engine after submit() returns.
-
-        Live delivery reserves the row before touching GitHub. This method then
-        converts that durable in-flight row to its terminal state. Older dry-run
-        callers that have no reservation still get the original insert-once behavior.
-        """
+        """Compatibility acknowledgement used by the engine after submit() returns."""
 
         with self._connect() as conn:
             existing = conn.execute(
