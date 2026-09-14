@@ -19,32 +19,19 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Verify Library read credential
-        env:
-          LIBRARY_GITHUB_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
-        run: |
-          if [[ -z "${LIBRARY_GITHUB_TOKEN}" ]]; then
-            echo "Missing RESEARCHER_LIBRARY_TOKEN repository secret." >&2
-            exit 1
-          fi
-
       - name: Install Researcher
         run: python -m pip install --disable-pip-version-check .
 
-      - name: Run immutable candidate preflight
+      - name: Run immutable source preflight
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          LIBRARY_GITHUB_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
-          LIBRARY_REPOSITORY: pilialvu75-hue/AI-Orchestrator-Module-Library
-          LIBRARY_REF: main
           DRY_RUN: "true"
           ALLOW_LIBRARY_WRITE: "false"
           DIAGNOSTICS_ENABLED: "false"
           DATA_DIR: ${{ runner.temp }}/researcher-preflight
         run: |
           set -euo pipefail
-          researcher admit-pinned \
-            --capability diagnostics.logging \
+          researcher preflight-pinned \
             --repository dart-lang/core \
             --commit 8151b9f57fa3fee10421a19ce24470e143c0dee5 \
             --release-tag logging-v1.3.0 \
