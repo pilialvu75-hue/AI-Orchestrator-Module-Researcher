@@ -1,0 +1,76 @@
+name: Pinned Source Security Preflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Upstream GitHub repository in owner/name form"
+        required: true
+        type: string
+      commit:
+        description: "Exact 40-character upstream commit SHA"
+        required: true
+        type: string
+      component_path:
+        description: "Optional safe repository subdirectory for a monorepo component"
+        required: false
+        type: string
+      release_tag:
+        description: "Optional release tag; must resolve to the exact commit"
+        required: false
+        type: string
+      source_version:
+        description: "Optional human-readable source version"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-preflight-${{ inputs.repository }}-${{ inputs.commit }}-${{ inputs.component_path }}
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+
+      - name: Run immutable source preflight
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-preflight
+          UPSTREAM_REPOSITORY: ${{ inputs.repository }}
+          UPSTREAM_COMMIT: ${{ inputs.commit }}
+          COMPONENT_PATH: ${{ inputs.component_path }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_VERSION: ${{ inputs.source_version }}
+        run: |
+          set -euo pipefail
+          args=(
+            preflight-pinned
+            --repository "$UPSTREAM_REPOSITORY"
+            --commit "$UPSTREAM_COMMIT"
+          )
+          if [[ -n "$COMPONENT_PATH" ]]; then
+            args+=(--component-path "$COMPONENT_PATH")
+          fi
+          if [[ -n "$RELEASE_TAG" ]]; then
+            args+=(--release-tag "$RELEASE_TAG")
+          fi
+          if [[ -n "$SOURCE_VERSION" ]]; then
+            args+=(--source-version "$SOURCE_VERSION")
+          fi
+          researcher "${args[@]}"
