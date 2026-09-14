@@ -1,4 +1,4 @@
-name: Preflight platform.permissions candidates
+name: Preflight platform.permissions package scope
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -22,31 +22,17 @@ jobs:
       - name: Install Researcher
         run: python -m pip install --disable-pip-version-check .
 
-      - name: Preflight Baseflow permission_handler monorepo
+      - name: Preflight Baseflow permission_handler package scope
         env:
           GITHUB_TOKEN: ${{ github.token }}
           DRY_RUN: "true"
           ALLOW_LIBRARY_WRITE: "false"
           DIAGNOSTICS_ENABLED: "false"
-          DATA_DIR: ${{ runner.temp }}/researcher-permission-handler
+          DATA_DIR: ${{ runner.temp }}/researcher-permission-handler-component
         run: |
           set -euo pipefail
           researcher preflight-pinned \
             --repository Baseflow/flutter-permission-handler \
             --commit fc60b52afbd076d90f25ee950952cbd434e88595 \
-            --source-version 13.0.2
-
-      - name: Preflight device_permission
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          DRY_RUN: "true"
-          ALLOW_LIBRARY_WRITE: "false"
-          DIAGNOSTICS_ENABLED: "false"
-          DATA_DIR: ${{ runner.temp }}/researcher-device-permission
-        run: |
-          set -euo pipefail
-          researcher preflight-pinned \
-            --repository arcas0803/device_permission \
-            --commit a6d4bd4aabc7148fbbf5db50becd48e89c917557 \
-            --release-tag v1.0.0 \
-            --source-version 1.0.0
+            --source-version 13.0.2 \
+            --component-path permission_handler
