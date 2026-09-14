@@ -7,10 +7,10 @@ import threading
 
 from .app import App, build_app
 from .capability_status import status_payload
+from .component_candidate import resolve_and_admit_component_candidate
 from .config import Config
 from .dashboard import serve
 from .observability import EventLevel
-from .pinned_admission import resolve_and_admit_pinned_candidate
 from .scheduler import Scheduler
 
 
@@ -40,6 +40,11 @@ def _parser() -> argparse.ArgumentParser:
         required=True,
         dest="commit_sha",
         help="Exact 40-character Git commit SHA",
+    )
+    pinned.add_argument(
+        "--component-path",
+        default=None,
+        help="Optional safe repository subdirectory for a monorepo component",
     )
     pinned.add_argument(
         "--release-tag",
@@ -121,11 +126,12 @@ def main() -> None:
         print(json.dumps(result, indent=2, sort_keys=True))
         return
     if args.command == "admit-pinned":
-        result = resolve_and_admit_pinned_candidate(
+        result = resolve_and_admit_component_candidate(
             app,
             args.capability_id,
             args.repository,
             args.commit_sha,
+            component_path=args.component_path,
             release_tag=args.release_tag,
             source_version=args.source_version,
             rescan=args.rescan,

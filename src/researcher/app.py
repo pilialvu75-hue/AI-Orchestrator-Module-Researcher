@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from . import __version__
 from .comparison import ComparisonEngine
+from .component_security import ComponentAwareGitHubSecurityScanner
 from .config import Config
 from .diagnostics_bridge import GitHubDiagnosticsBridge
 from .discovery.github import GitHubDiscoveryProvider
@@ -19,7 +20,6 @@ from .rate_limit import RateLimitManager
 from .restart_safe_engine import RestartSafeResearchEngine
 from .scoped_api import ScopedLibraryWriteApi
 from .scoring import CandidateScorer
-from .security_admission import GitHubFullTreeSecurityScanner
 from .state import SQLiteStateStore
 from .submission import (
     DryRunSubmissionClient,
@@ -88,7 +88,7 @@ def build_app(config: Config) -> App:
     )
     rate_limits = RateLimitManager(state)
     discovery = GitHubDiscoveryProvider(source_api, rate_limits)
-    security_scanner = GitHubFullTreeSecurityScanner(source_api, rate_limits)
+    security_scanner = ComponentAwareGitHubSecurityScanner(source_api, rate_limits)
     vulnerability_scanner = GitHubVulnerabilityAdmissionScanner(
         source_api,
         rate_limits,
