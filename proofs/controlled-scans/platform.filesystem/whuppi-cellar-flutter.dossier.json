@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.filesystem",
+  "contract_id": "platform.filesystem.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "lifecycle": "SCREENED",
+  "candidate": {
+    "provider": "github",
+    "repository": "whuppi/cellar_flutter",
+    "component_path": null,
+    "name": "cellar_flutter",
+    "source_version": "1.0.0",
+    "release_tag": "v1.0.0",
+    "commit_sha": "ecf8d628c3942d73aee8c14e47b6560515e68827",
+    "tree_sha": "18416193c9819152847e6d31b28c6ba5f0633af5",
+    "license_spdx": "MIT"
+  },
+  "required_targets": ["android", "windows", "linux", "macos", "ios", "raspberry_pi"],
+  "evidence": {
+    "explicit_platforms": ["android", "windows", "linux", "macos", "ios", "web"],
+    "app_private_root_resolution": true,
+    "platform_neutral_key_grammar": true,
+    "tenant_scope_key_prefix": true,
+    "atomic_writes_documented": true,
+    "streaming_io": true,
+    "general_filesystem_interface": false,
+    "raspberry_pi_explicitly_verified_upstream": false
+  },
+  "maturity": {
+    "repository_created_at": "2026-07-07T14:37:52Z",
+    "github_stars_observed": 2,
+    "github_forks_observed": 0,
+    "assessment": "young_low_adoption"
+  },
+  "adaptation": {
+    "recommended_role": "emerging app-storage implementation or reference adapter for scoped atomic storage",
+    "required_work": [
+      "decide whether object-storage semantics satisfy the final platform.filesystem contract",
+      "validate Raspberry Pi as a Linux target on actual hardware/runtime",
+      "monitor maturity and maintenance before preferring over established primitives"
+    ]
+  },
+  "security": {
+    "source_verdict": "CLEAR",
+    "source_complete": true,
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "CLEAR",
+    "vulnerability_database_checked": true,
+    "queried_components": 48,
+    "vulnerability_hits": [],
+    "executed_untrusted_code": false,
+    "certification_eligible": false,
+    "certification_note": "A security-clear preflight is not Library certification; the need is staged and the contract is draft."
+  },
+  "decision": {
+    "shortlisted": true,
+    "preferred": false,
+    "submission_ready": false,
+    "certification_asserted": false
+  }
+}
