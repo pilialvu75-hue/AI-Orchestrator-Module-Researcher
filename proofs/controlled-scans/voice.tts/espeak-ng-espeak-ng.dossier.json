@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "voice.tts",
+    "contract_id": "voice.tts.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "raspberry_pi"],
+    "title": "Text-to-speech integration bundle"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "espeak-ng/espeak-ng",
+    "project": "espeak-ng",
+    "owner": "espeak-ng",
+    "upstream_url": "https://github.com/espeak-ng/espeak-ng",
+    "commit_sha": "4870adfa25b1a32b4361592f1be8a40337c58d6c",
+    "tree_sha": "45e4d63726666fbde7616168e8872762470c46d1",
+    "source_version": "1.52.0",
+    "source_tag": "1.52.0",
+    "release_tag_verified": true,
+    "license": "GPL-3.0-or-later",
+    "language": "C",
+    "platforms": ["android", "desktop", "raspberry_pi"]
+  },
+  "fingerprint": "e026ecc7b4576637a867b43532982e882999ec0750daacf1fccde1bd7865efeb",
+  "evidence": {
+    "functional": {
+      "local_text_to_speech": true,
+      "offline_runtime": true,
+      "shared_library_api": true,
+      "wav_output": true,
+      "ssml_partial": true,
+      "languages_over_100": true
+    },
+    "platform": {
+      "android": {
+        "supported": true,
+        "evidence": "upstream README lists Android and release 1.52.0 publishes a signed APK"
+      },
+      "desktop": {
+        "supported": true,
+        "evidence": "upstream README lists Linux, Windows and Mac support"
+      },
+      "raspberry_pi": {
+        "supported_upstream": false,
+        "architecture_candidate": true,
+        "evidence": "portable Linux/C runtime is a plausible Pi target, but this proof did not establish an explicit Raspberry Pi support statement"
+      },
+      "extended": {
+        "ios": false,
+        "macos": true,
+        "note": "macOS is documented upstream; iOS is not claimed by this proof"
+      }
+    },
+    "maintenance": {
+      "archived": false,
+      "release": "1.52.0",
+      "release_commit_verified_signature": true,
+      "release_date": "2024-12-12",
+      "note": "stable release is materially older than sherpa-onnx and should be rechecked during admission"
+    },
+    "quality": {
+      "compact_runtime": true,
+      "android_release_artifact": true,
+      "stable_c_api": true,
+      "naturalness": "formant synthesis; intentionally less natural than neural TTS"
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "full_tree_gate": "not_run_for_manual_proof",
+      "sbom": "not_generated_for_manual_proof",
+      "vulnerability_scan": "not_performed_for_manual_proof",
+      "certification_eligible": false
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "Researcher manual proof does not execute upstream candidate code"
+    }
+  },
+  "integration_assessment": {
+    "adapter_model": "Library-owned voice.tts.v1 adapter over eSpeak NG shared-library synthesis API",
+    "estimated_effort": "medium",
+    "strengths": [
+      "very small native footprint",
+      "explicit Android and desktop support",
+      "broad language coverage",
+      "stable C/shared-library API",
+      "verified immutable release commit",
+      "useful deterministic fallback when neural TTS is unavailable"
+    ],
+    "weaknesses": [
+      "GPL-3.0-or-later requires Library/distribution policy review",
+      "Raspberry Pi must be validated explicitly before target certification",
+      "speech naturalness is substantially below modern neural engines",
+      "stable release is older than the preferred candidate",
+      "voice.tts.v1 remains a logical boundary rather than a detailed adapter API"
+    ]
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST_WITH_CONSTRAINTS",
+  "scores": {
+    "functional_fit": 0.82,
+    "contract_fit": 0.86,
+    "maintenance": 0.72,
+    "security": 0.66,
+    "license_fit": 0.55,
+    "platform_fit": 0.78,
+    "test_quality": 0.78,
+    "integration_cost": 0.82,
+    "performance": 0.93,
+    "footprint": 0.98,
+    "documentation": 0.88,
+    "recommendation": 0.74
+  },
+  "recommendation": "Independent ultra-light voice.tts fallback candidate; retain for admission only with GPL distribution review and explicit Raspberry Pi validation."
+}
