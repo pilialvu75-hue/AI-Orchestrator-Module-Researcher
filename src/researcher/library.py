@@ -25,6 +25,15 @@ class LibrarySnapshot:
 
 
 class GitHubLibrarySource:
+    _NEED_SOURCES = (
+        ("catalog/needs.json", "needs.json", "authoritative"),
+        (
+            "catalog/needs.platform-extension.json",
+            "needs.platform-extension.json",
+            "staged-platform-extension",
+        ),
+    )
+
     def __init__(
         self,
         api: GitHubApi,
@@ -52,18 +61,19 @@ class GitHubLibrarySource:
                 raise ValueError(f"Invalid cached Library payload: {cache_name}")
             return cached, True
 
-    def load_needs(self) -> tuple[list[Need], dict[str, Any]]:
-        payload, cached = self._fetch_with_cache("catalog/needs.json", "needs.json")
+    @staticmethod
+    def _parse_need_items(payload: dict[str, Any], source_kind: str) -> tuple[list[Need], list[dict[str, Any]]]:
         if not isinstance(payload.get("schema_version"), int) or payload["schema_version"] < 1:
-            raise ValueError("Unsupported Library needs schema")
+            raise ValueError(f"Unsupported Library needs schema: {source_kind}")
         raw_items = payload.get("items")
         if not isinstance(raw_items, list):
-            raise ValueError("Library needs items must be an array")
+            raise ValueError(f"Library needs items must be an array: {source_kind}")
+
         needs: list[Need] = []
         status_items: list[dict[str, Any]] = []
         for raw in raw_items:
             if not isinstance(raw, dict):
-                raise ValueError("Invalid need entry")
+                raise ValueError(f"Invalid need entry: {source_kind}")
             targets = raw.get("targets")
             if not isinstance(targets, list) or not targets:
                 raise ValueError(f"Invalid targets for {raw.get('capability_id')}")
@@ -93,13 +103,49 @@ class GitHubLibrarySource:
                     "desired_candidates": desired_candidates,
                     "status": status,
                     "targets": list(normalized_targets),
+                    "source_kind": source_kind,
                 }
             )
-        return needs, {
-            "updated_at": payload.get("updated_at"),
-            "used_cache": cached,
+        return needs, status_items
+
+    def load_needs(self) -> tuple[list[Need], dict[str, Any]]:
+        merged_needs: list[Need] = []
+        merged_status: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        used_cache = False
+        updated_values: list[str] = []
+        loaded_sources: list[str] = []
+
+        for remote_path, cache_name, source_kind in self._NEED_SOURCES:
+            try:
+                payload, cached = self._fetch_with_cache(remote_path, cache_name)
+            except GitHubApiError:
+                if source_kind == "authoritative":
+                    raise
+                continue
+
+            parsed_needs, parsed_status = self._parse_need_items(payload, source_kind)
+            for need, status_item in zip(parsed_needs, parsed_status, strict=True):
+                if need.capability_id in seen:
+                    raise ValueError(
+                        f"Duplicate capability across Library need sources: {need.capability_id}"
+                    )
+                seen.add(need.capability_id)
+                merged_needs.append(need)
+                merged_status.append(status_item)
+
+            used_cache = used_cache or cached
+            loaded_sources.append(source_kind)
+            updated_at = payload.get("updated_at")
+            if isinstance(updated_at, str) and updated_at:
+                updated_values.append(updated_at)
+
+        return merged_needs, {
+            "updated_at": max(updated_values) if updated_values else None,
+            "used_cache": used_cache,
             "loaded_at": utc_now(),
-            "items": status_items,
+            "sources": loaded_sources,
+            "items": merged_status,
         }
 
     def load_contracts(self) -> tuple[dict[str, Contract], str]:
