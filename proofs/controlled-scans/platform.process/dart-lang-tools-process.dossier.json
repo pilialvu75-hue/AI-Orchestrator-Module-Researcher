@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.process",
+  "contract_id": "platform.process.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "lifecycle": "SCREENED",
+  "candidate": {
+    "provider": "github",
+    "repository": "dart-lang/tools",
+    "component_path": "pkgs/process",
+    "name": "process",
+    "source_version": "5.0.6",
+    "release_tag": "process-v5.0.6",
+    "commit_sha": "c7f7a63f656f268f8a88dde5bbceeb9367b90aaa",
+    "tree_sha": "4ee16cff73a334cbccd2060d14a1b1e885c93c3f",
+    "license_spdx": "BSD-3-Clause"
+  },
+  "required_targets": ["windows", "linux", "macos", "raspberry_pi"],
+  "evidence": {
+    "argv_command_list": true,
+    "working_directory": true,
+    "environment_map": true,
+    "stdout_stderr_streaming": true,
+    "exit_status": true,
+    "process_termination": true,
+    "mockable_process_manager": true,
+    "optional_shell_execution": true,
+    "raspberry_pi_explicitly_verified_upstream": false
+  },
+  "adaptation": {
+    "recommended_role": "narrow default implementation behind the platform.process adapter",
+    "required_policy_work": [
+      "executable allowlist or denial policy",
+      "shell execution policy",
+      "parent environment inheritance policy",
+      "process-tree cancellation semantics",
+      "runtime and output limits",
+      "platform privilege restrictions"
+    ]
+  },
+  "security": {
+    "source_verdict": "REVIEW",
+    "source_complete": true,
+    "findings": [
+      {
+        "rule_id": "process_execution",
+        "severity": "HIGH",
+        "path": "pkgs/process/lib/src/interface/local_process_manager.dart",
+        "evidence": "Process.start("
+      }
+    ],
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "NOT_ANALYZED",
+    "vulnerability_database_checked": false,
+    "executed_untrusted_code": false,
+    "certification_eligible": false,
+    "review_note": "The process primitive is expected functionality but remains security-review-required."
+  },
+  "decision": {
+    "shortlisted": true,
+    "preferred": true,
+    "submission_ready": false,
+    "certification_asserted": false
+  }
+}
