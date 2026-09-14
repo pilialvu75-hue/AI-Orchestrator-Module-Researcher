@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from .github_api import GitHubApi, GitHubResponse
 
 
@@ -35,15 +37,15 @@ class ScopedLibraryWriteApi(GitHubApi):
             return self._library_api.get(path)
         return self._source_api.get(path)
 
-    def post(self, path: str, payload: dict[str, object]) -> GitHubResponse:
+    def post(self, path: str, payload: dict[str, Any]) -> GitHubResponse:
         self._require_library_path(path)
         return self._library_api.post(path, payload)
 
-    def put(self, path: str, payload: dict[str, object]) -> GitHubResponse:
+    def put(self, path: str, payload: dict[str, Any]) -> GitHubResponse:
         self._require_library_path(path)
         return self._library_api.put(path, payload)
 
-    def patch(self, path: str, payload: dict[str, object]) -> GitHubResponse:
+    def patch(self, path: str, payload: dict[str, Any]) -> GitHubResponse:
         self._require_library_path(path)
         return self._library_api.patch(path, payload)
 
