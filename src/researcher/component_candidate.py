@@ -45,8 +45,13 @@ _TEST_DIRS = {"test", "tests", "spec", "specs"}
 def normalize_component_path(value: str | None) -> str | None:
     if value is None or not value.strip():
         return None
-    raw = value.strip().strip("/")
-    if not raw or raw.startswith((".", "~")) or "\\" in raw or "\x00" in raw:
+    raw = value.strip()
+    if (
+        raw.startswith(("/", ".", "~"))
+        or raw.endswith("/")
+        or "\\" in raw
+        or "\x00" in raw
+    ):
         raise ValueError("component path must be a safe relative repository path")
     segments = raw.split("/")
     if any(
@@ -82,7 +87,11 @@ def _decode_contents(response: GitHubResponse) -> str | None:
         return None
 
 
-def _component_metadata(path: str, filename: str, content: str) -> tuple[str | None, str | None]:
+def _component_metadata(
+    path: str,
+    filename: str,
+    content: str,
+) -> tuple[str | None, str | None]:
     lower = filename.lower()
     if lower == "pubspec.yaml":
         name: str | None = None
@@ -119,7 +128,11 @@ def _component_metadata(path: str, filename: str, content: str) -> tuple[str | N
             payload = tomllib.loads(content)
         except tomllib.TOMLDecodeError:
             return None, None
-        section = payload.get("package") if lower == "cargo.toml" else payload.get("project")
+        section = (
+            payload.get("package")
+            if lower == "cargo.toml"
+            else payload.get("project")
+        )
         if not isinstance(section, dict):
             return None, None
         raw_name = section.get("name")
@@ -172,7 +185,11 @@ class ComponentCandidateResolver:
         tree_response = self._get(
             f"/repos/{repository_path}/git/trees/{tree_sha}?recursive=1"
         )
-        tree_data = tree_response.data if isinstance(tree_response.data, dict) else {}
+        tree_data = (
+            tree_response.data
+            if isinstance(tree_response.data, dict)
+            else {}
+        )
         if str(tree_data.get("sha") or "") != tree_sha:
             raise RuntimeError("component tree provenance mismatch")
         if bool(tree_data.get("truncated", False)):
@@ -216,7 +233,12 @@ class ComponentCandidateResolver:
 
         name = _basename(component_path)
         description: str | None = None
-        preferred = ["pubspec.yaml", "package.json", "cargo.toml", "pyproject.toml"]
+        preferred = [
+            "pubspec.yaml",
+            "package.json",
+            "cargo.toml",
+            "pyproject.toml",
+        ]
         by_name = {_basename(path.lower()): path for path in manifests}
         for manifest_name in preferred:
             manifest_path = by_name.get(manifest_name)
