@@ -1,0 +1,88 @@
+name: Ops pinned admission network.http
+
+on:
+  push:
+    branches:
+      - ops-admission-network-http
+
+permissions:
+  contents: read
+
+jobs:
+  admission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run read-only admission gates
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from researcher.github_api import GitHubApi
+          from researcher.pinned_admission import PinnedCandidateResolver
+          from researcher.rate_limit import RateLimitManager
+          from researcher.security_admission import GitHubFullTreeSecurityScanner
+          from researcher.state import SQLiteStateStore
+          from researcher.vulnerability import OsvClient, OsvVulnerabilityScanner
+          from researcher.vulnerability_admission import GitHubVulnerabilityAdmissionScanner
+
+          state = SQLiteStateStore(Path('admission-state.db'))
+          api = GitHubApi(os.environ.get('GITHUB_TOKEN'))
+          rate_limits = RateLimitManager(state)
+          candidate = PinnedCandidateResolver(api, rate_limits).resolve(
+              'dart-lang/http',
+              '907782f5a792e7a5b0ed92f118c0ad91f3ecde51',
+              source_version='1.6.0',
+          )
+          security = GitHubFullTreeSecurityScanner(api, rate_limits).scan(candidate)
+          vulnerability = GitHubVulnerabilityAdmissionScanner(
+              api,
+              rate_limits,
+              OsvVulnerabilityScanner(OsvClient()),
+          ).scan(candidate, security)
+          admitted = security.admission_eligible and vulnerability.admission_eligible
+          supply = security.supply_chain
+          summary = {
+              'repository': candidate.repository,
+              'commit_sha': candidate.commit_sha,
+              'security_verdict': security.verdict.value,
+              'security_complete': security.complete,
+              'security_admission_eligible': security.admission_eligible,
+              'supply_chain_verdict': None if supply is None else supply.verdict.value,
+              'sbom_complete': vulnerability.sbom.complete,
+              'sbom_components': len(vulnerability.sbom.components),
+              'sbom_unresolved': list(vulnerability.sbom.unresolved),
+              'vulnerability_verdict': vulnerability.report.verdict.value,
+              'vulnerability_database_checked': vulnerability.report.database_checked,
+              'known_vulnerabilities': len(vulnerability.report.hits),
+              'vulnerability_admission_eligible': vulnerability.admission_eligible,
+              'admitted': admitted,
+              'executed_untrusted_code': False,
+          }
+          full = {
+              'summary': summary,
+              'security': security.to_dict(),
+              'vulnerability': vulnerability.to_dict(),
+          }
+          Path('admission-result.json').write_text(
+              json.dumps(full, indent=2, sort_keys=True),
+              encoding='utf-8',
+          )
+          print('ADMISSION_SUMMARY=' + json.dumps(summary, sort_keys=True))
+          PY
+      - name: Upload admission evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: network-http-admission
+          path: admission-result.json
+          if-no-files-found: error
+          retention-days: 7
