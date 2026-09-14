@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "capability_id": "release.update_manager",
+  "contract_id": "release.update_manager.v1",
+  "contract_version": "1.0",
+  "contract_detail_gap": true,
+  "requested_targets": ["android", "desktop"],
+  "decision": "COMPOSE_OR_SPLIT_CONTRACT",
+  "candidates": [
+    {
+      "repository": "781flyingdutchman/background_downloader",
+      "version": "9.6.1",
+      "role": "artifact_transfer",
+      "lifecycle": "SCREENED",
+      "research_recommendation": "SHORTLIST_AS_TRANSFER_COMPONENT",
+      "recommendation_score": 0.84,
+      "certification_eligible": false
+    },
+    {
+      "repository": "mantreshkhurana/app_updater",
+      "version": "2.1.0",
+      "role": "discovery_policy_store_handoff",
+      "lifecycle": "SCREENED",
+      "research_recommendation": "SHORTLIST_AS_DISCOVERY_POLICY_COMPONENT",
+      "recommendation_score": 0.78,
+      "certification_eligible": false
+    }
+  ],
+  "screened_references": [
+    {
+      "repository": "aguilaair/updat",
+      "version": "1.4.0",
+      "role": "desktop_direct_apply_reference",
+      "reason": "Useful desktop self-update flow, but not selected as a complete Android plus desktop candidate."
+    }
+  ],
+  "coverage": {
+    "release_discovery": ["mantreshkhurana/app_updater", "aguilaair/updat"],
+    "update_policy": ["mantreshkhurana/app_updater"],
+    "durable_transfer": ["781flyingdutchman/background_downloader"],
+    "desktop_direct_apply_reference": ["aguilaair/updat"],
+    "android_store_handoff": ["mantreshkhurana/app_updater"],
+    "single_candidate_complete_android_and_desktop": []
+  },
+  "safety": {
+    "untrusted_code_executed": false,
+    "full_tree_admission_run": false,
+    "sbom_osv_admission_run": false,
+    "library_write": false,
+    "cantiere_write": false
+  }
+}

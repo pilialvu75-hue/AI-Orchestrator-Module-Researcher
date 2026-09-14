@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "capability_id": "release.update_manager",
+  "candidate": {
+    "repository": "aguilaair/updat",
+    "source_version": "1.4.0",
+    "source_tag": "1.4.0",
+    "commit_sha": "552d064303a39d28ec5ba82b6edad94d7209f5a0",
+    "tree_sha": "1bbb2c382f6271cd3901ce5d47e15d4e71376618",
+    "fingerprint": "c5ceead62f5f6235f67bb4113f9b8ce55c212858ffb4b85af82220e3446413ed"
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "REFERENCE_DESKTOP_APPLY_FLOW",
+  "reason": "The upstream project documents itself as a Flutter-based desktop updater. It can check a version, download a platform binary and open the installer, making it useful evidence for direct desktop apply flows. The Library need requires Android plus desktop, so this proof does not treat it as a complete cross-target candidate.",
+  "security": {
+    "reviewed": false,
+    "untrusted_code_executed": false,
+    "certification_eligible": false
+  }
+}

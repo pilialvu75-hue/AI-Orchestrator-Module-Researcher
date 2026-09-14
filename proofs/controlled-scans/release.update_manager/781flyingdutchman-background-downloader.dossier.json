@@ -1,0 +1,94 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "release.update_manager",
+    "contract_id": "release.update_manager.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop"],
+    "title": "Update/download manager"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "781flyingdutchman/background_downloader",
+    "project": "background_downloader",
+    "owner": "781flyingdutchman",
+    "upstream_url": "https://github.com/781flyingdutchman/background_downloader",
+    "commit_sha": "e3b88c4bdbc11fedca2a5c89bc3bba8d1bd539d1",
+    "tree_sha": "6f795119953a5a7ef99a07d01169ae6f87c3fec6",
+    "source_version": "9.6.1",
+    "source_tag": null,
+    "release_tag_verified": false,
+    "license": "BSD-3-Clause",
+    "language": "Dart/Flutter",
+    "platforms": ["android", "desktop"]
+  },
+  "fingerprint": "4236e9d5ac0cdb9c86b62b04fcad16168a5a99591027c8474e119389f9e219af",
+  "evidence": {
+    "functional": {
+      "component_role": "artifact_transfer",
+      "background_download": true,
+      "persistent_task_tracking": true,
+      "restart_reconciliation": true,
+      "pause_resume_cancel": true,
+      "offline_hold_and_resume": true,
+      "progress_reporting": true,
+      "cross_platform_installation": false,
+      "release_discovery_policy": false
+    },
+    "platform": {
+      "android": true,
+      "linux": true,
+      "macos": true,
+      "windows": true,
+      "ios": true
+    },
+    "maintenance": {
+      "archived": false,
+      "version": "9.6.1",
+      "source_commit_verified_signature": true,
+      "source_commit_message": "Release 9.6.1"
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "full_tree_gate": "not_run_for_manual_proof",
+      "sbom": "not_generated_for_manual_proof",
+      "vulnerability_scan": "not_performed_for_manual_proof",
+      "certification_eligible": false
+    }
+  },
+  "integration_assessment": {
+    "contract_detail_gap": true,
+    "role": "transfer subcomponent",
+    "estimated_effort": "medium",
+    "strengths": [
+      "persistent transfer database and startup reconciliation",
+      "background transfer support",
+      "pause/resume/cancel and retry-oriented lifecycle",
+      "Android plus desktop platform coverage",
+      "signed immutable source commit",
+      "permissive license"
+    ],
+    "weaknesses": [
+      "does not define update discovery/force/skip policy",
+      "does not provide a cross-platform application installer/apply phase",
+      "Flutter and Dart version floors must be checked against each host branch"
+    ],
+    "adapter_model": "compose as the durable artifact-transfer stage behind a Library-owned update orchestrator"
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST_AS_TRANSFER_COMPONENT",
+  "scores": {
+    "functional_fit": 0.76,
+    "contract_fit": 0.58,
+    "maintenance": 0.95,
+    "security": 0.68,
+    "license_fit": 0.98,
+    "platform_fit": 0.98,
+    "test_quality": 0.9,
+    "integration_cost": 0.76,
+    "documentation": 0.95,
+    "recommendation": 0.84
+  },
+  "recommendation": "Strong durable transfer component, but not a complete release.update_manager implementation."
+}

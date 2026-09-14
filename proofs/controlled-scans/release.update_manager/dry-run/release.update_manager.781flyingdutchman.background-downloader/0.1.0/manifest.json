@@ -1,0 +1,79 @@
+{
+  "id": "release.update_manager.781flyingdutchman.background-downloader",
+  "name": "background_downloader",
+  "version": "0.1.0",
+  "kind": "integration_bundle",
+  "status": "discovered",
+  "description": "Researcher partial candidate for the durable artifact-transfer stage of release.update_manager.v1 using background_downloader 9.6.1.",
+  "tags": ["release.update_manager", "researcher-candidate", "partial-component", "download", "flutter"],
+  "capabilities": ["release.update_manager"],
+  "platforms": ["android", "desktop"],
+  "languages": ["dart"],
+  "frameworks": ["flutter"],
+  "entry_paths": [],
+  "dependencies": [],
+  "provenance": {
+    "origin": "researcher",
+    "source_repository": "https://github.com/781flyingdutchman/background_downloader",
+    "source_commit": "e3b88c4bdbc11fedca2a5c89bc3bba8d1bd539d1",
+    "source_tag": null,
+    "source_project_id": null,
+    "source_task_id": "4236e9d5ac0cdb9c86b62b04fcad16168a5a99591027c8474e119389f9e219af",
+    "license": "BSD-3-Clause",
+    "license_file": "provenance/LICENSE",
+    "retrieved_at": null
+  },
+  "validation": {
+    "score": 0.84,
+    "tests_passed": false,
+    "test_report": null,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "security": {
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null,
+    "notes": "Manual controlled proof only; Full-Tree/SBOM/OSV admission has not been executed for this proof."
+  },
+  "integration": {
+    "estimated_effort": "medium",
+    "adaptation_allowed": true,
+    "known_constraints": [
+      "contract detail gap: this candidate covers durable artifact transfer, not the entire update lifecycle",
+      "cross-platform application installation/apply semantics are not provided by this candidate",
+      "Library must own update policy, integrity gates and platform apply orchestration"
+    ],
+    "adapter_notes": "Use behind a Library-owned release.update_manager orchestrator as the persistent transfer stage only."
+  },
+  "connector": {
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0",
+    "provides": [
+      {
+        "capability_id": "release.update_manager",
+        "contract_id": "release.update_manager.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "integration_mode": "adapter",
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"type": "none", "path": null}
+  },
+  "payload": {
+    "type": "upstream_reference",
+    "path": null,
+    "sha256": null,
+    "upstream_repository": "https://github.com/781flyingdutchman/background_downloader",
+    "upstream_commit": "e3b88c4bdbc11fedca2a5c89bc3bba8d1bd539d1"
+  },
+  "quality": {
+    "reuse_count": 0,
+    "successful_integrations": 0,
+    "failed_integrations": 0,
+    "last_used_at": null
+  },
+  "deprecation": {"reason": null, "replacement": null}
+}
