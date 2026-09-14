@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "capability_id": "ai.local_inference",
+  "contract_id": "ai.local_inference.v1",
+  "contract_version": "1.0",
+  "requested_targets": ["android", "desktop", "raspberry_pi"],
+  "decision": "PREFER_LLAMA_CPP_KEEP_ONNXRUNTIME_GENAI_ALTERNATIVE",
+  "contract_detail_status": "logical_boundary_only",
+  "candidates": [
+    {
+      "repository": "ggml-org/llama.cpp",
+      "version": "0.4.0",
+      "model_ecosystem": "GGUF/ggml",
+      "lifecycle": "SCREENED",
+      "research_recommendation": "SHORTLIST",
+      "recommendation_score": 0.95,
+      "preferred": true,
+      "certification_eligible": false
+    },
+    {
+      "repository": "microsoft/onnxruntime-genai",
+      "version": "0.15.2",
+      "model_ecosystem": "ONNX Runtime GenAI",
+      "lifecycle": "SCREENED",
+      "research_recommendation": "SHORTLIST",
+      "recommendation_score": 0.88,
+      "preferred": false,
+      "certification_eligible": false
+    }
+  ],
+  "platform_evidence": {
+    "android": {
+      "ggml-org/llama.cpp": "documented Android binding and arm64-v8a NDK cross-build",
+      "microsoft/onnxruntime-genai": "documented Android NDK/Java binding and arm64-v8a AAR build"
+    },
+    "desktop": {
+      "ggml-org/llama.cpp": "native desktop builds with broad CPU/GPU backends",
+      "microsoft/onnxruntime-genai": "support matrix lists Linux, Windows and macOS"
+    },
+    "raspberry_pi": {
+      "ggml-org/llama.cpp": "Linux ARM64 architecture candidate; Raspberry-Pi-specific validation not asserted",
+      "microsoft/onnxruntime-genai": "v0.15.2 Linux ARM64 artifact; Raspberry-Pi-specific validation not asserted"
+    }
+  },
+  "tradeoffs": {
+    "ggml-org/llama.cpp": [
+      "best fit for GGUF models and aggressive quantization",
+      "broad native backend selection",
+      "platform-specific native packaging remains integration work"
+    ],
+    "microsoft/onnxruntime-genai": [
+      "independent ONNX model/runtime ecosystem",
+      "multiple execution providers and explicit ARM64 packaging",
+      "ONNX conversion/model packaging and telemetry policy add integration concerns"
+    ]
+  },
+  "safety": {
+    "untrusted_code_executed": false,
+    "full_tree_admission_run": false,
+    "sbom_osv_admission_run": false,
+    "raspberry_pi_specific_runtime_test_run": false,
+    "library_write": false,
+    "cantiere_write": false
+  }
+}

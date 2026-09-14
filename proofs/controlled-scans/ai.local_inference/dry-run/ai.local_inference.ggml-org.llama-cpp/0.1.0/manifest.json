@@ -1,0 +1,79 @@
+{
+  "id": "ai.local_inference.ggml-org.llama-cpp",
+  "name": "llama.cpp",
+  "version": "0.1.0",
+  "kind": "integration_bundle",
+  "status": "discovered",
+  "description": "Researcher candidate adapter for ai.local_inference.v1 using llama.cpp v0.4.0.",
+  "tags": ["ai.local_inference", "researcher-candidate", "llm", "gguf", "native"],
+  "capabilities": ["ai.local_inference"],
+  "platforms": ["android", "desktop", "raspberry_pi"],
+  "languages": ["c", "cpp"],
+  "frameworks": [],
+  "entry_paths": [],
+  "dependencies": [],
+  "provenance": {
+    "origin": "researcher",
+    "source_repository": "https://github.com/ggml-org/llama.cpp",
+    "source_commit": "5266f24da75dc449bd56cbed7addb9c8e4a6a73e",
+    "source_tag": "v0.4.0",
+    "source_project_id": null,
+    "source_task_id": "7eda7763ca61d3f55303613226d47c1630897e956b9a7aaf9f9b4b440058a687",
+    "license": "MIT",
+    "license_file": "provenance/LICENSE",
+    "retrieved_at": null
+  },
+  "validation": {
+    "score": 0.95,
+    "tests_passed": false,
+    "test_report": null,
+    "validated_at": null,
+    "validated_on": []
+  },
+  "security": {
+    "reviewed": false,
+    "reviewed_at": null,
+    "sbom": null,
+    "notes": "Manual controlled proof only; Full-Tree/SBOM/OSV admission and Raspberry Pi host validation have not been executed for this proof."
+  },
+  "integration": {
+    "estimated_effort": "medium",
+    "adaptation_allowed": true,
+    "known_constraints": [
+      "ai.local_inference.v1 is currently a logical boundary only and no provider-specific API is implied",
+      "Raspberry Pi support is architecture-level Linux ARM64 evidence and still requires exact host validation",
+      "native ABI and acceleration backend packaging differ by target"
+    ],
+    "adapter_notes": "Normalize native llama.cpp runtime behavior behind the future detailed Library inference contract."
+  },
+  "connector": {
+    "standard": "ai-orchestrator-lego",
+    "standard_version": "1.0.0",
+    "provides": [
+      {
+        "capability_id": "ai.local_inference",
+        "contract_id": "ai.local_inference.v1",
+        "contract_version": "1.0"
+      }
+    ],
+    "requires": [],
+    "integration_mode": "adapter",
+    "adapters": [],
+    "configuration_schema": null,
+    "healthcheck": {"type": "none", "path": null}
+  },
+  "payload": {
+    "type": "upstream_reference",
+    "path": null,
+    "sha256": null,
+    "upstream_repository": "https://github.com/ggml-org/llama.cpp",
+    "upstream_commit": "5266f24da75dc449bd56cbed7addb9c8e4a6a73e"
+  },
+  "quality": {
+    "reuse_count": 0,
+    "successful_integrations": 0,
+    "failed_integrations": 0,
+    "last_used_at": null
+  },
+  "deprecation": {"reason": null, "replacement": null}
+}

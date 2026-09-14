@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "ai.local_inference",
+    "contract_id": "ai.local_inference.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "raspberry_pi"],
+    "title": "Local LLM runtime integration bundle"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "microsoft/onnxruntime-genai",
+    "project": "onnxruntime-genai",
+    "owner": "microsoft",
+    "upstream_url": "https://github.com/microsoft/onnxruntime-genai",
+    "commit_sha": "ed5f4e87147731e5b07810f9f5c90103b3603cdf",
+    "tree_sha": "4c5472aadb10ad78c5bec541cab3ed25459213c8",
+    "source_version": "0.15.2",
+    "source_tag": "v0.15.2",
+    "release_tag_verified": true,
+    "license": "MIT",
+    "language": "C++ with Python/C#/C/Java bindings",
+    "platforms": ["android", "desktop", "raspberry_pi"]
+  },
+  "fingerprint": "212e4b8c07f231cbe1d983b80d7a577c06ff3614ff1c75841014da65535fe819",
+  "evidence": {
+    "functional": {
+      "local_llm_inference": true,
+      "model_ecosystem": "ONNX Runtime GenAI",
+      "generation_loop": true,
+      "search_and_sampling": true,
+      "kv_cache_management": true,
+      "constrained_decoding": true,
+      "cpu_inference": true,
+      "execution_providers": ["CUDA", "DirectML", "OpenVINO", "QNN", "WebGPU"]
+    },
+    "platform": {
+      "android": {
+        "supported": true,
+        "evidence": "upstream Android NDK/Java build instructions and arm64-v8a AAR path"
+      },
+      "desktop": {
+        "supported": true,
+        "evidence": "upstream support matrix lists Linux, Windows and macOS"
+      },
+      "raspberry_pi": {
+        "architecture_candidate": true,
+        "evidence": "v0.15.2 publishes a Linux ARM64 native archive",
+        "raspberry_pi_specific_tested": false
+      }
+    },
+    "maintenance": {
+      "archived": false,
+      "release": "v0.15.2",
+      "release_commit_verified_signature": false,
+      "release_date": "2026-08-07"
+    },
+    "quality": {
+      "tests_present": true,
+      "ci_present": true,
+      "android_build_and_test_path_present": true,
+      "linux_arm64_release_artifact_present": true
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "full_tree_gate": "not_run_for_manual_proof",
+      "sbom": "not_generated_for_manual_proof",
+      "vulnerability_scan": "not_performed_for_manual_proof",
+      "certification_eligible": false,
+      "telemetry_note": "upstream documents optional telemetry permissions; consuming builds must apply project privacy policy and disable telemetry where required"
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "Researcher manual proof does not execute upstream candidate code"
+    }
+  },
+  "integration_assessment": {
+    "adapter_model": "Library-owned ai.local_inference.v1 adapter over ONNX Runtime GenAI model/tokenizer/generator primitives",
+    "estimated_effort": "medium",
+    "strengths": [
+      "independent ONNX-based runtime ecosystem",
+      "explicit Android and ARM64 support",
+      "published Linux ARM64 release artifact",
+      "broad desktop OS support",
+      "multiple execution providers and hardware acceleration paths",
+      "generative loop and KV-cache management provided by runtime",
+      "permissive MIT license"
+    ],
+    "weaknesses": [
+      "ONNX model packaging/conversion differs materially from GGUF",
+      "Library contract is not detailed enough to define a final adapter API yet",
+      "Raspberry Pi board/OS/model compatibility has not been independently tested in this proof",
+      "release commit is unsigned",
+      "telemetry/privacy configuration must be reviewed for product policy"
+    ]
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST",
+  "scores": {
+    "functional_fit": 0.94,
+    "contract_fit": 0.88,
+    "maintenance": 0.94,
+    "security": 0.67,
+    "license_fit": 1.0,
+    "platform_fit": 0.93,
+    "test_quality": 0.92,
+    "integration_cost": 0.69,
+    "performance": 0.88,
+    "footprint": 0.73,
+    "documentation": 0.94,
+    "recommendation": 0.88
+  },
+  "recommendation": "Strong independent ONNX-based ai.local_inference alternative, subject to engine security admission and per-target host/model validation."
+}
