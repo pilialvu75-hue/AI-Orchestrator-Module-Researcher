@@ -112,6 +112,29 @@ _RULES: tuple[_Rule, ...] = (
     ),
 )
 
+_PUB_OVERRIDE = re.compile(
+    r"(?m)^\s*dependency_overrides\s*:\s*(?:#.*)?$",
+    re.IGNORECASE,
+)
+
+
+def _configuration_findings(artifact: SourceArtifact) -> list[SecurityFinding]:
+    """Detect resolution controls that can pull code outside the admitted source scope."""
+    name = artifact.path.rsplit("/", 1)[-1].lower()
+    if name not in {"pubspec.yaml", "pubspec_overrides.yaml"}:
+        return []
+    match = _PUB_OVERRIDE.search(artifact.content)
+    if match is None:
+        return []
+    return [
+        SecurityFinding(
+            rule_id="pub_dependency_override_requires_review",
+            severity=SecuritySeverity.REVIEW,
+            path=artifact.path,
+            evidence="dependency_overrides changes package resolution and may reference code outside the admitted component",
+        )
+    ]
+
 
 def scan_source_artifacts(artifacts: Iterable[SourceArtifact]) -> SecurityGateResult:
     """Static pre-screen only. Never executes candidate content."""
@@ -125,6 +148,7 @@ def scan_source_artifacts(artifacts: Iterable[SourceArtifact]) -> SecurityGateRe
 
     findings: list[SecurityFinding] = []
     for artifact in material:
+        findings.extend(_configuration_findings(artifact))
         for rule in _RULES:
             match = rule.pattern.search(artifact.content)
             if match is None:
