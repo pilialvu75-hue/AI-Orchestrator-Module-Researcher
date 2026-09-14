@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "capability": {
+    "capability_id": "voice.stt",
+    "contract_id": "voice.stt.v1",
+    "contract_version": "1.0",
+    "targets": ["android", "desktop", "raspberry_pi"],
+    "title": "Speech-to-text integration bundle"
+  },
+  "candidate": {
+    "provider": "github",
+    "repository": "ggml-org/whisper.cpp",
+    "project": "whisper.cpp",
+    "owner": "ggml-org",
+    "upstream_url": "https://github.com/ggml-org/whisper.cpp",
+    "commit_sha": "927cfce34f31707e17f2bff35c349632fb9e2c3a",
+    "tree_sha": "db312954f67ca741569ac3a889a9ff329e51d952",
+    "source_version": "1.9.4",
+    "source_tag": "v1.9.4",
+    "release_tag_verified": true,
+    "license": "MIT",
+    "language": "C/C++",
+    "platforms": ["android", "desktop", "raspberry_pi"]
+  },
+  "fingerprint": "96882d2eaeb17d62b721d1cb817d3a00388334458f5fd4288bf2978697ea472d",
+  "evidence": {
+    "functional": {
+      "local_speech_to_text": true,
+      "model_family": "Whisper",
+      "quantization": true,
+      "vad_available": true,
+      "cpu_inference": true,
+      "gpu_acceleration": true,
+      "c_api": true
+    },
+    "platform": {
+      "android": {
+        "supported": true,
+        "evidence": "Android explicitly listed with native example"
+      },
+      "desktop": {
+        "supported": true,
+        "evidence": "Linux, Windows and macOS explicitly listed"
+      },
+      "raspberry_pi": {
+        "supported_upstream": true,
+        "evidence": "Raspberry Pi explicitly listed in upstream supported platforms"
+      }
+    },
+    "maintenance": {
+      "archived": false,
+      "release": "v1.9.4",
+      "release_commit_verified_signature": true,
+      "release_date": "2026-09-11"
+    },
+    "quality": {
+      "ci_present": true,
+      "tests_present": true,
+      "android_example_present": true,
+      "raspberry_pi_support_documented": true
+    },
+    "security": {
+      "reviewed": false,
+      "untrusted_code_executed": false,
+      "full_tree_gate": "not_run_for_manual_proof",
+      "sbom": "not_generated_for_manual_proof",
+      "vulnerability_scan": "not_performed_for_manual_proof",
+      "certification_eligible": false
+    },
+    "benchmark": {
+      "status": "PLANNED_NOT_EXECUTED",
+      "reason": "Researcher manual proof does not execute upstream candidate code"
+    }
+  },
+  "integration_assessment": {
+    "adapter_model": "Library-owned voice.stt.v1 adapter over whisper.cpp native transcription primitives",
+    "estimated_effort": "medium",
+    "strengths": [
+      "explicit Android, desktop and Raspberry Pi support",
+      "dedicated compact Whisper ASR runtime",
+      "quantized models reduce memory/disk requirements",
+      "CPU-only and multiple accelerator paths",
+      "simple C API for embedding",
+      "verified immutable release commit",
+      "permissive MIT license"
+    ],
+    "weaknesses": [
+      "single primary ASR model family compared with sherpa-onnx multi-model support",
+      "voice.stt.v1 is not detailed enough to define the final adapter API",
+      "real-time streaming semantics differ from dedicated streaming ASR engines",
+      "exact model latency/accuracy/memory must be measured per target device"
+    ]
+  },
+  "lifecycle": "SCREENED",
+  "research_recommendation": "SHORTLIST",
+  "scores": {
+    "functional_fit": 0.94,
+    "contract_fit": 0.9,
+    "maintenance": 0.98,
+    "security": 0.72,
+    "license_fit": 1.0,
+    "platform_fit": 1.0,
+    "test_quality": 0.94,
+    "integration_cost": 0.83,
+    "performance": 0.9,
+    "footprint": 0.88,
+    "documentation": 0.97,
+    "recommendation": 0.93
+  },
+  "recommendation": "Strong dedicated Whisper-based voice.stt alternative, subject to security admission and target/model benchmarks."
+}
