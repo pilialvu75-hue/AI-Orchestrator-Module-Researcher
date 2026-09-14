@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.process",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_authority": "staged_not_authoritative",
+  "contract_id": "platform.process.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "observed_at": "2026-09-15",
+  "workflow_run_id": 34908582023,
+  "workflow_head_sha": "fd12882650aef3eab0adeea5de577cd2fb0a14b3",
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "dart-lang/tools:pkgs/process",
+      "repository": "dart-lang/tools",
+      "component_path": "pkgs/process",
+      "commit_sha": "c7f7a63f656f268f8a88dde5bbceeb9367b90aaa",
+      "tree_sha": "4ee16cff73a334cbccd2060d14a1b1e885c93c3f",
+      "source_version": "5.0.6",
+      "release_tag": "process-v5.0.6",
+      "license": "BSD-3-Clause",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "REVIEW",
+        "complete": true,
+        "admission_eligible": false,
+        "total_entries": 26,
+        "blobs_seen": 18,
+        "relevant_blobs": 13,
+        "scanned_files": 13,
+        "scanned_bytes": 54148,
+        "findings": [
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "pkgs/process/lib/src/interface/local_process_manager.dart",
+            "evidence": "Process.start("
+          }
+        ],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "runtime_dependencies": [
+          "file:>=6.0.0 <8.0.0",
+          "path:^1.8.0",
+          "platform:^3.0.0"
+        ],
+        "lockfiles_present": []
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "earlier_security_or_supply_chain_gate_not_clear"
+        ],
+        "reason": "The visible process-execution primitive requires security review before the vulnerability stage."
+      }
+    },
+    {
+      "candidate": "tekartik/process_run.dart:packages/process_run",
+      "repository": "tekartik/process_run.dart",
+      "component_path": "packages/process_run",
+      "commit_sha": "45a0244d202d06d39793fe986f06f514516cc41d",
+      "tree_sha": "79eef7b48c687aa6549e507d29a699a76706a26a",
+      "source_version": "1.3.6",
+      "release_tag": null,
+      "license": "BSD-2-Clause",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "REVIEW",
+        "complete": true,
+        "admission_eligible": false,
+        "total_entries": 259,
+        "blobs_seen": 229,
+        "relevant_blobs": 215,
+        "scanned_files": 215,
+        "scanned_bytes": 469950,
+        "findings": [
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "packages/process_run/lib/src/shell.dart",
+            "evidence": "Process.start("
+          }
+        ],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "runtime_dependencies": [
+          "path:>=1.8.0 <3.0.0",
+          "collection:>=1.17.0 <3.0.0",
+          "string_scanner:>=1.1.0 <3.0.0",
+          "yaml:>=3.0.0 <5.0.0",
+          "meta:>=1.14.0 <3.0.0",
+          "args:>=2.5.0 <4.0.0",
+          "pub_semver:>=2.0.0 <4.0.0",
+          "synchronized:>=3.4.1 <5.0.0"
+        ],
+        "lockfiles_present": []
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "earlier_security_or_supply_chain_gate_not_clear"
+        ],
+        "reason": "The visible process-execution primitive requires security review before the vulnerability stage."
+      }
+    }
+  ],
+  "decision": {
+    "preferred_architecture_candidate": "dart-lang/tools:pkgs/process",
+    "alternative_candidate": "tekartik/process_run.dart:packages/process_run",
+    "security_policy": "Expected dangerous capability does not imply security CLEAR. Intentional process execution remains REVIEW until explicit security and sandbox policy review.",
+    "contract_gaps": [
+      "executable allowlist or denial policy",
+      "whether shell invocation is permitted",
+      "parent environment inheritance policy",
+      "process-tree cancellation and kill semantics",
+      "runtime/output/resource limits",
+      "privilege boundary and platform-specific restrictions"
+    ],
+    "next_action": "Retain both candidates. Do not submit or certify from this staged need. Define the process security policy and validate behavior in an isolated sandbox before authoritative Library intake."
+  }
+}

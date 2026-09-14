@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.process",
+  "contract_id": "platform.process.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "lifecycle": "SCREENED",
+  "candidate": {
+    "provider": "github",
+    "repository": "tekartik/process_run.dart",
+    "component_path": "packages/process_run",
+    "name": "process_run",
+    "source_version": "1.3.6",
+    "release_tag": null,
+    "commit_sha": "45a0244d202d06d39793fe986f06f514516cc41d",
+    "tree_sha": "79eef7b48c687aa6549e507d29a699a76706a26a",
+    "license_spdx": "BSD-2-Clause"
+  },
+  "required_targets": ["windows", "linux", "macos", "raspberry_pi"],
+  "evidence": {
+    "portable_shell_helpers": true,
+    "executable_discovery": true,
+    "environment_helpers": true,
+    "visible_process_execution": true,
+    "macos_flutter_sandbox_implications_documented": true,
+    "release_tag_verified": false,
+    "source_version_verified_from_pinned_manifest": true,
+    "raspberry_pi_explicitly_verified_upstream": false
+  },
+  "adaptation": {
+    "recommended_role": "richer independent alternative or tooling-oriented adapter reference",
+    "required_policy_work": [
+      "restrict shell-oriented surface to the final Library contract",
+      "define executable and shell policy",
+      "define environment inheritance policy",
+      "define cancellation/process-tree semantics",
+      "validate platform sandbox and privilege behavior",
+      "validate Raspberry Pi on target hardware/runtime"
+    ]
+  },
+  "security": {
+    "source_verdict": "REVIEW",
+    "source_complete": true,
+    "findings": [
+      {
+        "rule_id": "process_execution",
+        "severity": "HIGH",
+        "path": "packages/process_run/lib/src/shell.dart",
+        "evidence": "Process.start("
+      }
+    ],
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "NOT_ANALYZED",
+    "vulnerability_database_checked": false,
+    "executed_untrusted_code": false,
+    "certification_eligible": false,
+    "review_note": "The process primitive is expected functionality but remains security-review-required."
+  },
+  "decision": {
+    "shortlisted": true,
+    "preferred": false,
+    "submission_ready": false,
+    "certification_asserted": false
+  }
+}
