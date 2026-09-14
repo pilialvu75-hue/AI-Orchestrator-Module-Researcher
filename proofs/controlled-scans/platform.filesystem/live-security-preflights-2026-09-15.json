@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.filesystem",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_authority": "staged_not_authoritative",
+  "contract_id": "platform.filesystem.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "observed_at": "2026-09-15",
+  "workflow_run_id": 34907823203,
+  "workflow_head_sha": "12d26d3359191fa1276193dffd7a62f110fa2576",
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "dart-lang/tools:pkgs/file",
+      "repository": "dart-lang/tools",
+      "component_path": "pkgs/file",
+      "commit_sha": "3f7a46606496f826c2f60586ab71c2b7a9bfbf15",
+      "tree_sha": "a04c8712391c842e411cc6c6a4ba7fbc42d81f17",
+      "source_version": "7.0.1",
+      "release_tag": "file-v7.0.1",
+      "license": "BSD-3-Clause",
+      "state": "REVIEW",
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 74,
+        "blobs_seen": 63,
+        "relevant_blobs": 59,
+        "scanned_files": 59,
+        "scanned_bytes": 327003,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "runtime_dependencies": [
+          "meta:^1.9.1",
+          "path:^1.8.3"
+        ],
+        "lockfiles_present": []
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:meta:^1.9.1",
+          "version_unresolved:Pub:path:^1.8.3"
+        ],
+        "reason": "The package release has no immutable lockfile for these runtime ranges. Researcher does not invent a package-manager resolution."
+      }
+    },
+    {
+      "candidate": "whuppi/cellar_flutter",
+      "repository": "whuppi/cellar_flutter",
+      "component_path": null,
+      "commit_sha": "ecf8d628c3942d73aee8c14e47b6560515e68827",
+      "tree_sha": "18416193c9819152847e6d31b28c6ba5f0633af5",
+      "source_version": "1.0.0",
+      "release_tag": "v1.0.0",
+      "license": "MIT",
+      "state": "CLEAR",
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 303,
+        "blobs_seen": 216,
+        "relevant_blobs": 111,
+        "scanned_files": 111,
+        "scanned_bytes": 260840,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "runtime_dependencies": [
+          "cellar:^1.0.0",
+          "path_provider:^2.1.5"
+        ],
+        "lockfiles_present": [
+          "pubspec.lock"
+        ],
+        "notices": [
+          "example/pubspec.lock excluded from primary package dependency scope",
+          "example/pubspec.yaml excluded from primary package dependency scope",
+          "example/test_support/pubspec.yaml excluded from primary package dependency scope"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "CLEAR",
+        "database": "OSV",
+        "database_checked": true,
+        "admission_eligible": true,
+        "queried_components": 48,
+        "hits": [],
+        "unresolved": [],
+        "sbom_scope_note": "Admission SBOM conservatively includes locked packages. Pub lockfiles identify direct dev roots but do not encode a complete dependency graph proving which transitive packages are dev-only; Researcher therefore does not prune transitive packages by assumption."
+      }
+    }
+  ],
+  "decision": {
+    "preferred_architecture_candidate": "dart-lang/tools:pkgs/file",
+    "preferred_reason": "Mature, generic and mockable filesystem boundary with a chroot-style scoped view; best base primitive for keeping dart:io behind an adapter.",
+    "preferred_limitations": [
+      "Overall admission remains REVIEW until runtime dependency versions are resolved immutably for OSV.",
+      "ChrootFileSystem explicitly documents itself as an abstraction rather than an OS security boundary.",
+      "The upstream evidence does not establish the draft contract's atomic-replace semantics; an adapter or additional primitive is required."
+    ],
+    "alternative_candidate": "whuppi/cellar_flutter",
+    "alternative_reason": "Closer functional match for app-private roots, platform-neutral keys, tenant scoping and documented atomic writes, with a fully CLEAR live source/vulnerability preflight.",
+    "alternative_limitations": [
+      "Very young ecosystem project with low adoption, so maturity risk is materially higher.",
+      "Its abstraction is object storage rather than a general FileSystem API.",
+      "Raspberry Pi is not explicitly certified upstream; Linux compatibility is evidence only, not a Pi certification."
+    ],
+    "next_action": "Retain both as independent candidates. Do not submit or certify from the staged need. Resolve the draft contract detail gap and obtain deterministic vulnerability evidence for package:file before any authoritative Library intake."
+  }
+}

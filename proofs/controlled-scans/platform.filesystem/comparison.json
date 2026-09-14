@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.filesystem",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_status": "needed",
+  "priority": "high",
+  "desired_candidates": 2,
+  "required_targets": [
+    "android",
+    "windows",
+    "linux",
+    "macos",
+    "ios",
+    "raspberry_pi"
+  ],
+  "contract": {
+    "contract_id": "platform.filesystem.v1",
+    "contract_version": "1.0",
+    "status": "draft",
+    "known_boundary": "Sandbox-aware filesystem boundary with scoped read/write, atomic replace and path capability semantics.",
+    "detail_gap": "No method-level API or certification criteria are authoritative yet; this proof does not invent them."
+  },
+  "candidates": [
+    {
+      "id": "dart-lang/tools:pkgs/file",
+      "version": "7.0.1",
+      "license": "BSD-3-Clause",
+      "independence": "Dart project package; independent from cellar_flutter.",
+      "fit": {
+        "generic_filesystem_abstraction": "strong",
+        "scoped_paths": "strong via ChrootFileSystem abstraction",
+        "mockability": "strong via MemoryFileSystem/custom FileSystem",
+        "atomic_replace": "not established by reviewed upstream evidence",
+        "app_private_root_resolution": "requires adapter/helper",
+        "platform_notes": "LocalFileSystem depends on dart:io. Required native targets are technically compatible with Dart/Flutter; Raspberry Pi remains Linux feasibility rather than explicit upstream Pi certification."
+      },
+      "security_preflight": "REVIEW",
+      "source_security": "CLEAR",
+      "supply_chain": "CLEAR",
+      "vulnerability_gate": "REVIEW",
+      "maturity": "high relative to the alternative",
+      "role": "preferred architecture primitive pending deterministic dependency resolution"
+    },
+    {
+      "id": "whuppi/cellar_flutter",
+      "version": "1.0.0",
+      "license": "MIT",
+      "independence": "Independent whuppi implementation.",
+      "fit": {
+        "generic_filesystem_abstraction": "partial; object-storage facade rather than FileSystem",
+        "scoped_paths": "strong through validated key grammar and keyPrefix tenant scoping",
+        "mockability": "custom/in-memory backend documented",
+        "atomic_replace": "strong; upstream documents atomic writes on every supported platform",
+        "app_private_root_resolution": "strong through path_provider",
+        "platform_notes": "Explicit iOS, Android, macOS, Windows, Linux and web support. Raspberry Pi remains Linux feasibility rather than explicit upstream Pi certification."
+      },
+      "security_preflight": "CLEAR",
+      "source_security": "CLEAR",
+      "supply_chain": "CLEAR",
+      "vulnerability_gate": "CLEAR",
+      "maturity": "low; repository created in 2026 and adoption is still small",
+      "role": "strong emerging alternative, not preferred over the mature primitive yet"
+    }
+  ],
+  "decision": {
+    "preferred": "dart-lang/tools:pkgs/file",
+    "alternative": "whuppi/cellar_flutter",
+    "submission_ready": false,
+    "certification_asserted": false,
+    "reason": "The need is staged and the Library contract remains draft. The mature candidate also lacks deterministic vulnerability resolution at this release."
+  }
+}

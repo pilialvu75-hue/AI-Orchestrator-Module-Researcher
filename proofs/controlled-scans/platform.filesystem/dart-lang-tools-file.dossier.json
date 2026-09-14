@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.filesystem",
+  "contract_id": "platform.filesystem.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "lifecycle": "SCREENED",
+  "candidate": {
+    "provider": "github",
+    "repository": "dart-lang/tools",
+    "component_path": "pkgs/file",
+    "name": "file",
+    "source_version": "7.0.1",
+    "release_tag": "file-v7.0.1",
+    "commit_sha": "3f7a46606496f826c2f60586ab71c2b7a9bfbf15",
+    "tree_sha": "a04c8712391c842e411cc6c6a4ba7fbc42d81f17",
+    "license_spdx": "BSD-3-Clause"
+  },
+  "required_targets": ["android", "windows", "linux", "macos", "ios", "raspberry_pi"],
+  "evidence": {
+    "generic_filesystem_boundary": true,
+    "custom_filesystem_implementations": true,
+    "memory_filesystem": true,
+    "multiple_filesystems": true,
+    "local_filesystem_requires_dart_io": true,
+    "chroot_scoped_view": true,
+    "chroot_is_os_security_boundary": false,
+    "atomic_replace_semantics_verified": false,
+    "raspberry_pi_explicitly_verified_upstream": false
+  },
+  "adaptation": {
+    "recommended_role": "mature base filesystem primitive behind the platform.filesystem adapter",
+    "required_work": [
+      "resolve app-private roots outside package:file",
+      "define Library path-capability semantics once the draft contract is detailed",
+      "provide or verify atomic-replace behavior",
+      "validate Raspberry Pi on target hardware/runtime"
+    ]
+  },
+  "security": {
+    "source_verdict": "CLEAR",
+    "source_complete": true,
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "REVIEW",
+    "vulnerability_database_checked": false,
+    "unresolved": [
+      "version_unresolved:Pub:meta:^1.9.1",
+      "version_unresolved:Pub:path:^1.8.3"
+    ],
+    "executed_untrusted_code": false,
+    "certification_eligible": false
+  },
+  "decision": {
+    "shortlisted": true,
+    "preferred": true,
+    "submission_ready": false,
+    "certification_asserted": false
+  }
+}
