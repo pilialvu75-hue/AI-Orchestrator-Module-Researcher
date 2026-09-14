@@ -3,6 +3,9 @@
 Version 1 is intentionally deterministic and does **not** require an LLM or other AI service.
 AI-assisted research is deferred to V2.
 
+**V1.0.0 verification status: MET.** The concrete code, CI and real Library transport evidence
+used for this decision is recorded in `docs/V1_RELEASE_EVIDENCE.md`.
+
 V1 is ready to seed the Module Library when all of the following are true:
 
 1. It reads `catalog/needs.json`, `contracts/index.json` and the LEGO standard from the Library.
