@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.connectivity",
+  "evidence_date": "2026-09-15",
+  "workflow_runs": [
+    35020928984
+  ],
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [],
+  "deferred": [
+    {
+      "repository": "fluttercommunity/plus_plugins",
+      "component_path": "packages/connectivity_plus/connectivity_plus",
+      "commit_sha": "13e170479b3c66c890fa401f5fdb3af141faf67a",
+      "source_version": "7.3.1",
+      "state": "DEFERRED_API_TIMEOUT",
+      "counted_for_discovery": true,
+      "security_admitted": false,
+      "reason": "Pinned preflight failed before security resolution because GitHub API returned HTTP 504 Gateway Time-out."
+    },
+    {
+      "repository": "OutdatedGuy/internet_connection_checker_plus",
+      "commit_sha": "b7e38f42cc1b30ebad0dd927fe771c0b3b34142b",
+      "source_version": "3.1.2",
+      "state": "DEFERRED_API_TIMEOUT",
+      "counted_for_discovery": true,
+      "security_admitted": false,
+      "reason": "Pinned preflight failed before security resolution because GitHub API returned HTTP 504 Gateway Time-out."
+    }
+  ]
+}

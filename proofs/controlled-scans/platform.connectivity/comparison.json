@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.connectivity",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_status": "needed",
+  "need_authority": "staged_not_authoritative",
+  "priority": "high",
+  "desired_candidates_per_target": 2,
+  "required_targets": [
+    "android",
+    "windows",
+    "linux",
+    "macos",
+    "ios",
+    "web",
+    "raspberry_pi"
+  ],
+  "contract": {
+    "contract_id": "platform.connectivity.v1",
+    "version": "1.0",
+    "status": "draft",
+    "detail_gap": true,
+    "known_boundary": "Normalize local network availability/type, actual Internet reachability, online/offline transitions, and platform-specific metering/cost signals.",
+    "non_equivalence_policy": "An available Wi-Fi/mobile/Ethernet transport does not prove Internet reachability; network transport and reachability are separate signals and metering/cost is a third platform-specific dimension."
+  },
+  "candidates": [
+    {
+      "id": "fluttercommunity/connectivity_plus",
+      "source_version": "7.3.1",
+      "commit_sha": "13e170479b3c66c890fa401f5fdb3af141faf67a",
+      "component_path": "packages/connectivity_plus/connectivity_plus",
+      "release_tag": "connectivity_plus-v7.3.1",
+      "role": "network_transport_state_and_change_source",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "web",
+        "raspberry_pi"
+      ],
+      "event_source": "platform network transport state; Linux backend uses NetworkManager via package:nm",
+      "security_state": "DEFERRED_API_TIMEOUT",
+      "security_admitted": false,
+      "runtime_validated": false,
+      "raspberry_pi_evidence": "Raspberry Pi OS Bookworm uses NetworkManager by default; connectivity_plus Linux uses package:nm. This is discovery evidence only, not Raspberry Pi runtime validation."
+    },
+    {
+      "id": "OutdatedGuy/internet_connection_checker_plus",
+      "source_version": "3.1.2",
+      "commit_sha": "b7e38f42cc1b30ebad0dd927fe771c0b3b34142b",
+      "release_tag": "v3.1.2",
+      "role": "internet_reachability_and_transition_source",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "web",
+        "raspberry_pi"
+      ],
+      "event_source": "pure-Dart HTTP reachability checks plus InternetStatus stream",
+      "security_state": "DEFERRED_API_TIMEOUT",
+      "security_admitted": false,
+      "runtime_validated": false,
+      "raspberry_pi_evidence": "Pure Dart reachability logic depends on HTTP rather than NetworkManager; Linux/Raspberry Pi compatibility remains research evidence until runtime tested."
+    }
+  ],
+  "per_target_candidate_coverage": {
+    "android": 2,
+    "windows": 2,
+    "linux": 2,
+    "macos": 2,
+    "ios": 2,
+    "web": 2,
+    "raspberry_pi": 2
+  },
+  "per_target_candidate_depth_satisfied": true,
+  "independent_signal_pairs": {
+    "android": [
+      "fluttercommunity/connectivity_plus",
+      "OutdatedGuy/internet_connection_checker_plus"
+    ],
+    "windows": [
+      "fluttercommunity/connectivity_plus",
+      "OutdatedGuy/internet_connection_checker_plus"
+    ],
+    "linux": [
+      "fluttercommunity/connectivity_plus",
+      "OutdatedGuy/internet_connection_checker_plus"
+    ],
+    "macos": [
+      "fluttercommunity/connectivity_plus",
+      "OutdatedGuy/internet_connection_checker_plus"
+    ],
+    "ios": [
+      "fluttercommunity/connectivity_plus",
+      "OutdatedGuy/internet_connection_checker_plus"
+    ],
+    "web": [
+      "fluttercommunity/connectivity_plus",
+      "OutdatedGuy/internet_connection_checker_plus"
+    ],
+    "raspberry_pi": [
+      "fluttercommunity/connectivity_plus",
+      "OutdatedGuy/internet_connection_checker_plus"
+    ]
+  },
+  "research_findings": {
+    "transport_vs_internet": "connectivity_plus reports available network transports and change events, while internet_connection_checker_plus independently verifies external Internet reachability and emits online/offline status changes. They intentionally answer different questions.",
+    "raspberry_pi": "connectivity_plus has a NetworkManager-based Linux path that aligns with Raspberry Pi OS Bookworm defaults; internet_connection_checker_plus is pure Dart/HTTP and therefore forms an independent reachability family. Neither is Raspberry Pi runtime certified.",
+    "metering": "The staged need includes metering/cost. These candidates do not by themselves prove a normalized cross-platform metering contract. Metering remains a contract detail gap requiring platform-specific evidence (for example expensive/constrained/cost/metered semantics) before admission.",
+    "security": "Both pinned preflights were attempted on GitHub-hosted runners but terminated with GitHub API 504 Gateway Time-out before a security verdict. They are counted for pinned discovery only and are not security admitted."
+  },
+  "decision": {
+    "two_candidate_independence_satisfied": true,
+    "per_target_candidate_depth_satisfied": true,
+    "coverage_blockers": [],
+    "discovery_depth_closed": true,
+    "security_admission_closed": false,
+    "contract_conformance_closed": false,
+    "runtime_validation_closed": false,
+    "metering_contract_closed": false,
+    "composite_strategy_required": true,
+    "single_winner": null,
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false,
+    "library_write_attempted": false,
+    "next_action": "Keep discovery depth closed but admission open: retry pinned security preflights after GitHub API stability recovers, define normalized metering/cost semantics per platform, and run transport-loss/reachability/metering transition tests including Raspberry Pi before Library intake."
+  }
+}
