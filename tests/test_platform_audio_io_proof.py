@@ -28,21 +28,28 @@ class PlatformAudioIoProofTest(unittest.TestCase):
         self.assertEqual(contract["status"], "draft")
         self.assertTrue(contract["detail_gap"])
 
-    def test_two_independent_candidates_cover_six_standard_targets(self) -> None:
+    def test_original_flutter_candidates_cover_six_standard_targets(self) -> None:
         comparison = _load("comparison.json")
         candidates = comparison["candidates"]
         assert isinstance(candidates, list)
-        self.assertEqual(len(candidates), 2)
+        original_ids = {"WAMF/audio_io", "flutter-webrtc/flutter-webrtc"}
+        flutter_candidates = [
+            item for item in candidates if str(item["id"]) in original_ids
+        ]
+        self.assertEqual(len(flutter_candidates), 2)
         self.assertEqual(
-            {str(item["id"]) for item in candidates},
-            {"WAMF/audio_io", "flutter-webrtc/flutter-webrtc"},
+            {str(item["id"]) for item in flutter_candidates},
+            original_ids,
         )
-        for item in candidates:
+        for item in flutter_candidates:
             self.assertEqual(
                 set(item["research_targets"]),
                 {"android", "windows", "linux", "macos", "ios", "web"},
             )
-            self.assertEqual(item["missing_required_target_declarations"], ["raspberry_pi"])
+            self.assertEqual(
+                item["missing_required_target_declarations"],
+                ["raspberry_pi"],
+            )
 
         decision = comparison["decision"]
         assert isinstance(decision, dict)
@@ -50,21 +57,34 @@ class PlatformAudioIoProofTest(unittest.TestCase):
         self.assertFalse(decision["submission_ready"])
         self.assertFalse(decision["certification_asserted"])
 
-    def test_raspberry_pi_gap_remains_explicit(self) -> None:
+    def test_original_flutter_pi_gap_is_closed_by_separate_native_ring(self) -> None:
         comparison = _load("comparison.json")
         self.assertEqual(
             set(comparison["required_targets"]),
             {"android", "windows", "linux", "macos", "ios", "web", "raspberry_pi"},
         )
+        candidates = comparison["candidates"]
+        assert isinstance(candidates, list)
+        original_ids = {"WAMF/audio_io", "flutter-webrtc/flutter-webrtc"}
+        for item in candidates:
+            if str(item["id"]) in original_ids:
+                self.assertEqual(
+                    item["missing_required_target_declarations"],
+                    ["raspberry_pi"],
+                )
+
         coverage = comparison["per_target_candidate_coverage"]
         assert isinstance(coverage, dict)
         for target in ("android", "windows", "linux", "macos", "ios", "web"):
             self.assertEqual(coverage[target], 2)
-        self.assertEqual(coverage["raspberry_pi"], 0)
-        self.assertFalse(comparison["per_target_candidate_depth_satisfied"])
+        self.assertEqual(coverage["raspberry_pi"], 2)
+        self.assertTrue(comparison["per_target_candidate_depth_satisfied"])
         decision = comparison["decision"]
         assert isinstance(decision, dict)
-        self.assertEqual(decision["coverage_blockers"], ["raspberry_pi:0/2"])
+        self.assertEqual(decision["coverage_blockers"], [])
+        self.assertTrue(decision["discovery_depth_closed"])
+        self.assertFalse(decision["security_admission_closed"])
+        self.assertFalse(decision["runtime_validation_closed"])
 
     def test_live_preflights_are_source_clear_but_vulnerability_review(self) -> None:
         live = _load("live-security-preflights-2026-09-15.json")
