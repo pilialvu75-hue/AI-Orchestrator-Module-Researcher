@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import posixpath
 import urllib.parse
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -227,13 +228,31 @@ class GitHubFullTreeSecurityScanner:
         *,
         max_relevant_files: int = 800,
         max_blob_bytes: int = 512 * 1024,
+        max_large_text_bytes: int = 8 * 1024 * 1024,
         max_total_bytes: int = 16 * 1024 * 1024,
+        static_chunk_chars: int = 512 * 1024,
+        static_chunk_overlap: int = 2048,
+        max_symlink_bytes: int = 4096,
+        max_symlink_depth: int = 16,
     ) -> None:
         self.api = api
         self.rate_limits = rate_limits
         self.max_relevant_files = max_relevant_files
         self.max_blob_bytes = max_blob_bytes
+        self.max_large_text_bytes = max_large_text_bytes
         self.max_total_bytes = max_total_bytes
+        self.static_chunk_chars = static_chunk_chars
+        self.static_chunk_overlap = static_chunk_overlap
+        self.max_symlink_bytes = max_symlink_bytes
+        self.max_symlink_depth = max_symlink_depth
+        if self.max_blob_bytes <= 0 or self.max_large_text_bytes < self.max_blob_bytes:
+            raise ValueError("source byte limits must be positive and monotonic")
+        if self.max_total_bytes < self.max_blob_bytes:
+            raise ValueError("total scan budget must cover at least one normal source blob")
+        if self.static_chunk_chars <= 0 or self.static_chunk_overlap < 0:
+            raise ValueError("static chunk settings must be non-negative and usable")
+        if self.max_symlink_bytes <= 0 or self.max_symlink_depth <= 0:
+            raise ValueError("symlink limits must be positive")
 
     def _get(self, path: str) -> GitHubResponse:
         decision = self.rate_limits.decision()
@@ -291,6 +310,20 @@ class GitHubFullTreeSecurityScanner:
             evidence=evidence[:240],
         )
 
+    @staticmethod
+    def _dedupe_findings(
+        findings: list[SecurityFinding],
+    ) -> list[SecurityFinding]:
+        seen: set[tuple[str, SecuritySeverity, str, str]] = set()
+        result: list[SecurityFinding] = []
+        for item in findings:
+            key = (item.rule_id, item.severity, item.path, item.evidence)
+            if key in seen:
+                continue
+            seen.add(key)
+            result.append(item)
+        return result
+
     def _decode_blob(self, repository_path: str, blob_sha: str) -> bytes:
         response = self._get(f"/repos/{repository_path}/git/blobs/{blob_sha}")
         payload = response.data if isinstance(response.data, dict) else {}
@@ -301,6 +334,87 @@ class GitHubFullTreeSecurityScanner:
             return base64.b64decode(encoded, validate=True)
         except (binascii.Error, ValueError) as exc:
             raise ValueError("Invalid base64 blob returned by GitHub") from exc
+
+    @staticmethod
+    def _normalize_symlink_target(link_path: str, target: str) -> str:
+        if (
+            not target
+            or target != target.strip()
+            or "\x00" in target
+            or "\n" in target
+            or "\r" in target
+            or "\t" in target
+            or "\\" in target
+            or target.startswith("/")
+        ):
+            raise ValueError("unsafe symbolic link target syntax")
+        resolved = posixpath.normpath(
+            posixpath.join(posixpath.dirname(link_path), target)
+        )
+        if (
+            resolved in {"", ".", ".."}
+            or resolved.startswith("../")
+            or resolved.startswith("/")
+        ):
+            raise ValueError("symbolic link escapes admitted repository scope")
+        return resolved
+
+    def _resolve_symlink(
+        self,
+        repository_path: str,
+        link_path: str,
+        entries_by_path: dict[str, dict[str, Any]],
+        target_cache: dict[str, str],
+    ) -> str:
+        current_path = link_path
+        visited: set[str] = set()
+        for _depth in range(self.max_symlink_depth):
+            if current_path in visited:
+                raise ValueError("symbolic link cycle detected")
+            visited.add(current_path)
+            entry = entries_by_path.get(current_path)
+            if entry is None:
+                raise ValueError("symbolic link target is outside admitted tree or missing")
+            if str(entry.get("mode") or "") != "120000":
+                if str(entry.get("type") or "") != "blob":
+                    raise ValueError("symbolic link does not resolve to a blob")
+                return current_path
+
+            sha = str(entry.get("sha") or "")
+            size = int(entry.get("size") or 0)
+            if not sha:
+                raise ValueError("symbolic link entry has no blob SHA")
+            if size > self.max_symlink_bytes:
+                raise ValueError("symbolic link target exceeds size limit")
+            target = target_cache.get(sha)
+            if target is None:
+                raw_target = self._decode_blob(repository_path, sha)
+                if len(raw_target) > self.max_symlink_bytes:
+                    raise ValueError("symbolic link target exceeds decoded size limit")
+                try:
+                    target = raw_target.decode("utf-8")
+                except UnicodeDecodeError as exc:
+                    raise ValueError("symbolic link target is not UTF-8") from exc
+                target_cache[sha] = target
+            current_path = self._normalize_symlink_target(current_path, target)
+        raise ValueError("symbolic link chain exceeds depth limit")
+
+    def _static_artifacts(self, path: str, content: str) -> list[SourceArtifact]:
+        if len(content.encode("utf-8")) <= self.max_blob_bytes:
+            return [SourceArtifact(path=path, content=content)]
+        chunk_size = min(self.static_chunk_chars, self.max_blob_bytes)
+        chunk_size = max(1, chunk_size)
+        overlap = min(self.static_chunk_overlap, chunk_size // 2)
+        step = max(1, chunk_size - overlap)
+        chunks: list[SourceArtifact] = []
+        start = 0
+        while start < len(content):
+            end = min(len(content), start + chunk_size)
+            chunks.append(SourceArtifact(path=path, content=content[start:end]))
+            if end >= len(content):
+                break
+            start += step
+        return chunks
 
     def scan(self, candidate: Candidate) -> FullTreeSecurityReport:
         if candidate.provider != "github":
@@ -377,12 +491,55 @@ class GitHubFullTreeSecurityScanner:
                 )
             )
 
-        artifacts: list[SourceArtifact] = []
+        entries_by_path: dict[str, dict[str, Any]] = {
+            str(raw.get("path")): raw
+            for raw in entries
+            if isinstance(raw, dict)
+            and raw.get("path")
+            and str(raw.get("type") or "") == "blob"
+        }
+        forced_relevant_paths: set[str] = set()
+        symlinks: list[str] = []
+        unsafe_symlinks: set[str] = set()
+        target_cache: dict[str, str] = {}
+        for path, raw in entries_by_path.items():
+            if str(raw.get("mode") or "") != "120000":
+                continue
+            symlinks.append(path)
+            try:
+                final_path = self._resolve_symlink(
+                    repository_path,
+                    path,
+                    entries_by_path,
+                    target_cache,
+                )
+            except ValueError as exc:
+                unsafe_symlinks.add(path)
+                findings.append(
+                    self._finding(
+                        "unsafe_or_unresolved_symlink",
+                        SecuritySeverity.HIGH,
+                        path,
+                        str(exc),
+                    )
+                )
+                continue
+            final_entry = entries_by_path[final_path]
+            if self._is_relevant_source(path, "100644"):
+                forced_relevant_paths.add(final_path)
+            if self._is_relevant_source(
+                final_path,
+                str(final_entry.get("mode") or ""),
+            ):
+                forced_relevant_paths.add(final_path)
+
+        source_artifacts: list[SourceArtifact] = []
+        static_artifacts: list[SourceArtifact] = []
         opaque_artifacts: list[str] = []
         submodules: list[str] = []
-        symlinks: list[str] = []
         blobs_seen = 0
         relevant_blobs = 0
+        scanned_source_files = 0
         scanned_bytes = 0
         skipped_assets = 0
         budget_exceeded = False
@@ -414,15 +571,6 @@ class GitHubFullTreeSecurityScanner:
 
             blobs_seen += 1
             if mode == "120000":
-                symlinks.append(path)
-                findings.append(
-                    self._finding(
-                        "symlink_requires_review",
-                        SecuritySeverity.HIGH,
-                        path,
-                        "symbolic link target is not admitted automatically",
-                    )
-                )
                 continue
             if self._is_opaque_risk(path):
                 opaque_artifacts.append(path)
@@ -435,7 +583,11 @@ class GitHubFullTreeSecurityScanner:
                     )
                 )
                 continue
-            if not self._is_relevant_source(path, mode):
+            is_relevant = (
+                self._is_relevant_source(path, mode)
+                or path in forced_relevant_paths
+            )
+            if not is_relevant:
                 skipped_assets += 1
                 continue
 
@@ -453,14 +605,17 @@ class GitHubFullTreeSecurityScanner:
                     )
                 budget_exceeded = True
                 continue
-            if size > self.max_blob_bytes:
+            if size > self.max_large_text_bytes:
                 source_unreadable = True
                 findings.append(
                     self._finding(
                         "source_blob_too_large",
                         SecuritySeverity.HIGH,
                         path,
-                        f"{size} bytes exceeds per-file scan limit {self.max_blob_bytes}",
+                        (
+                            f"{size} bytes exceeds bounded large-text scan limit "
+                            f"{self.max_large_text_bytes}"
+                        ),
                     )
                 )
                 continue
@@ -490,6 +645,19 @@ class GitHubFullTreeSecurityScanner:
 
             try:
                 raw_content = self._decode_blob(repository_path, sha)
+                if len(raw_content) > self.max_large_text_bytes:
+                    raise ValueError("decoded source exceeds bounded large-text limit")
+                if scanned_bytes + len(raw_content) > self.max_total_bytes:
+                    budget_exceeded = True
+                    findings.append(
+                        self._finding(
+                            "scan_byte_budget_exceeded",
+                            SecuritySeverity.HIGH,
+                            path,
+                            f"source scan exceeds {self.max_total_bytes} bytes",
+                        )
+                    )
+                    continue
                 content = raw_content.decode("utf-8")
             except (UnicodeDecodeError, ValueError) as exc:
                 source_unreadable = True
@@ -502,21 +670,26 @@ class GitHubFullTreeSecurityScanner:
                     )
                 )
                 continue
-            artifacts.append(SourceArtifact(path=path, content=content))
+
+            artifact = SourceArtifact(path=path, content=content)
+            source_artifacts.append(artifact)
+            static_artifacts.extend(self._static_artifacts(path, content))
+            scanned_source_files += 1
             scanned_bytes += len(raw_content)
 
-        source_result = scan_source_artifacts(artifacts)
-        supply_chain = analyze_supply_chain(artifacts)
+        source_result = scan_source_artifacts(static_artifacts)
+        supply_chain = analyze_supply_chain(source_artifacts)
         findings.extend(source_result.findings)
+        findings = self._dedupe_findings(findings)
         severities = {item.severity for item in findings}
         complete = (
             not tree_truncated
             and not budget_exceeded
             and not source_unreadable
             and not submodules
-            and not symlinks
+            and not unsafe_symlinks
             and not opaque_artifacts
-            and relevant_blobs == len(artifacts)
+            and relevant_blobs == scanned_source_files
         )
 
         if (
@@ -546,7 +719,7 @@ class GitHubFullTreeSecurityScanner:
             total_entries=len(entries),
             blobs_seen=blobs_seen,
             relevant_blobs=relevant_blobs,
-            scanned_files=len(artifacts),
+            scanned_files=scanned_source_files,
             scanned_bytes=scanned_bytes,
             skipped_assets=skipped_assets,
             opaque_artifacts=tuple(sorted(opaque_artifacts)),
