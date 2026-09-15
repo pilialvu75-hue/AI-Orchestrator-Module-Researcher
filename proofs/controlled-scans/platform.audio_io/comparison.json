@@ -27,22 +27,50 @@
       "id": "WAMF/audio_io",
       "source_version": "0.6.1",
       "commit_sha": "47690f931422a2f58a0c4901133aba307e9649bf",
-      "role": "preferred_narrow_candidate",
+      "role": "preferred_narrow_flutter_candidate",
       "research_targets": ["android", "windows", "linux", "macos", "ios", "web"],
       "missing_required_target_declarations": ["raspberry_pi"],
       "source_security": "CLEAR",
       "vulnerability": "REVIEW",
+      "security_admitted": false,
       "runtime_validated": false
     },
     {
       "id": "flutter-webrtc/flutter-webrtc",
       "source_version": "1.6.2+hotfix.3",
       "commit_sha": "964066f26f3303dd7d518cb86b8d76c8ee82b031",
-      "role": "independent_broad_alternative",
+      "role": "independent_broad_flutter_alternative",
       "research_targets": ["android", "windows", "linux", "macos", "ios", "web"],
       "missing_required_target_declarations": ["raspberry_pi"],
       "source_security": "CLEAR",
       "vulnerability": "REVIEW",
+      "security_admitted": false,
+      "runtime_validated": false
+    },
+    {
+      "id": "mackron/miniaudio",
+      "source_version": "0.11.25",
+      "commit_sha": "9634bedb5b5a2ca38c1ee7108a9358a4e233f14d",
+      "role": "preferred_raspberry_pi_native_candidate",
+      "research_targets": ["raspberry_pi"],
+      "raspberry_pi_evidence": "explicit in pinned upstream README",
+      "source_security": "REVIEW",
+      "vulnerability": "NOT_ANALYZED",
+      "security_admitted": false,
+      "native_adapter_required": true,
+      "runtime_validated": false
+    },
+    {
+      "id": "PortAudio/portaudio",
+      "source_version": "19.7.0",
+      "commit_sha": "147dd722548358763a8b649b3e4b41dfffbcfbb6",
+      "role": "independent_raspberry_pi_native_alternative",
+      "research_targets": ["raspberry_pi"],
+      "raspberry_pi_evidence": "official PortAudio Raspberry Pi wiki plus pinned ALSA/input/output source evidence",
+      "source_security": "REVIEW",
+      "vulnerability": "NOT_ANALYZED",
+      "security_admitted": false,
+      "native_adapter_required": true,
       "runtime_validated": false
     }
   ],
@@ -53,26 +81,31 @@
     "macos": 2,
     "ios": 2,
     "web": 2,
-    "raspberry_pi": 0
+    "raspberry_pi": 2
   },
-  "per_target_candidate_depth_satisfied": false,
+  "per_target_candidate_depth_satisfied": true,
   "research_findings": {
-    "capture_playback": "Both candidates provide evidence for capture and playback on the six standard Flutter targets.",
-    "device_routing": "flutter-webrtc has explicit device enumeration and input/output selection evidence; audio_io has realtime platform backends but route-selection semantics still require validation.",
-    "format_negotiation": "audio_io provides explicit PCM/sample-rate evidence. The Library contract remains draft, so exact interface conformance is not asserted.",
-    "raspberry_pi": "Neither Flutter candidate is counted for Raspberry Pi. Upstream mackron/miniaudio explicitly lists Raspberry Pi and is the first target-specific family to research next, but that does not automatically transfer Pi support to WAMF/audio_io.",
-    "security": "Both pinned source trees are statically CLEAR and supply-chain CLEAR; both remain vulnerability REVIEW because exact Pub runtime dependency versions are unresolved and OSV was not queried."
+    "capture_playback": "The two Flutter families cover capture/playback on the six standard Flutter targets. miniaudio and PortAudio independently provide native capture/playback evidence for Raspberry Pi adaptation.",
+    "device_routing": "flutter-webrtc has explicit device enumeration and input/output selection. miniaudio exposes separate playback/capture device enumeration. PortAudio exposes host-independent device indices and input/output stream parameters. Exact platform.audio_io.v1 routing semantics remain draft.",
+    "format_negotiation": "audio_io provides explicit PCM/sample-rate evidence; miniaudio and PortAudio expose native format conversion/configuration capabilities. Exact Library contract conformance is not asserted while the contract remains draft.",
+    "raspberry_pi": "Target discovery depth is now 2/2 using two independent native families: miniaudio explicitly lists Raspberry Pi on the exact pinned release commit, and PortAudio maintains an official Raspberry Pi guide using ALSA. Neither result is treated as proof that a Flutter adapter already exists or works.",
+    "security": "The Flutter candidates remain vulnerability REVIEW due unresolved Pub versions. The two Raspberry Pi native candidates remain source/security REVIEW: miniaudio has a test Gradle wrapper binary plus a zero-byte blob reader limitation, while PortAudio contains process execution in test tooling; native supply-chain analysis is not yet supported. No candidate is security admitted or certified."
   },
   "decision": {
     "two_candidate_independence_satisfied": true,
-    "per_target_candidate_depth_satisfied": false,
-    "coverage_blockers": ["raspberry_pi:0/2"],
+    "per_target_candidate_depth_satisfied": true,
+    "coverage_blockers": [],
+    "discovery_depth_closed": true,
+    "security_admission_closed": false,
+    "contract_conformance_closed": false,
+    "runtime_validation_closed": false,
     "single_winner": null,
-    "preferred_architecture_fit": "WAMF/audio_io",
+    "preferred_flutter_architecture_fit": "WAMF/audio_io",
+    "preferred_raspberry_pi_native_fit": "mackron/miniaudio",
     "submission_ready": false,
     "runtime_certified": false,
     "certification_asserted": false,
     "library_write_attempted": false,
-    "next_action": "Research and pin two Raspberry Pi-specific audio I/O families, starting with mackron/miniaudio; then resolve immutable runtime dependency versions and perform target-specific runtime validation before any Library intake."
+    "next_action": "Keep platform.audio_io discovery depth closed but admission open: correct the zero-byte blob reader false positive, add native C/CMake supply-chain evidence, separately review opaque/test execution findings, then design and hardware-test the Raspberry Pi adapter behind the draft platform.audio_io.v1 boundary before any Library intake."
   }
 }

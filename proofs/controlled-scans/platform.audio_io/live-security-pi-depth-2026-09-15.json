@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.audio_io",
+  "observed_at": "2026-09-15",
+  "workflow_run_id": 34958611121,
+  "workflow_head_sha": "c0819985a6650cfe5be7b7a3c93b361036efe1e7",
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "mackron/miniaudio",
+      "repository": "mackron/miniaudio",
+      "commit_sha": "9634bedb5b5a2ca38c1ee7108a9358a4e233f14d",
+      "tree_sha": "f0e6266ff4034d41afe1dfd024ef6e306ada79a5",
+      "release_tag": "0.11.25",
+      "source_version": "0.11.25",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "REVIEW",
+        "complete": false,
+        "admission_eligible": false,
+        "total_entries": 283,
+        "blobs_seen": 197,
+        "relevant_blobs": 109,
+        "scanned_files": 108,
+        "scanned_bytes": 9347685,
+        "skipped_assets": 87,
+        "findings": [
+          {
+            "rule_id": "source_blob_unreadable",
+            "severity": "HIGH",
+            "path": ".gitmodules",
+            "evidence": "ValueError",
+            "followup": "The pinned .gitmodules blob is a verified zero-byte file. The current blob decoder treats empty base64 content as unavailable, so this is a Researcher reader limitation rather than evidence of malicious content. It remains fail-closed until the reader is corrected."
+          },
+          {
+            "rule_id": "opaque_or_precompiled_artifact",
+            "severity": "HIGH",
+            "path": "tests/android/MiniaudioTester/gradle/wrapper/gradle-wrapper.jar",
+            "evidence": "binary/archive artifact requires separate supply-chain review"
+          }
+        ],
+        "critical_findings": 0,
+        "opaque_artifacts": [
+          "tests/android/MiniaudioTester/gradle/wrapper/gradle-wrapper.jar"
+        ],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "NOT_ANALYZED",
+        "admission_eligible": false,
+        "manifests_analyzed": [],
+        "lockfiles_present": [],
+        "dependencies": [],
+        "findings": [
+          {
+            "rule_id": "no_supported_dependency_manifest",
+            "severity": "REVIEW",
+            "path": "."
+          }
+        ]
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database": "OSV",
+        "database_checked": false,
+        "queried_components": 0,
+        "admission_eligible": false,
+        "reason": "earlier_security_or_supply_chain_gate_not_clear"
+      }
+    },
+    {
+      "candidate": "PortAudio/portaudio",
+      "repository": "PortAudio/portaudio",
+      "commit_sha": "147dd722548358763a8b649b3e4b41dfffbcfbb6",
+      "tree_sha": "fb5c10d0bac582b828f6330cbb16b9c4a1e11d1b",
+      "release_tag": "v19.7.0",
+      "source_version": "19.7.0",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "REVIEW",
+        "complete": true,
+        "admission_eligible": false,
+        "total_entries": 421,
+        "blobs_seen": 355,
+        "relevant_blobs": 202,
+        "scanned_files": 202,
+        "scanned_bytes": 5294108,
+        "skipped_assets": 153,
+        "findings": [
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "test/patest_suggested_vs_streaminfo_latency.py",
+            "evidence": "os.system(",
+            "followup": "The pinned test helper builds a local PATest.exe command string and invokes it to generate latency CSV data. This is test tooling evidence, not a claim that production PortAudio requires process execution; the gate remains REVIEW."
+          }
+        ],
+        "critical_findings": 0,
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "NOT_ANALYZED",
+        "admission_eligible": false,
+        "manifests_analyzed": [],
+        "lockfiles_present": [],
+        "dependencies": [],
+        "findings": [
+          {
+            "rule_id": "no_supported_dependency_manifest",
+            "severity": "REVIEW",
+            "path": "."
+          }
+        ]
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database": "OSV",
+        "database_checked": false,
+        "queried_components": 0,
+        "admission_eligible": false,
+        "reason": "earlier_security_or_supply_chain_gate_not_clear"
+      }
+    }
+  ],
+  "decision": {
+    "target_discovery_may_count_review_candidates": true,
+    "security_admission_may_not_count_review_as_clear": true,
+    "policy": "Raspberry Pi target evidence and candidate independence are tracked separately from security admission. Both native candidates remain non-certifiable and non-submittable until their REVIEW findings and native supply-chain coverage are resolved."
+  }
+}

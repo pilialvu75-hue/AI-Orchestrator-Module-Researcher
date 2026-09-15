@@ -4,7 +4,7 @@ This proof covers the staged high-priority need `platform.audio_io` from `catalo
 
 The Library contract `platform.audio_io.v1` is still draft. The only contract boundary treated as known here is audio capture/playback, device routing, and explicit format negotiation. This proof does **not** invent method names, lifecycle semantics, latency guarantees, route-change policy, buffer ownership, or error semantics.
 
-## First research ring
+## Flutter research ring
 
 Two independent Flutter families were pinned and inspected:
 
@@ -15,9 +15,7 @@ Both have evidence for Android, Windows, Linux, macOS, iOS and Web. Neither is c
 
 `audio_io` is currently the narrower architectural fit for a voice-first STT/TTS transport because it is explicitly centered on realtime microphone/speaker PCM streaming and sample-rate handling. `flutter-webrtc` is retained as a mature independent alternative with concrete device enumeration and input/output selection APIs. No winner is certified.
 
-## Live source-security result
-
-The temporary branch workflow ran `researcher preflight-pinned` against both immutable upstream snapshots. Candidate code was never executed.
+### Flutter live source-security result
 
 `WAMF/audio_io`:
 
@@ -43,16 +41,51 @@ The temporary branch workflow ran `researcher preflight-pinned` against both imm
 
 The overall state of both candidates remains `REVIEW`. Static `CLEAR` is not certification.
 
-## Security-scanner hardening produced by this ring
+## Raspberry Pi target-depth ring
 
-The audio candidates exposed two generic scanner limitations that were corrected without weakening fail-closed behavior:
+Two additional **native** and independent audio-I/O families were pinned specifically for Raspberry Pi research depth:
 
-1. Safe repository-internal symlinks can now be resolved transitively inside the admitted immutable tree, while missing, escaping or cyclic symlinks remain review findings.
-2. Large text source files can be scanned in overlapping bounded chunks up to a hard cap. Files beyond the hard cap remain fail-closed. A regression test proves that a malicious shell-download signature crossing a chunk boundary is still detected.
+- `mackron/miniaudio` `0.11.25` at `9634bedb5b5a2ca38c1ee7108a9358a4e233f14d`
+- `PortAudio/portaudio` `v19.7.0` at `147dd722548358763a8b649b3e4b41dfffbcfbb6`
 
-The npm install-hook detector was also narrowed to quoted package-script keys so ordinary native identifiers such as `prepare = callback` are not misclassified as package install hooks.
+These are not Flutter plugins and are not represented as drop-in modules. They are candidate native providers that would require a Raspberry-Pi platform adapter, most naturally through Dart FFI or another platform implementation behind `platform.audio_io.v1`.
 
-## Target-depth state
+### miniaudio Raspberry Pi evidence
+
+The exact pinned miniaudio release README:
+
+- describes the project as an audio **playback and capture** library;
+- exposes low-level raw audio, conversion and resampling capabilities;
+- explicitly lists **Raspberry Pi** in Supported Platforms;
+- lists ALSA, PulseAudio and JACK among Linux-family backends;
+- has device enumeration APIs for separate playback and capture device lists.
+
+The exact pinned license file offers a choice between public domain and MIT No Attribution.
+
+The live immutable security preflight remains `REVIEW`:
+
+- 108 files / 9,347,685 bytes were scanned;
+- no critical finding was produced;
+- `.gitmodules` is a verified zero-byte file, but the current Researcher blob reader treats empty base64 content as unreadable, so that reader limitation remains fail-closed;
+- `tests/android/MiniaudioTester/gradle/wrapper/gradle-wrapper.jar` is correctly treated as an opaque/precompiled artifact requiring separate review;
+- no supported package dependency manifest was found, so native supply-chain analysis is `NOT_ANALYZED`;
+- OSV is therefore not claimed as checked.
+
+### PortAudio Raspberry Pi evidence
+
+PortAudio is an independent C audio-I/O family. Its pinned release README describes callback and blocking input/output, format conversion, device enumeration, recording/playback tests and an input-to-output wire test. The project also maintains an official `Platforms_RaspberryPi` wiki page that explicitly states that PortAudio can be compiled directly on Raspberry Pi, uses ALSA there, and documents running device/output examples on the Pi.
+
+The pinned license text is permissive and MIT-style, while GitHub metadata reports `NOASSERTION`; the proof preserves that distinction instead of inventing an SPDX identifier.
+
+The live immutable security preflight remains `REVIEW`:
+
+- 202 files / 5,294,108 bytes were scanned;
+- no critical finding and no opaque artifact were produced;
+- `test/patest_suggested_vs_streaminfo_latency.py` uses `os.system()` to invoke a local compiled latency test executable, so the process-execution gate correctly remains REVIEW;
+- no supported package dependency manifest was found, so native supply-chain analysis is `NOT_ANALYZED`;
+- OSV is therefore not claimed as checked.
+
+## Discovery depth versus admission
 
 Required research depth is two candidates per required target:
 
@@ -62,17 +95,36 @@ Required research depth is two candidates per required target:
 - macOS: 2/2
 - iOS: 2/2
 - Web: 2/2
-- Raspberry Pi: **0/2**
+- Raspberry Pi: **2/2**
 
-Research depth is therefore intentionally **not closed**.
+**Target discovery depth is now closed.** This means the Researcher has found at least two independent candidate families with explicit evidence for every required target.
 
-The next target-specific family is `mackron/miniaudio`, whose upstream documentation explicitly lists Raspberry Pi support. That evidence is only a lead for the next ring; it does not retroactively prove that the Flutter `audio_io` package supports Raspberry Pi.
+It does **not** mean security admission, contract conformance or runtime certification is closed. In particular:
 
-## Boundaries
+- the two Flutter candidates still have unresolved runtime versions at the OSV boundary;
+- the two native Raspberry Pi candidates remain security REVIEW;
+- the Researcher does not yet have complete native C/CMake supply-chain analysis;
+- no Raspberry Pi adapter has been built or run;
+- no microphone/speaker device-routing, full-duplex latency, hot-plug or sample-format behavior has been measured on actual Raspberry Pi hardware.
+
+## Security-scanner hardening produced by the first ring
+
+The original audio candidates exposed generic scanner limitations that were corrected without weakening fail-closed behavior:
+
+1. Safe repository-internal symlinks can be resolved transitively inside the admitted immutable tree, while missing, escaping or cyclic symlinks remain review findings.
+2. Large text source files can be scanned in overlapping bounded chunks up to a hard cap. Files beyond the hard cap remain fail-closed. A regression test proves that a malicious shell-download signature crossing a chunk boundary is still detected.
+3. The npm install-hook detector was narrowed to quoted package-script keys so ordinary native identifiers such as `prepare = callback` are not misclassified as package install hooks.
+
+The Raspberry Pi ring exposed a further precision gap: zero-byte Git blobs should be readable as empty text instead of being classified as unreadable. That issue is recorded for correction; the miniaudio result remains REVIEW until it is actually fixed and re-run.
+
+## Boundaries and next action
 
 - no Library intake was written
 - no Library certification is asserted
 - no candidate source code was executed
-- no target runtime behavior was validated yet
-- no OSV-clean claim is made while runtime dependency versions remain unresolved
-- no Raspberry Pi support is inferred from Linux or embedded support
+- no Raspberry Pi runtime behavior was validated
+- discovery depth closure is not security-admission closure
+- no OSV-clean claim is made where supply-chain evidence is incomplete
+- no Raspberry Pi support is inferred from generic Linux/embedded support
+
+Next, keep discovery depth closed and work on **admission quality**: fix the zero-byte blob reader false positive, add native C/CMake supply-chain evidence, review the test-only opaque/process findings without whitelisting them blindly, then design and hardware-test the Raspberry Pi adapter before any Library intake.
