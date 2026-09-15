@@ -1,0 +1,38 @@
+name: Preflight platform.background_execution Raspberry Pi providers
+
+on:
+  push:
+    branches:
+      - proof-platform-background-execution-v1
+
+permissions:
+  contents: read
+
+jobs:
+  supervisor-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+
+      - name: Preflight Supervisor 4.3.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-supervisor
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository Supervisor/supervisor \
+            --commit dbca8d457e61d8707c40f99c78330b87939483a3 \
+            --release-tag 4.3.0 \
+            --source-version 4.3.0
