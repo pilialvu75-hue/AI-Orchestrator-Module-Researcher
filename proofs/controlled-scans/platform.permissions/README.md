@@ -7,74 +7,77 @@ This directory records controlled research for the staged high-priority need `pl
 - Need source: `catalog/needs.platform-extension.json` in Module Library.
 - Need authority: staged, not authoritative catalog promotion.
 - Required targets: Android, Windows, Linux, macOS, iOS and Web.
-- Desired candidate depth: two candidates per required target.
+- Desired candidate depth: two research candidates per required target.
 - Draft contract: `platform.permissions.v1` / `1.0`.
 - Known logical boundary: runtime permission/capability query, request and denial-state semantics.
 
-The contract is still draft. This proof does **not** invent target equivalence, silent-grant policy, settings-navigation policy, denial normalization, sandbox behavior or platform-specific fallback semantics.
+Target-aware discovery evidence is not target certification. The Library remains authoritative for runtime certification.
 
-## Live security preflight
+## First review ring
 
-Workflow run `34949422173` evaluated immutable pinned source for both candidates with `DRY_RUN=true`, `ALLOW_LIBRARY_WRITE=false` and `DIAGNOSTICS_ENABLED=false`. No upstream code was executed.
+Workflow run `34949422173` evaluated immutable pinned source for:
 
-Both candidates returned:
+- `Baseflow/flutter-permission-handler:permission_handler` 13.0.2;
+- `arcas0803/device_permission` 1.0.0.
 
-- source security `CLEAR`;
-- supply chain `CLEAR`;
-- no opaque artifacts, submodules or symlinks;
-- vulnerability `REVIEW` because the generated Pub SBOM contains unresolved dependency versions;
-- OSV not queried while dependency versions remain unresolved;
-- overall preflight state `REVIEW`;
-- no Library read/write and no certification assertion.
+Both had source and supply-chain `CLEAR`, but vulnerability `REVIEW` because exact Pub dependency versions were unresolved and OSV was therefore not queried. Baseflow did not declare Linux/macOS at the top-level package boundary, leaving those targets at 1/2 research candidates.
 
-A green workflow therefore means the preflight completed successfully; it does **not** mean the candidates are admission-ready.
+## Depth ring
 
-## Candidates
+Workflow run `34950820746` evaluated immutable pinned source for:
 
-### `Baseflow/flutter-permission-handler:permission_handler` 13.0.2
+- `jagadeeshchoudhary/permission_plus` 1.0.0;
+- its pinned `permission_plus_linux` 1.0.0 backend;
+- its pinned `permission_plus_apple` 1.0.0 backend for iOS/macOS;
+- `manojprajapati1999/permission_manager` 2.0.9 as an additional candidate check.
 
-Pinned commit: `fc60b52afbd076d90f25ee950952cbd434e88595`.
+No upstream code was executed. `DRY_RUN=true`, `ALLOW_LIBRARY_WRITE=false`, and no certification was asserted.
 
-The package exposes a strong, mature permission API with status checks, requests, denial states, service status and app-settings handoff. The pinned package manifest registers Android, iOS, Web and Windows implementations. It does **not** register Linux or macOS at the top-level package boundary, so this candidate alone does not satisfy the full staged target set.
+`permission_plus`, `permission_plus_linux`, and `permission_plus_apple` all returned source `CLEAR` and supply-chain `CLEAR`. They remain vulnerability `REVIEW`: hosted Pub dependency constraints are unresolved, so OSV has not actually been queried.
 
-The preflight resolves its license as MIT and source security as `CLEAR`. Vulnerability admission remains blocked because hosted Pub dependency constraints are ranges rather than resolved immutable versions.
+`permission_manager` is **not counted**. Its source gate is `REVIEW` because `example/android/gradle/wrapper/gradle-wrapper.jar` is an opaque/precompiled artifact. Independently, the pinned Linux plugin only implements `getPlatformVersion`, while its Dart side invokes permission channel methods such as `check`, `request`, batch operations and settings handoff.
 
-Role: strong reference/default candidate for the platforms it explicitly declares, but not a complete six-target solution by itself.
+## Candidate families
 
-### `arcas0803/device_permission` 1.0.0
+### Baseflow `permission_handler`
 
-Pinned tag `v1.0.0`, commit `a6d4bd4aabc7148fbbf5db50becd48e89c917557`.
+Strong established reference for Android, iOS, Web and Windows. It is not a complete six-target solution at the pinned top-level package boundary.
 
-Its pinned manifest declares Android, iOS, Linux, macOS, Windows and Web, matching the staged target vocabulary. The API surface closely follows the familiar permission-handler model. Upstream's LICENSE file is MIT and explicitly notes that portions of the API surface, behaviour and naming are inspired by `flutter-permission-handler`.
+### `device_permission`
 
-The live Researcher resolver returned `license: null`, so Library admission must not silently replace that unresolved provenance field even though the upstream license file is visibly MIT. This discrepancy is retained as review evidence.
+Declares all six required targets, but remains under runtime/provenance review. Its upstream license also acknowledges that portions of its API surface, behaviour and naming are inspired by `flutter-permission-handler`, so independence from Baseflow must not be overstated.
 
-The Linux implementation also demonstrates why declared support is not equivalent to runtime certification: many desktop permissions are mapped directly to granted/restricted semantics and `openAppSettings` invokes `gnome-control-center privacy`. Those semantics require target-specific validation before they can become authoritative adapter behavior.
+### `permission_plus`
 
-Role: promising full-declared-target candidate, but younger and not yet runtime-certified; candidate independence from Baseflow is also not absolute because upstream explicitly acknowledges API/behaviour inspiration.
+Declares all six required targets and uses federated packages. The actual Linux and Apple backend repositories were pinned and separately preflighted rather than inferred from the parent manifest.
 
-## Per-target coverage
+Linux is a genuine backend, but its current policy returns `GRANTED` for every permission type on standard Linux binaries and explicitly notes that Flatpak/Snap would require `xdg-desktop-portal`. This makes it useful as a distinct research strategy, not as certified sandbox-aware semantics.
 
-Under the current Researcher policy, two candidates are required for each target. This proof currently has:
+The Apple backend uses shared Darwin source for iOS/macOS and contains native Swift handlers across multiple permission families, including AV capture, Bluetooth, contacts, EventKit, location and notifications.
 
-- Android: 2
-- Windows: 2
-- iOS: 2
-- Web: 2
-- Linux: 1
-- macOS: 1
+## Per-target discovery coverage
 
-Therefore the candidate-depth requirement is **not satisfied**. Linux and macOS remain explicit research blockers.
+The Researcher discovery-depth requirement is now satisfied:
+
+- Android: 3 candidates
+- Windows: 3 candidates
+- iOS: 3 candidates
+- Web: 3 candidates
+- Linux: 2 candidates
+- macOS: 2 candidates
+
+This only closes the **research/discovery depth** required by the target-aware Researcher policy. It does not mark any target or module as certified.
+
+## Remaining blockers
+
+No candidate is ready for authoritative Library promotion yet. The remaining gates are:
+
+- resolve Pub dependency constraints to immutable exact versions and actually run OSV;
+- perform target-specific runtime validation;
+- define Linux standard-binary versus Flatpak/Snap permission semantics;
+- reconcile `device_permission` license provenance in the Researcher resolver;
+- finalize contract policy for denial normalization, settings handoff and unsupported/silent-grant behavior.
 
 ## Decision
 
-Retain both candidates for staged research, but certify neither.
-
-- Baseflow is the stronger established reference and preferred partial implementation where its declared platform packages apply.
-- `device_permission` is the only one of these two that declares every required staged target.
-- Neither candidate is vulnerability-clear because dependency versions remain unresolved.
-- The desired two-candidate independence goal is not fully satisfied because `device_permission` explicitly derives portions of its API/behaviour model from Baseflow.
-- The two-candidates-per-target requirement is not satisfied for Linux or macOS.
-- Target declaration is not runtime evidence; Linux/macOS/Windows/Web behavior still requires platform-specific tests.
-
-Before authoritative Library intake: resolve the Pub SBOM to immutable dependency versions, run OSV, validate runtime permission semantics per target, reconcile `device_permission` license provenance, and find at least one additional credible Linux/macOS candidate (preferably genuinely independent) or explicitly document a safer adapter-composition strategy.
+The Linux/macOS candidate-depth blocker is closed. `permission_plus` is retained as the third research family; `permission_manager` is rejected from candidate-depth counting. Certification remains fail-closed and no Library submission is asserted by this proof.
