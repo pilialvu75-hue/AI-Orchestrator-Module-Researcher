@@ -80,6 +80,7 @@ _SOURCE_NAMES = {
     ".gitmodules",
     "cargo.lock",
     "cargo.toml",
+    "cmakelists.txt",
     "dockerfile",
     "gemfile",
     "go.mod",
@@ -583,10 +584,7 @@ class GitHubFullTreeSecurityScanner:
                     )
                 )
                 continue
-            is_relevant = (
-                self._is_relevant_source(path, mode)
-                or path in forced_relevant_paths
-            )
+            is_relevant = self._is_relevant_source(path, mode) or path in forced_relevant_paths
             if not is_relevant:
                 skipped_assets += 1
                 continue
