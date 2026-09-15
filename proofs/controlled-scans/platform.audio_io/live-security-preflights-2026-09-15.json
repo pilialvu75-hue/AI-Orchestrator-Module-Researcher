@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.audio_io",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_authority": "staged_not_authoritative",
+  "contract_id": "platform.audio_io.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "observed_at": "2026-09-15",
+  "workflow_run_id": 34957744808,
+  "workflow_head_sha": "370938aa30b55ec1f17aed6efa888879b4028622",
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "WAMF/audio_io",
+      "repository": "WAMF/audio_io",
+      "component_path": null,
+      "commit_sha": "47690f931422a2f58a0c4901133aba307e9649bf",
+      "tree_sha": "328b0fa1fd7b7d8b47c42dc6517d5c48995c5a11",
+      "source_version": "0.6.1",
+      "release_tag": "v0.6.1",
+      "license": "MIT",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 423,
+        "blobs_seen": 283,
+        "relevant_blobs": 126,
+        "scanned_files": 126,
+        "scanned_bytes": 4447765,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "safe_internal_symlinks": [
+          "macos/audio_io/Sources/audio_io/AudioInputRing.swift",
+          "macos/audio_io/Sources/audio_io/AudioOutputRing.swift"
+        ]
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "manifests_analyzed": ["pubspec.yaml"],
+        "lockfiles_present": [],
+        "runtime_dependencies": ["ffi:^2.1.0", "web:^0.5.1"],
+        "notices": [
+          "example/pubspec.yaml excluded from primary package dependency/SBOM scope",
+          "example_gemini_live/pubspec.yaml excluded from primary package dependency/SBOM scope"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:ffi:^2.1.0",
+          "version_unresolved:Pub:web:^0.5.1"
+        ],
+        "reason": "SBOM contains unresolved dependency versions"
+      }
+    },
+    {
+      "candidate": "flutter-webrtc/flutter-webrtc",
+      "repository": "flutter-webrtc/flutter-webrtc",
+      "component_path": null,
+      "commit_sha": "964066f26f3303dd7d518cb86b8d76c8ee82b031",
+      "tree_sha": "5cdcc2436c2da78f9ed0e2467adf7be7f00d52e7",
+      "source_version": "1.6.2+hotfix.3",
+      "release_tag": "v1.6.2+hotfix.3",
+      "license": "MIT",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 650,
+        "blobs_seen": 514,
+        "relevant_blobs": 314,
+        "scanned_files": 314,
+        "scanned_bytes": 2054078,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "safe_internal_symlink_count": 94
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "manifests_analyzed": ["pubspec.yaml"],
+        "lockfiles_present": [],
+        "runtime_dependencies": [
+          "collection:^1.17.0",
+          "dart_webrtc:^1.8.0",
+          "logger:^2.0.2+1",
+          "path_provider:^2.0.2",
+          "web:^1.0.0",
+          "webrtc_interface:^1.5.1"
+        ],
+        "notices": [
+          "example/pubspec.yaml excluded from primary package dependency/SBOM scope"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:collection:^1.17.0",
+          "version_unresolved:Pub:dart_webrtc:^1.8.0",
+          "version_unresolved:Pub:logger:^2.0.2+1",
+          "version_unresolved:Pub:path_provider:^2.0.2",
+          "version_unresolved:Pub:web:^1.0.0",
+          "version_unresolved:Pub:webrtc_interface:^1.5.1"
+        ],
+        "reason": "SBOM contains unresolved dependency versions"
+      }
+    }
+  ],
+  "decision": {
+    "security_policy": "Static source CLEAR does not imply admission CLEAR. Vulnerability admission remains fail-closed until runtime dependency versions are immutable and OSV is actually queried.",
+    "contract_policy": "The draft contract only establishes the capture/playback/device-routing boundary and explicit format negotiation; detailed API semantics are not invented by the Researcher.",
+    "target_policy": "Linux or embedded support is not treated as Raspberry Pi evidence without explicit upstream Raspberry Pi evidence or target-specific validation.",
+    "next_action": "Retain both candidates for the six explicitly supported standard targets, resolve exact Pub runtime dependencies for OSV, and research two Raspberry Pi-specific candidate families before target-depth closure."
+  }
+}
