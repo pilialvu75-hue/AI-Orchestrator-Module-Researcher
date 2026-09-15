@@ -9,9 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  supervisor-preflight:
+  pi-preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -36,3 +36,17 @@ jobs:
             --commit dbca8d457e61d8707c40f99c78330b87939483a3 \
             --release-tag 4.3.0 \
             --source-version 4.3.0
+
+      - name: Preflight RunWisp pinned snapshot
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-runwisp
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository runwisp/runwisp \
+            --commit 112f226e63273fd5c0e90959cda42aba80299c37 \
+            --source-version snapshot-2026-09-14
