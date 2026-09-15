@@ -1,0 +1,53 @@
+name: Preflight platform.background_execution
+
+on:
+  push:
+    branches:
+      - proof-platform-background-execution-v1
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+
+      - name: Preflight flutter_workmanager v0.10.10
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-workmanager
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository fluttercommunity/flutter_workmanager \
+            --commit 896c4c1122f5e267ed472b044219c884305246d3 \
+            --release-tag v0.10.10 \
+            --source-version 0.10.10
+
+      - name: Preflight native_workmanager v1.8.1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-native-workmanager
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository brewkits/native_workmanager \
+            --commit 180bea8e7a7786f29bc8fee38877772c10bb2228 \
+            --release-tag v1.8.1 \
+            --source-version 1.8.1
