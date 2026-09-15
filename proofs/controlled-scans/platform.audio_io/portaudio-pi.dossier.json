@@ -1,0 +1,97 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.audio_io",
+  "contract": {
+    "contract_id": "platform.audio_io.v1",
+    "version": "1.0",
+    "status": "draft"
+  },
+  "candidate": {
+    "repository": "PortAudio/portaudio",
+    "source_version": "19.7.0",
+    "release_tag": "v19.7.0",
+    "commit_sha": "147dd722548358763a8b649b3e4b41dfffbcfbb6",
+    "tree_sha": "fb5c10d0bac582b828f6330cbb16b9c4a1e11d1b",
+    "license_evidence": {
+      "github_spdx_metadata": "NOASSERTION",
+      "license_character": "permissive_MIT_style",
+      "license_file_verified_at_pinned_commit": true
+    }
+  },
+  "raspberry_pi_evidence": {
+    "explicit_upstream_support": true,
+    "evidence_kind": "official_project_wiki",
+    "evidence_url": "https://github.com/PortAudio/portaudio/wiki/Platforms_RaspberryPi",
+    "evidence_observed_at": "2026-09-15",
+    "evidence_last_edited": "2025-05-26",
+    "claims_observed": [
+      "PortAudio can be compiled directly on Raspberry Pi",
+      "PortAudio uses ALSA on Raspberry Pi",
+      "the project documents running pa_devs and paex_sine examples on Raspberry Pi"
+    ],
+    "counts_for_target_discovery": true
+  },
+  "functional_evidence": {
+    "audio_input": true,
+    "audio_output": true,
+    "callback_api": true,
+    "blocking_read_write_api": true,
+    "format_conversion": true,
+    "device_enumeration": true,
+    "record_and_playback_test": true,
+    "full_duplex_test_evidence": true,
+    "alsa_backend": true,
+    "exact_release_readme_evidence": [
+      "portable audio I/O library",
+      "Pa_GetDeviceCount based device enumeration",
+      "patest_record records and plays audio",
+      "patest_wire passes input to output"
+    ]
+  },
+  "adaptation": {
+    "kind": "native_adapter_required",
+    "flutter_plugin_ready": false,
+    "likely_bridge": "Dart FFI or a Raspberry-Pi platform implementation behind platform.audio_io.v1",
+    "contract_conformance_asserted": false,
+    "runtime_validation_completed": false
+  },
+  "security": {
+    "verdict": "REVIEW",
+    "complete": true,
+    "admission_eligible": false,
+    "critical_findings": 0,
+    "findings": [
+      "test/patest_suggested_vs_streaminfo_latency.py invokes a local PATest.exe through os.system()"
+    ],
+    "finding_context": "The exact test helper constructs a local executable command to generate latency CSV data; this is not treated as harmless automatically, so the gate remains REVIEW.",
+    "supply_chain": "NOT_ANALYZED",
+    "supply_chain_reason": "no supported dependency manifest was present in scanned source",
+    "vulnerability_database_checked": false,
+    "executed_untrusted_code": false,
+    "certification_eligible": false
+  },
+  "assessment": {
+    "strengths": [
+      "The upstream project itself documents Raspberry Pi deployment rather than relying on a generic Linux inference.",
+      "Input/output, device enumeration, format conversion and full-duplex testing align closely with the platform.audio_io boundary.",
+      "ALSA is explicitly documented for Raspberry Pi.",
+      "The repository remains actively maintained even though the latest tagged stable release is older."
+    ],
+    "risks": [
+      "The latest tagged stable release is v19.7.0 from 2021; current project activity is newer than the pinned stable release.",
+      "No Flutter/Raspberry-Pi adapter has been built or executed yet.",
+      "The static gate correctly keeps process execution found in test tooling under REVIEW.",
+      "Native C supply-chain analysis is not yet covered by the Researcher's manifest analyzers.",
+      "Actual device routing and latency need validation on Raspberry Pi hardware."
+    ],
+    "architecture_fit": "independent_raspberry_pi_native_alternative"
+  },
+  "decision": {
+    "shortlisted_for_target_discovery": true,
+    "counts_for_raspberry_pi_research_depth": true,
+    "security_admitted": false,
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false
+  }
+}
