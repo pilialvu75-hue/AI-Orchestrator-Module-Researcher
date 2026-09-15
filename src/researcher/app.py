@@ -26,6 +26,7 @@ from .submission import (
     GitHubIntakePrSubmissionClient,
     LibrarySubmissionClient,
 )
+from .target_discovery import TargetAwareDiscoveryProvider
 from .vulnerability import OsvClient, OsvVulnerabilityScanner
 from .vulnerability_admission import GitHubVulnerabilityAdmissionScanner
 
@@ -87,7 +88,9 @@ def build_app(config: Config) -> App:
         config.data_dir / "cache",
     )
     rate_limits = RateLimitManager(state)
-    discovery = GitHubDiscoveryProvider(source_api, rate_limits)
+    discovery = TargetAwareDiscoveryProvider(
+        GitHubDiscoveryProvider(source_api, rate_limits)
+    )
     security_scanner = ComponentAwareGitHubSecurityScanner(source_api, rate_limits)
     vulnerability_scanner = GitHubVulnerabilityAdmissionScanner(
         source_api,
