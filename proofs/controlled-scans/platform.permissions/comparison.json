@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.permissions",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_status": "needed",
+  "priority": "high",
+  "desired_candidates": 2,
+  "required_targets": ["android", "windows", "linux", "macos", "ios", "web"],
+  "contract": {
+    "contract_id": "platform.permissions.v1",
+    "contract_version": "1.0",
+    "status": "draft",
+    "known_boundary": "Runtime permission and capability broker with query, request and denial-state semantics.",
+    "detail_gap": "Target equivalence, settings handoff, denial normalization, silent-grant policy, sandbox semantics and fallback behavior are not authoritative yet."
+  },
+  "candidates": [
+    {
+      "id": "Baseflow/flutter-permission-handler:permission_handler",
+      "version": "13.0.2",
+      "commit_sha": "fc60b52afbd076d90f25ee950952cbd434e88595",
+      "license": "MIT",
+      "declared_targets": ["android", "ios", "web", "windows"],
+      "missing_required_target_declarations": ["linux", "macos"],
+      "fit": {
+        "status_query": "strong",
+        "permission_request": "strong",
+        "denial_states": "strong",
+        "service_status": "strong",
+        "settings_handoff": "strong",
+        "full_required_target_coverage": "incomplete"
+      },
+      "security_preflight": "REVIEW",
+      "source_security": "CLEAR",
+      "supply_chain": "CLEAR",
+      "vulnerability_gate": "REVIEW: Pub dependency versions unresolved; OSV not queried",
+      "role": "established reference and preferred partial implementation where explicitly supported"
+    },
+    {
+      "id": "arcas0803/device_permission",
+      "version": "1.0.0",
+      "commit_sha": "a6d4bd4aabc7148fbbf5db50becd48e89c917557",
+      "license": "MIT file present upstream; Researcher resolver returned null",
+      "declared_targets": ["android", "ios", "linux", "macos", "windows", "web"],
+      "missing_required_target_declarations": [],
+      "fit": {
+        "status_query": "strong by API inspection",
+        "permission_request": "strong by API inspection",
+        "denial_states": "strong by API inspection",
+        "service_status": "present",
+        "settings_handoff": "present",
+        "full_required_target_coverage": "declared but not runtime-certified"
+      },
+      "security_preflight": "REVIEW",
+      "source_security": "CLEAR",
+      "supply_chain": "CLEAR",
+      "vulnerability_gate": "REVIEW: Pub dependency versions unresolved; OSV not queried",
+      "independence_caution": "Upstream license explicitly states portions of API surface, behaviour and naming are inspired by flutter-permission-handler.",
+      "role": "full-declared-target candidate requiring runtime and provenance validation"
+    }
+  ],
+  "decision": {
+    "preferred_established_reference": "Baseflow/flutter-permission-handler:permission_handler",
+    "preferred_declared_target_coverage": "arcas0803/device_permission",
+    "single_winner": null,
+    "submission_ready": false,
+    "certification_asserted": false,
+    "two_candidate_independence_satisfied": false,
+    "reason": "Both sources are statically clear, but vulnerability admission is blocked by unresolved Pub dependency versions. Baseflow lacks Linux/macOS declarations at the package boundary; device_permission declares all required targets but needs runtime validation and has a license-provenance mismatch in the Researcher resolver."
+  }
+}
