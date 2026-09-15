@@ -1,0 +1,53 @@
+name: Live native CMake source preflight
+
+on:
+  push:
+    branches:
+      - preflight-native-cmake-live
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+
+      - name: Preflight miniaudio
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-miniaudio
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository mackron/miniaudio \
+            --commit 9634bedb5b5a2ca38c1ee7108a9358a4e233f14d \
+            --release-tag 0.11.25 \
+            --source-version 0.11.25
+
+      - name: Preflight PortAudio
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-portaudio
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository PortAudio/portaudio \
+            --commit 147dd722548358763a8b649b3e4b41dfffbcfbb6 \
+            --release-tag v19.7.0 \
+            --source-version 19.7.0
