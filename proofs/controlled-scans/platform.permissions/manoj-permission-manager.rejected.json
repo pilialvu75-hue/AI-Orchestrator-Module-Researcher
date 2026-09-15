@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.permissions",
+  "lifecycle": "REJECTED_FROM_DEPTH",
+  "candidate": {
+    "provider": "github",
+    "repository": "manojprajapati1999/permission_manager",
+    "name": "permission_manager",
+    "source_version": "2.0.9",
+    "commit_sha": "daa1872c4e8115f3f616395ac5558a1ac706c364",
+    "tree_sha": "8ae9539589e17ce2b28d55ddcceac790af27e9e8",
+    "license_spdx": "MIT",
+    "declared_targets": ["android", "ios", "linux", "macos", "windows", "web"]
+  },
+  "security": {
+    "source_verdict": "REVIEW",
+    "source_complete": false,
+    "source_admission_eligible": false,
+    "findings": [
+      {
+        "severity": "HIGH",
+        "rule_id": "opaque_or_precompiled_artifact",
+        "path": "example/android/gradle/wrapper/gradle-wrapper.jar",
+        "evidence": "binary/archive artifact requires separate supply-chain review"
+      }
+    ],
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "NOT_ANALYZED",
+    "vulnerability_database_checked": false,
+    "executed_untrusted_code": false
+  },
+  "functional_review": {
+    "linux_declared": true,
+    "linux_counts_as_implemented_candidate": false,
+    "reason": "The pinned Linux native plugin responds only to getPlatformVersion and returns method-not-implemented for other channel methods, while the Dart implementation invokes check, request, checkMultiple, requestMultiple and openAppSettings.",
+    "runtime_target_validation_completed": false
+  },
+  "decision": {
+    "shortlisted": false,
+    "counted_toward_research_target_depth": false,
+    "submission_ready": false,
+    "certification_asserted": false,
+    "rejection_reasons": [
+      "source admission blocked by opaque Gradle wrapper JAR",
+      "declared Linux target does not implement the permission channel methods required by the Dart API"
+    ]
+  }
+}
