@@ -1,4 +1,4 @@
-name: Preflight platform.permissions package scope
+name: Preflight platform.permissions evidence
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
 jobs:
   preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -35,4 +35,31 @@ jobs:
             --repository Baseflow/flutter-permission-handler \
             --commit fc60b52afbd076d90f25ee950952cbd434e88595 \
             --source-version 13.0.2 \
-            --component-path permission_handler
+            --component-path permission_handler \
+            | tee permission-handler-preflight.json
+
+      - name: Preflight device_permission
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-device-permission
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository arcas0803/device_permission \
+            --commit a6d4bd4aabc7148fbbf5db50becd48e89c917557 \
+            --release-tag v1.0.0 \
+            --source-version 1.0.0 \
+            | tee device-permission-preflight.json
+
+      - name: Upload immutable preflight evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-permissions-preflight-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            permission-handler-preflight.json
+            device-permission-preflight.json
