@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.audio_io",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_status": "needed",
+  "need_authority": "staged_not_authoritative",
+  "priority": "high",
+  "desired_candidates_per_target": 2,
+  "required_targets": [
+    "android",
+    "windows",
+    "linux",
+    "macos",
+    "ios",
+    "web",
+    "raspberry_pi"
+  ],
+  "contract": {
+    "contract_id": "platform.audio_io.v1",
+    "version": "1.0",
+    "status": "draft",
+    "known_boundary": "Audio capture/playback and device-routing boundary with explicit format negotiation.",
+    "detail_gap": true
+  },
+  "candidates": [
+    {
+      "id": "WAMF/audio_io",
+      "source_version": "0.6.1",
+      "commit_sha": "47690f931422a2f58a0c4901133aba307e9649bf",
+      "role": "preferred_narrow_candidate",
+      "research_targets": ["android", "windows", "linux", "macos", "ios", "web"],
+      "missing_required_target_declarations": ["raspberry_pi"],
+      "source_security": "CLEAR",
+      "vulnerability": "REVIEW",
+      "runtime_validated": false
+    },
+    {
+      "id": "flutter-webrtc/flutter-webrtc",
+      "source_version": "1.6.2+hotfix.3",
+      "commit_sha": "964066f26f3303dd7d518cb86b8d76c8ee82b031",
+      "role": "independent_broad_alternative",
+      "research_targets": ["android", "windows", "linux", "macos", "ios", "web"],
+      "missing_required_target_declarations": ["raspberry_pi"],
+      "source_security": "CLEAR",
+      "vulnerability": "REVIEW",
+      "runtime_validated": false
+    }
+  ],
+  "per_target_candidate_coverage": {
+    "android": 2,
+    "windows": 2,
+    "linux": 2,
+    "macos": 2,
+    "ios": 2,
+    "web": 2,
+    "raspberry_pi": 0
+  },
+  "per_target_candidate_depth_satisfied": false,
+  "research_findings": {
+    "capture_playback": "Both candidates provide evidence for capture and playback on the six standard Flutter targets.",
+    "device_routing": "flutter-webrtc has explicit device enumeration and input/output selection evidence; audio_io has realtime platform backends but route-selection semantics still require validation.",
+    "format_negotiation": "audio_io provides explicit PCM/sample-rate evidence. The Library contract remains draft, so exact interface conformance is not asserted.",
+    "raspberry_pi": "Neither Flutter candidate is counted for Raspberry Pi. Upstream mackron/miniaudio explicitly lists Raspberry Pi and is the first target-specific family to research next, but that does not automatically transfer Pi support to WAMF/audio_io.",
+    "security": "Both pinned source trees are statically CLEAR and supply-chain CLEAR; both remain vulnerability REVIEW because exact Pub runtime dependency versions are unresolved and OSV was not queried."
+  },
+  "decision": {
+    "two_candidate_independence_satisfied": true,
+    "per_target_candidate_depth_satisfied": false,
+    "coverage_blockers": ["raspberry_pi:0/2"],
+    "single_winner": null,
+    "preferred_architecture_fit": "WAMF/audio_io",
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false,
+    "library_write_attempted": false,
+    "next_action": "Research and pin two Raspberry Pi-specific audio I/O families, starting with mackron/miniaudio; then resolve immutable runtime dependency versions and perform target-specific runtime validation before any Library intake."
+  }
+}
