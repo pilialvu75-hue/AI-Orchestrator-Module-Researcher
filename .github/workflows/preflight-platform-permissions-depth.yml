@@ -11,7 +11,7 @@ permissions:
 jobs:
   preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
 
@@ -37,6 +37,36 @@ jobs:
             --source-version 1.0.0 \
             | tee permission-plus-preflight.json
 
+      - name: Preflight permission_plus_linux backend
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-permission-plus-linux
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository jagadeeshchoudhary/permission_plus_linux \
+            --commit 3a2e42674678324fdd0a333111866c7f11923711 \
+            --source-version 1.0.0 \
+            | tee permission-plus-linux-preflight.json
+
+      - name: Preflight permission_plus_apple backend
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-permission-plus-apple
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository jagadeeshchoudhary/permission_plus_apple \
+            --commit 710daa6e3a26546a13bd0f2de085bcc771ce9145 \
+            --source-version 1.0.0 \
+            | tee permission-plus-apple-preflight.json
+
       - name: Preflight permission_manager
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -60,4 +90,6 @@ jobs:
           retention-days: 7
           path: |
             permission-plus-preflight.json
+            permission-plus-linux-preflight.json
+            permission-plus-apple-preflight.json
             permission-manager-preflight.json
