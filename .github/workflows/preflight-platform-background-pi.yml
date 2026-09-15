@@ -11,7 +11,7 @@ permissions:
 jobs:
   pi-preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -53,6 +53,38 @@ jobs:
             --source-version snapshot-2026-09-14 \
             | tee runwisp-preflight.json
 
+      - name: Preflight kardianos service v1.3.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-kardianos-service
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository kardianos/service \
+            --commit 064b9bcb018fecc6d2c3282cf1037abc8cea16d4 \
+            --release-tag v1.3.0 \
+            --source-version 1.3.0 \
+            | tee kardianos-service-preflight.json
+
+      - name: Preflight service-manager-rs v0.11.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-service-manager-rs
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository chipsenkbeil/service-manager-rs \
+            --commit c5464bbd5d9f9b586d49581140ada7e3e9f01c61 \
+            --release-tag v0.11.0 \
+            --source-version 0.11.0 \
+            | tee service-manager-rs-preflight.json
+
       - name: Upload immutable Raspberry Pi preflight evidence
         uses: actions/upload-artifact@v4
         with:
@@ -62,3 +94,5 @@ jobs:
           path: |
             supervisor-preflight.json
             runwisp-preflight.json
+            kardianos-service-preflight.json
+            service-manager-rs-preflight.json
