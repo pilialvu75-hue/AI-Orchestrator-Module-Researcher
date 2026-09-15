@@ -6,15 +6,16 @@
   "priority": "high",
   "desired_candidates": 2,
   "required_targets": ["android", "windows", "linux", "macos", "ios", "web"],
+  "coverage_semantics": "research/discovery evidence only; never target certification",
   "per_target_candidate_coverage": {
-    "android": 2,
-    "windows": 2,
-    "linux": 1,
-    "macos": 1,
-    "ios": 2,
-    "web": 2
+    "android": 3,
+    "windows": 3,
+    "linux": 2,
+    "macos": 2,
+    "ios": 3,
+    "web": 3
   },
-  "per_target_candidate_depth_satisfied": false,
+  "per_target_candidate_depth_satisfied": true,
   "contract": {
     "contract_id": "platform.permissions.v1",
     "contract_version": "1.0",
@@ -65,17 +66,74 @@
       "vulnerability_gate": "REVIEW: Pub dependency versions unresolved; OSV not queried",
       "independence_caution": "Upstream license explicitly states portions of API surface, behaviour and naming are inspired by flutter-permission-handler.",
       "role": "full-declared-target candidate requiring runtime and provenance validation"
+    },
+    {
+      "id": "jagadeeshchoudhary/permission_plus",
+      "version": "1.0.0",
+      "commit_sha": "67b6993f01be6ebe47d2310fc5e491e175eb4a1c",
+      "license": "MIT",
+      "declared_targets": ["android", "ios", "linux", "macos", "windows", "web"],
+      "missing_required_target_declarations": [],
+      "federated_backends_verified": {
+        "linux": {
+          "repository": "jagadeeshchoudhary/permission_plus_linux",
+          "commit_sha": "3a2e42674678324fdd0a333111866c7f11923711",
+          "source_security": "CLEAR",
+          "supply_chain": "CLEAR",
+          "vulnerability_gate": "REVIEW"
+        },
+        "macos": {
+          "repository": "jagadeeshchoudhary/permission_plus_apple",
+          "commit_sha": "710daa6e3a26546a13bd0f2de085bcc771ce9145",
+          "source_security": "CLEAR",
+          "supply_chain": "CLEAR",
+          "vulnerability_gate": "REVIEW"
+        }
+      },
+      "fit": {
+        "status_query": "implemented",
+        "permission_request": "implemented",
+        "denial_states": "present",
+        "full_required_target_coverage": "declared with pinned Linux/macOS backend source evidence",
+        "linux_semantics": "standard binaries are reported granted; sandboxed Flatpak/Snap portal policy is not implemented",
+        "macos_semantics": "native Darwin handlers exist for multiple permission families"
+      },
+      "security_preflight": "REVIEW",
+      "source_security": "CLEAR",
+      "supply_chain": "CLEAR",
+      "vulnerability_gate": "REVIEW: Pub dependency versions unresolved; OSV not queried",
+      "role": "third research family that closes per-target discovery depth, not a certified backend"
+    }
+  ],
+  "rejected_candidates": [
+    {
+      "id": "manojprajapati1999/permission_manager",
+      "version": "2.0.9",
+      "commit_sha": "daa1872c4e8115f3f616395ac5558a1ac706c364",
+      "declared_targets": ["android", "ios", "linux", "macos", "windows", "web"],
+      "counted_toward_target_depth": false,
+      "source_security": "REVIEW",
+      "rejection_reasons": [
+        "opaque example/android/gradle/wrapper/gradle-wrapper.jar blocks source admission",
+        "pinned Linux native plugin handles only getPlatformVersion while Dart invokes check/request/checkMultiple/requestMultiple/openAppSettings"
+      ]
     }
   ],
   "decision": {
     "preferred_established_reference": "Baseflow/flutter-permission-handler:permission_handler",
-    "preferred_declared_target_coverage": "arcas0803/device_permission",
+    "preferred_declared_target_coverage": null,
     "single_winner": null,
     "submission_ready": false,
     "certification_asserted": false,
     "two_candidate_independence_satisfied": false,
-    "per_target_candidate_depth_satisfied": false,
-    "coverage_blockers": ["linux", "macos"],
-    "reason": "Both sources are statically clear, but vulnerability admission is blocked by unresolved Pub dependency versions. Baseflow lacks Linux/macOS declarations at the package boundary, leaving only one declared candidate on those targets under the current two-candidates-per-required-target policy. device_permission declares all required targets but still needs runtime validation and has a license-provenance mismatch in the Researcher resolver."
+    "per_target_candidate_depth_satisfied": true,
+    "coverage_blockers": [],
+    "admission_blockers": [
+      "unresolved Pub dependency versions prevent OSV vulnerability checks",
+      "target runtime behavior is not certified",
+      "Linux standard-binary versus sandbox permission semantics require explicit policy",
+      "device_permission license provenance remains unresolved in the Researcher resolver"
+    ],
+    "reason": "The Researcher discovery-depth requirement is now met for every required target after adding permission_plus and verifying its pinned Linux/macOS federated backend sources. This is research coverage only: all active candidates remain REVIEW at vulnerability/runtime gates, so no Library submission or target certification is asserted."
   }
 }
