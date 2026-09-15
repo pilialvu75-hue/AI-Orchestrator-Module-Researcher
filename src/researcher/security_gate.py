@@ -110,7 +110,7 @@ _RULES: tuple[_Rule, ...] = (
         "install_hook",
         SecuritySeverity.HIGH,
         re.compile(
-            r"(?:postinstall|preinstall|prepare)\s*[\":=]",
+            r"['\"](?:postinstall|preinstall|prepare)['\"]\s*:",
             re.IGNORECASE,
         ),
     ),

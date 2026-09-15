@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.audio_io",
+  "contract": {
+    "contract_id": "platform.audio_io.v1",
+    "version": "1.0",
+    "status": "draft"
+  },
+  "candidate": {
+    "repository": "flutter-webrtc/flutter-webrtc",
+    "package": "flutter_webrtc",
+    "source_version": "1.6.2+hotfix.3",
+    "release_tag": "v1.6.2+hotfix.3",
+    "commit_sha": "964066f26f3303dd7d518cb86b8d76c8ee82b031",
+    "tree_sha": "5cdcc2436c2da78f9ed0e2467adf7be7f00d52e7",
+    "license_spdx": "MIT"
+  },
+  "functional_evidence": {
+    "capture": true,
+    "playback": true,
+    "device_enumeration": true,
+    "audio_input_selection": true,
+    "audio_output_selection": true,
+    "input_evidence": "getUserMedia audio constraints plus native selectAudioInput(deviceId)",
+    "output_evidence": "audio output enumeration plus selectAudioOutput(deviceId) / renderer audioOutput(deviceId)",
+    "format_negotiation_evidence": "WebRTC media constraints and audio pipeline exist, but the exact platform.audio_io.v1 format contract is still draft and not asserted as satisfied."
+  },
+  "target_evidence": {
+    "declared_supported": ["android", "windows", "linux", "macos", "ios", "web"],
+    "additional_upstream_label": "embedded/elinux",
+    "required_but_not_proven": ["raspberry_pi"],
+    "raspberry_pi_counted": false,
+    "reason": "Embedded/elinux support is not treated as Raspberry Pi proof without explicit Pi evidence or target validation."
+  },
+  "security": {
+    "source_verdict": "CLEAR",
+    "source_complete": true,
+    "source_admission_eligible": true,
+    "scanned_files": 314,
+    "scanned_bytes": 2054078,
+    "findings": [],
+    "opaque_artifacts": [],
+    "submodules": [],
+    "safe_internal_symlinks_present": true,
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "REVIEW",
+    "vulnerability_database_checked": false,
+    "unresolved_runtime_dependencies": [
+      "Pub:collection:^1.17.0",
+      "Pub:dart_webrtc:^1.8.0",
+      "Pub:logger:^2.0.2+1",
+      "Pub:path_provider:^2.0.2",
+      "Pub:web:^1.0.0",
+      "Pub:webrtc_interface:^1.5.1"
+    ],
+    "executed_untrusted_code": false,
+    "certification_eligible": false
+  },
+  "assessment": {
+    "strengths": [
+      "Mature independent implementation with broad platform coverage.",
+      "Concrete APIs exist for device enumeration and input/output selection.",
+      "All six non-Raspberry-Pi required targets are explicitly represented upstream.",
+      "Pinned source passed complete static source and supply-chain admission without findings."
+    ],
+    "risks": [
+      "Much broader and heavier WebRTC dependency surface than a minimal audio-I/O LEGO.",
+      "Raspberry Pi is not proven by the evidence gathered here.",
+      "Exact runtime dependency versions are unresolved, so OSV has not been queried.",
+      "Actual latency, duplex behavior, route switching and format negotiation need target-specific runtime validation."
+    ],
+    "architecture_fit": "independent_broad_alternative",
+    "runtime_target_validation_completed": false
+  },
+  "decision": {
+    "shortlisted": true,
+    "counts_toward_research_target_depth": ["android", "windows", "linux", "macos", "ios", "web"],
+    "counts_for_raspberry_pi": false,
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false
+  }
+}

@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.audio_io",
+  "contract": {
+    "contract_id": "platform.audio_io.v1",
+    "version": "1.0",
+    "status": "draft"
+  },
+  "candidate": {
+    "repository": "WAMF/audio_io",
+    "package": "audio_io",
+    "source_version": "0.6.1",
+    "release_tag": "v0.6.1",
+    "commit_sha": "47690f931422a2f58a0c4901133aba307e9649bf",
+    "tree_sha": "328b0fa1fd7b7d8b47c42dc6517d5c48995c5a11",
+    "license_spdx": "MIT"
+  },
+  "functional_evidence": {
+    "capture": true,
+    "playback": true,
+    "streaming_pcm": true,
+    "format_negotiation_evidence": {
+      "pcm16": true,
+      "sample_rates_hz": [16000, 24000, 48000],
+      "independent_input_output_rates": true,
+      "internal_format": "48kHz mono"
+    },
+    "device_routing_evidence": "Platform-specific realtime input/output backends are present; runtime device-selection semantics still require target validation.",
+    "voice_specific_evidence": [
+      "low-latency microphone capture",
+      "speaker playback",
+      "output buffering",
+      "barge-in oriented realtime design"
+    ]
+  },
+  "target_evidence": {
+    "declared_supported": ["android", "windows", "linux", "macos", "ios", "web"],
+    "required_but_not_proven": ["raspberry_pi"],
+    "raspberry_pi_counted": false,
+    "reason": "The package declares Linux but does not explicitly declare Raspberry Pi; the Researcher does not infer Pi support from Linux alone."
+  },
+  "security": {
+    "source_verdict": "CLEAR",
+    "source_complete": true,
+    "source_admission_eligible": true,
+    "scanned_files": 126,
+    "scanned_bytes": 4447765,
+    "findings": [],
+    "opaque_artifacts": [],
+    "submodules": [],
+    "safe_internal_symlink_count": 2,
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "REVIEW",
+    "vulnerability_database_checked": false,
+    "unresolved_runtime_dependencies": [
+      "Pub:ffi:^2.1.0",
+      "Pub:web:^0.5.1"
+    ],
+    "executed_untrusted_code": false,
+    "certification_eligible": false
+  },
+  "assessment": {
+    "strengths": [
+      "Narrow audio-I/O scope matches the planned platform boundary closely.",
+      "Realtime PCM capture and playback are directly relevant to voice-first STT/TTS pipelines.",
+      "All six non-Raspberry-Pi required targets are explicitly declared upstream.",
+      "Pinned source passed complete static source and supply-chain admission without findings."
+    ],
+    "risks": [
+      "Young project with materially lower adoption than flutter-webrtc.",
+      "Raspberry Pi is not explicitly supported by the package evidence gathered here.",
+      "Exact runtime dependency versions are unresolved, so OSV has not been queried.",
+      "Device routing and actual low-latency behavior still need target-specific runtime validation."
+    ],
+    "architecture_fit": "preferred_narrow_candidate",
+    "runtime_target_validation_completed": false
+  },
+  "decision": {
+    "shortlisted": true,
+    "counts_toward_research_target_depth": ["android", "windows", "linux", "macos", "ios", "web"],
+    "counts_for_raspberry_pi": false,
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false
+  }
+}
