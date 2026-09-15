@@ -11,7 +11,7 @@ permissions:
 jobs:
   preflight:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
 
@@ -51,3 +51,32 @@ jobs:
             --commit 180bea8e7a7786f29bc8fee38877772c10bb2228 \
             --release-tag v1.8.1 \
             --source-version 1.8.1
+
+      - name: Preflight auto_start_flutter 1.4.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-auto-start
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository seena98/auto_start_flutter \
+            --commit 25cdc7c5678f5d17045a4a7e30496f1582339dcd \
+            --source-version 1.4.0
+
+      - name: Preflight dart_service_manager v1.3.1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+          DATA_DIR: ${{ runner.temp }}/researcher-service-manager
+        run: |
+          set -euo pipefail
+          researcher preflight-pinned \
+            --repository OmnyGrid/dart_service_manager \
+            --commit 0ec66a53b5a328c1990ffecce801e1009be77650 \
+            --release-tag v1.3.1 \
+            --source-version 1.3.1
