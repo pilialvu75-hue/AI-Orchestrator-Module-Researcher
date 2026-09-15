@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.lifecycle",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_status": "needed",
+  "need_authority": "staged_not_authoritative",
+  "priority": "high",
+  "desired_candidates_per_target": 2,
+  "required_targets": [
+    "android",
+    "windows",
+    "linux",
+    "macos",
+    "ios",
+    "web",
+    "raspberry_pi"
+  ],
+  "contract": {
+    "contract_id": "platform.lifecycle.v1",
+    "version": "1.0",
+    "status": "draft",
+    "known_boundary": "Normalize app visibility/foreground-background transitions, close/exit requests, and headless process shutdown through target-specific adapters.",
+    "detail_gap": true,
+    "non_equivalence_policy": "Flutter AppLifecycleState, native mobile process lifecycle, desktop window-close events, browser beforeunload, and Unix/headless shutdown signals are distinct event sources and are not treated as semantically interchangeable."
+  },
+  "candidates": [
+    {
+      "id": "huanguan1978/app_lifecycle_protector",
+      "source_version": "0.0.3",
+      "commit_sha": "9a2ae9eafb88cfdb29a531fb824a3338eb1f74df",
+      "role": "cross_platform_flutter_lifecycle_orchestrator",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "web"
+      ],
+      "event_source": "Flutter AppLifecycleListener / AppLifecycleState",
+      "security_state": "REVIEW",
+      "runtime_validated": false
+    },
+    {
+      "id": "ajinasokan/flutter_fgbg",
+      "source_version": "0.8.0",
+      "commit_sha": "2b8dfca224a550b19bf62fe7922e214a957009c4",
+      "role": "independent_native_mobile_foreground_background_source",
+      "research_targets": [
+        "android",
+        "ios"
+      ],
+      "event_source": "Android ProcessLifecycleOwner and iOS application foreground/background notifications",
+      "security_state": "CLEAR",
+      "runtime_validated": false
+    },
+    {
+      "id": "chenenyu/lifecycle",
+      "source_version": "1.0.0",
+      "commit_sha": "3c1f0b3b7e95f53017bc60e14f8fbba65f06bcf9",
+      "role": "structured_flutter_lifecycle_composition_alternative",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "web"
+      ],
+      "event_source": "Flutter AppLifecycleState plus route/page/viewport composition",
+      "security_state": "DEFERRED_RATE_LIMIT",
+      "security_admitted": false,
+      "runtime_validated": false
+    },
+    {
+      "id": "leanflutter/window_manager",
+      "source_version": "0.5.2",
+      "commit_sha": "4080b59c0b1084c6085f1613c660382cd164ad76",
+      "component_path": "packages/window_manager",
+      "role": "desktop_window_lifecycle_and_close_source",
+      "research_targets": [
+        "windows",
+        "linux",
+        "macos"
+      ],
+      "event_source": "native desktop window manager callbacks",
+      "security_state": "DEFERRED_RATE_LIMIT",
+      "security_admitted": false,
+      "runtime_validated": false
+    },
+    {
+      "id": "zonble/flutter_window_close",
+      "source_version": "1.3.0",
+      "commit_sha": "56ff690f0f9781c4795fae7ba3fae626c6ec80a1",
+      "role": "desktop_and_web_close_request_alternative",
+      "research_targets": [
+        "windows",
+        "linux",
+        "macos",
+        "web"
+      ],
+      "event_source": "native desktop close interception and browser beforeunload",
+      "security_state": "DEFERRED_RATE_LIMIT",
+      "security_admitted": false,
+      "runtime_validated": false
+    },
+    {
+      "id": "isoos/shutdown",
+      "source_version": "0.4.4",
+      "commit_sha": "9c4a1c590db3315fc8ddeef59e8cb2e9aaed68bd",
+      "role": "raspberry_pi_signal_shutdown_reference",
+      "research_targets": [
+        "raspberry_pi"
+      ],
+      "event_source": "dart:io ProcessSignal (SIGINT/SIGHUP/etc.)",
+      "raspberry_pi_evidence": "Pure Dart shutdown package uses ProcessSignal; Raspberry Pi OS/Linux supports POSIX process signals. Runtime hardware validation remains open.",
+      "security_state": "CLEAR",
+      "runtime_validated": false
+    },
+    {
+      "id": "doodlezucc/dart_graceful",
+      "source_version": "1.2.0",
+      "commit_sha": "a96a888f5ec2635c6e52068529d5cc72a3b7eaa9",
+      "role": "independent_raspberry_pi_parent_watchdog_shutdown_alternative",
+      "research_targets": [
+        "raspberry_pi"
+      ],
+      "event_source": "detached child/parent process watchdog via Process.start",
+      "raspberry_pi_evidence": "Pure Dart process-watchdog design is Linux-compatible research evidence only; package SDK constraint is Dart >=2.16 <3.0 and therefore it is not current-runtime ready.",
+      "known_constraint": "Dart SDK >=2.16.0 <3.0.0",
+      "security_state": "REVIEW",
+      "runtime_validated": false
+    }
+  ],
+  "per_target_candidate_coverage": {
+    "android": 3,
+    "windows": 4,
+    "linux": 4,
+    "macos": 4,
+    "ios": 3,
+    "web": 3,
+    "raspberry_pi": 2
+  },
+  "per_target_candidate_depth_satisfied": true,
+  "independent_event_source_pairs": {
+    "android": [
+      "huanguan1978/app_lifecycle_protector",
+      "ajinasokan/flutter_fgbg"
+    ],
+    "ios": [
+      "huanguan1978/app_lifecycle_protector",
+      "ajinasokan/flutter_fgbg"
+    ],
+    "windows": [
+      "huanguan1978/app_lifecycle_protector",
+      "leanflutter/window_manager"
+    ],
+    "linux": [
+      "huanguan1978/app_lifecycle_protector",
+      "leanflutter/window_manager"
+    ],
+    "macos": [
+      "huanguan1978/app_lifecycle_protector",
+      "leanflutter/window_manager"
+    ],
+    "web": [
+      "huanguan1978/app_lifecycle_protector",
+      "zonble/flutter_window_close"
+    ],
+    "raspberry_pi": [
+      "isoos/shutdown",
+      "doodlezucc/dart_graceful"
+    ]
+  },
+  "research_findings": {
+    "mobile": "app_lifecycle_protector supplies the framework-level lifecycle boundary on all standard Flutter targets. flutter_fgbg independently sources Android process lifecycle and iOS application notifications, avoiding a false two-wrapper independence claim on mobile.",
+    "desktop": "app_lifecycle_protector covers framework suspend/resume semantics while window_manager and flutter_window_close expose native window close/lifecycle boundaries. Desktop shutdown and app visibility remain distinct concerns in the draft contract.",
+    "web": "app_lifecycle_protector covers Flutter lifecycle/visibility semantics while flutter_window_close implements a real beforeunload handler. Browser unload is not treated as equivalent to foreground/background state.",
+    "raspberry_pi": "Depth is 2/2 through two mechanically distinct headless shutdown families: isoos/shutdown uses ProcessSignal, while dart_graceful uses a detached parent/worker watchdog. Neither is hardware/runtime certified; dart_graceful is additionally constrained to Dart <3 and would require replacement or modernization before admission.",
+    "security": "flutter_fgbg and shutdown are fully CLEAR in live pinned preflights with OSV checked and no hits. app_lifecycle_protector is source/supply-chain CLEAR but remains REVIEW because logging ^1.2.0 was unresolved for SBOM/OSV. dart_graceful is REVIEW because Process.start is a HIGH source finding; no upstream code was executed. lifecycle, window_manager and flutter_window_close are pinned research candidates whose live scans were deferred solely by GitHub API rate limits and are not security admitted."
+  },
+  "decision": {
+    "two_candidate_independence_satisfied": true,
+    "per_target_candidate_depth_satisfied": true,
+    "coverage_blockers": [],
+    "discovery_depth_closed": true,
+    "security_admission_closed": false,
+    "contract_conformance_closed": false,
+    "runtime_validation_closed": false,
+    "composite_strategy_required": true,
+    "single_winner": null,
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false,
+    "library_write_attempted": false,
+    "next_action": "Keep discovery depth closed but admission open: complete deferred pinned scans after GitHub rate-limit reset, resolve app_lifecycle_protector dependency versions, replace or modernize dart_graceful for Dart 3+, define normalized event ordering/debounce/termination guarantees, and run platform-specific lifecycle tests including Raspberry Pi process termination before Library intake."
+  }
+}
