@@ -27,6 +27,7 @@ from .submission import (
     LibrarySubmissionClient,
 )
 from .target_discovery import TargetAwareDiscoveryProvider
+from .target_submission import TargetScopedSubmissionClient
 from .vulnerability import OsvClient, OsvVulnerabilityScanner
 from .vulnerability_admission import GitHubVulnerabilityAdmissionScanner
 
@@ -163,6 +164,7 @@ def build_app(config: Config) -> App:
             state,
             config.library_ref,
         )
+    submission = TargetScopedSubmissionClient(submission)
 
     engine = RestartSafeResearchEngine(
         library,
