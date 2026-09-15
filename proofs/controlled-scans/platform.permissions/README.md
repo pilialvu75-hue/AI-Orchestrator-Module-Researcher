@@ -7,6 +7,7 @@ This directory records controlled research for the staged high-priority need `pl
 - Need source: `catalog/needs.platform-extension.json` in Module Library.
 - Need authority: staged, not authoritative catalog promotion.
 - Required targets: Android, Windows, Linux, macOS, iOS and Web.
+- Desired candidate depth: two candidates per required target.
 - Draft contract: `platform.permissions.v1` / `1.0`.
 - Known logical boundary: runtime permission/capability query, request and denial-state semantics.
 
@@ -52,6 +53,19 @@ The Linux implementation also demonstrates why declared support is not equivalen
 
 Role: promising full-declared-target candidate, but younger and not yet runtime-certified; candidate independence from Baseflow is also not absolute because upstream explicitly acknowledges API/behaviour inspiration.
 
+## Per-target coverage
+
+Under the current Researcher policy, two candidates are required for each target. This proof currently has:
+
+- Android: 2
+- Windows: 2
+- iOS: 2
+- Web: 2
+- Linux: 1
+- macOS: 1
+
+Therefore the candidate-depth requirement is **not satisfied**. Linux and macOS remain explicit research blockers.
+
 ## Decision
 
 Retain both candidates for staged research, but certify neither.
@@ -60,6 +74,7 @@ Retain both candidates for staged research, but certify neither.
 - `device_permission` is the only one of these two that declares every required staged target.
 - Neither candidate is vulnerability-clear because dependency versions remain unresolved.
 - The desired two-candidate independence goal is not fully satisfied because `device_permission` explicitly derives portions of its API/behaviour model from Baseflow.
+- The two-candidates-per-target requirement is not satisfied for Linux or macOS.
 - Target declaration is not runtime evidence; Linux/macOS/Windows/Web behavior still requires platform-specific tests.
 
-Before authoritative Library intake: resolve the Pub SBOM to immutable dependency versions, run OSV, validate runtime permission semantics per target, reconcile `device_permission` license provenance, and preferably locate a genuinely independent second implementation or document why an adapter composition is the safer architecture.
+Before authoritative Library intake: resolve the Pub SBOM to immutable dependency versions, run OSV, validate runtime permission semantics per target, reconcile `device_permission` license provenance, and find at least one additional credible Linux/macOS candidate (preferably genuinely independent) or explicitly document a safer adapter-composition strategy.
