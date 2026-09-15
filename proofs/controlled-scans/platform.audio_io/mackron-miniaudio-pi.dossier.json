@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.audio_io",
+  "contract": {
+    "contract_id": "platform.audio_io.v1",
+    "version": "1.0",
+    "status": "draft"
+  },
+  "candidate": {
+    "repository": "mackron/miniaudio",
+    "source_version": "0.11.25",
+    "release_tag": "0.11.25",
+    "commit_sha": "9634bedb5b5a2ca38c1ee7108a9358a4e233f14d",
+    "tree_sha": "f0e6266ff4034d41afe1dfd024ef6e306ada79a5",
+    "license_evidence": {
+      "choice": ["public_domain", "MIT-0"],
+      "github_spdx_metadata": null,
+      "license_file_verified_at_pinned_commit": true
+    }
+  },
+  "raspberry_pi_evidence": {
+    "explicit_upstream_support": true,
+    "evidence_kind": "pinned_repository_readme",
+    "evidence_ref": "README.md@9634bedb5b5a2ca38c1ee7108a9358a4e233f14d",
+    "supported_platforms_include": "Raspberry Pi",
+    "backend_evidence": ["ALSA", "PulseAudio", "JACK"],
+    "counts_for_target_discovery": true
+  },
+  "functional_evidence": {
+    "playback": true,
+    "capture": true,
+    "raw_audio_low_level_api": true,
+    "device_enumeration": true,
+    "playback_and_capture_device_lists": true,
+    "format_conversion": true,
+    "resampling": true,
+    "device_api_evidence": [
+      "ma_context_get_devices",
+      "ma_context_get_device_info",
+      "ma_device_type_capture",
+      "ma_device_type_playback"
+    ]
+  },
+  "adaptation": {
+    "kind": "native_adapter_required",
+    "flutter_plugin_ready": false,
+    "likely_bridge": "Dart FFI or a Raspberry-Pi platform implementation behind platform.audio_io.v1",
+    "contract_conformance_asserted": false,
+    "runtime_validation_completed": false
+  },
+  "security": {
+    "verdict": "REVIEW",
+    "complete": false,
+    "admission_eligible": false,
+    "critical_findings": 0,
+    "findings": [
+      "empty .gitmodules currently misclassified as source_blob_unreadable by Researcher",
+      "tests/android/MiniaudioTester/gradle/wrapper/gradle-wrapper.jar requires separate opaque-artifact review"
+    ],
+    "supply_chain": "NOT_ANALYZED",
+    "vulnerability_database_checked": false,
+    "executed_untrusted_code": false,
+    "certification_eligible": false
+  },
+  "assessment": {
+    "strengths": [
+      "Raspberry Pi is explicitly listed by upstream on the exact pinned release commit.",
+      "The project is specifically an audio playback and capture library.",
+      "Low-level raw audio, device enumeration, conversion and resampling fit a voice-first transport adapter well.",
+      "Single-source native integration is comparatively small at the API boundary even though the repository includes tests and examples."
+    ],
+    "risks": [
+      "No Flutter/Raspberry-Pi adapter has been built or executed yet.",
+      "Repository-wide security admission remains REVIEW because of an opaque Gradle test artifact and a zero-byte blob reader limitation.",
+      "Native C supply-chain analysis is not yet represented by the Researcher's package-manifest analyzers.",
+      "Actual ALSA/Pulse/JACK device routing and duplex latency must be measured on Raspberry Pi hardware."
+    ],
+    "architecture_fit": "preferred_raspberry_pi_native_candidate"
+  },
+  "decision": {
+    "shortlisted_for_target_discovery": true,
+    "counts_for_raspberry_pi_research_depth": true,
+    "security_admitted": false,
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false
+  }
+}
