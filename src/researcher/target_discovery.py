@@ -7,6 +7,27 @@ from .discovery.base import DiscoveryProvider
 from .models import Candidate, Need
 
 
+_TARGET_QUERY_TERMS = {
+    "android": "android mobile",
+    "windows": "windows desktop",
+    "linux": "linux desktop",
+    "macos": "macos apple desktop",
+    "ios": "apple iphone mobile",
+    "web": "browser javascript web platform",
+    "raspberry_pi": "raspberry linux arm",
+    "desktop": "desktop windows linux macos",
+}
+
+
+def _normalized_targets(values: Iterable[object]) -> tuple[str, ...]:
+    normalized = {
+        str(value).strip().lower()
+        for value in values
+        if str(value).strip()
+    }
+    return tuple(sorted(normalized))
+
+
 class TargetAwareDiscoveryProvider:
     """Add per-target discovery evidence without pretending it is certification.
 
@@ -31,14 +52,15 @@ class TargetAwareDiscoveryProvider:
         candidate: Candidate,
         targets: Iterable[str],
     ) -> Candidate:
-        normalized = sorted({str(target).strip().lower() for target in targets if str(target).strip()})
+        normalized = _normalized_targets(targets)
         extra = dict(candidate.extra)
-        existing = {
-            str(target).strip().lower()
-            for target in extra.get("research_targets", [])
-            if str(target).strip()
-        }
-        extra["research_targets"] = sorted(existing | set(normalized))
+        raw_existing = extra.get("research_targets", [])
+        existing = (
+            _normalized_targets(raw_existing)
+            if isinstance(raw_existing, (list, tuple, set, frozenset))
+            else ()
+        )
+        extra["research_targets"] = sorted(set(existing) | set(normalized))
         evidence = extra.get("target_discovery_evidence")
         evidence_map = dict(evidence) if isinstance(evidence, dict) else {}
         for target in normalized:
@@ -59,13 +81,9 @@ class TargetAwareDiscoveryProvider:
     ) -> list[Candidate]:
         required = {target.lower() for target in need.targets}
         requested = tuple(
-            sorted(
-                {
-                    str(target).strip().lower()
-                    for target in targets
-                    if str(target).strip().lower() in required
-                }
-            )
+            target
+            for target in _normalized_targets(targets)
+            if target in required
         )
         if not requested:
             return []
@@ -78,9 +96,10 @@ class TargetAwareDiscoveryProvider:
         merged: dict[tuple[str, str, str], Candidate] = {}
 
         for target in requested:
+            query_terms = _TARGET_QUERY_TERMS.get(target, target.replace("_", " "))
             targeted_need = replace(
                 need,
-                title=f"{need.title} {target}",
+                title=f"{need.title} {query_terms}",
                 targets=(target,),
             )
             for candidate in self.base.discover(targeted_need, limit=per_target_limit):
@@ -90,7 +109,12 @@ class TargetAwareDiscoveryProvider:
                 if previous is None:
                     merged[key] = annotated
                     continue
-                previous_targets = previous.extra.get("research_targets", [])
+                raw_previous = previous.extra.get("research_targets", [])
+                previous_targets = (
+                    _normalized_targets(raw_previous)
+                    if isinstance(raw_previous, (list, tuple, set, frozenset))
+                    else ()
+                )
                 merged[key] = self._annotate(annotated, previous_targets)
 
         ranked = sorted(
