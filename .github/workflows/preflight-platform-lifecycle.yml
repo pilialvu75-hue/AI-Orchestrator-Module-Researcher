@@ -1,4 +1,4 @@
-name: Preflight platform.lifecycle candidates
+name: Preflight platform.lifecycle missing candidates
 
 on:
   push:
@@ -14,12 +14,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: app-lifecycle-protector
-            repository: huanguan1978/app_lifecycle_protector
-            commit: 9a2ae9eafb88cfdb29a531fb824a3338eb1f74df
-            source_version: 0.0.3
+          - id: flutter-fgbg
+            repository: ajinasokan/flutter_fgbg
+            commit: 2b8dfca224a550b19bf62fe7922e214a957009c4
+            source_version: 0.8.0
             component_path: ""
-            release_tag: ""
+            release_tag: 0.8.0
           - id: lifecycle
             repository: chenenyu/lifecycle
             commit: 3c1f0b3b7e95f53017bc60e14f8fbba65f06bcf9
@@ -38,18 +38,6 @@ jobs:
             source_version: 1.3.0
             component_path: ""
             release_tag: 1.3.0
-          - id: shutdown
-            repository: isoos/shutdown
-            commit: 9c4a1c590db3315fc8ddeef59e8cb2e9aaed68bd
-            source_version: 0.4.4
-            component_path: ""
-            release_tag: ""
-          - id: graceful
-            repository: doodlezucc/dart_graceful
-            commit: a96a888f5ec2635c6e52068529d5cc72a3b7eaa9
-            source_version: 1.2.0
-            component_path: ""
-            release_tag: ""
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
