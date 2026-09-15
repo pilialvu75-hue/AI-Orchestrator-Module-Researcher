@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.permissions",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_authority": "staged_not_authoritative",
+  "contract_id": "platform.permissions.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "observed_at": "2026-09-15",
+  "workflow_run_id": 34949422173,
+  "workflow_head_sha": "0d579c7060577bb3e15d6a25b6d9873f74551d07",
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "candidate": "Baseflow/flutter-permission-handler:permission_handler",
+      "repository": "Baseflow/flutter-permission-handler",
+      "component_path": "permission_handler",
+      "commit_sha": "fc60b52afbd076d90f25ee950952cbd434e88595",
+      "tree_sha": "340ae26957acc68855c823bc1a66fb6318e6f843",
+      "source_version": "13.0.2",
+      "release_tag": null,
+      "license": "MIT",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 143,
+        "blobs_seen": 95,
+        "relevant_blobs": 36,
+        "scanned_files": 36,
+        "scanned_bytes": 61974,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "manifests_analyzed": ["permission_handler/pubspec.yaml"],
+        "lockfiles_present": [],
+        "runtime_dependencies": [
+          "meta:^1.7.0",
+          "permission_handler_android:^14.1.0",
+          "permission_handler_apple:^9.5.0",
+          "permission_handler_html:^0.1.4+0",
+          "permission_handler_windows:^0.2.2",
+          "permission_handler_platform_interface:^4.4.0"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:meta:^1.7.0",
+          "version_unresolved:Pub:permission_handler_android:^14.1.0",
+          "version_unresolved:Pub:permission_handler_apple:^9.5.0",
+          "version_unresolved:Pub:permission_handler_html:^0.1.4+0",
+          "version_unresolved:Pub:permission_handler_platform_interface:^4.4.0",
+          "version_unresolved:Pub:permission_handler_windows:^0.2.2"
+        ],
+        "reason": "SBOM contains unresolved dependency versions"
+      }
+    },
+    {
+      "candidate": "arcas0803/device_permission",
+      "repository": "arcas0803/device_permission",
+      "component_path": null,
+      "commit_sha": "a6d4bd4aabc7148fbbf5db50becd48e89c917557",
+      "tree_sha": "baa0befb3494f658a5385b7ccb61618775f32d2a",
+      "source_version": "1.0.0",
+      "release_tag": "v1.0.0",
+      "license": null,
+      "upstream_license_file": "MIT",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "total_entries": 363,
+        "blobs_seen": 245,
+        "relevant_blobs": 133,
+        "scanned_files": 133,
+        "scanned_bytes": 295272,
+        "findings": [],
+        "opaque_artifacts": [],
+        "submodules": [],
+        "symlinks": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "manifests_analyzed": ["pubspec.yaml"],
+        "lockfiles_present": [],
+        "runtime_dependencies": [
+          "web:^1.1.1",
+          "plugin_platform_interface:^2.1.8",
+          "meta:^1.18.0"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database": "OSV",
+        "database_checked": false,
+        "admission_eligible": false,
+        "queried_components": 0,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:meta:^1.18.0",
+          "version_unresolved:Pub:plugin_platform_interface:^2.1.8",
+          "version_unresolved:Pub:web:^1.1.1"
+        ],
+        "reason": "SBOM contains unresolved dependency versions"
+      }
+    }
+  ],
+  "decision": {
+    "security_policy": "Static source CLEAR does not imply admission CLEAR. Vulnerability admission remains fail-closed until dependency versions are immutable and OSV is actually queried.",
+    "target_policy": "A platform declaration is not runtime certification and support on one desktop target is not evidence for another.",
+    "contract_gaps": [
+      "cross-target denial-state normalization",
+      "settings handoff semantics",
+      "silent-grant versus unsupported semantics",
+      "sandbox/capability behavior per target",
+      "runtime behavior validation for every declared target",
+      "immutable dependency resolution for OSV"
+    ],
+    "next_action": "Retain both candidates without submission. Resolve exact Pub dependency versions and run OSV; then perform target-specific runtime validation and seek a genuinely independent second candidate or justify adapter composition."
+  }
+}

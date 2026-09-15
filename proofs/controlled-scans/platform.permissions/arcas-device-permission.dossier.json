@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.permissions",
+  "contract_id": "platform.permissions.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "lifecycle": "SCREENED",
+  "candidate": {
+    "provider": "github",
+    "repository": "arcas0803/device_permission",
+    "component_path": null,
+    "name": "device_permission",
+    "source_version": "1.0.0",
+    "release_tag": "v1.0.0",
+    "commit_sha": "a6d4bd4aabc7148fbbf5db50becd48e89c917557",
+    "tree_sha": "baa0befb3494f658a5385b7ccb61618775f32d2a",
+    "license_spdx": null,
+    "upstream_license_file": "MIT"
+  },
+  "required_targets": ["android", "windows", "linux", "macos", "ios", "web"],
+  "declared_targets": ["android", "ios", "linux", "macos", "windows", "web"],
+  "evidence": {
+    "permission_status_query": true,
+    "permission_request": true,
+    "denial_state_model": true,
+    "service_status": true,
+    "open_app_settings": true,
+    "all_required_targets_declared": true,
+    "linux_native_implementation_present": true,
+    "runtime_target_validation_completed": false,
+    "api_independence_from_baseflow": false
+  },
+  "adaptation": {
+    "recommended_role": "full-declared-target candidate behind platform.permissions pending runtime and provenance validation",
+    "required_policy_work": [
+      "verify Linux granted/restricted fallback semantics",
+      "validate macOS permission behavior",
+      "validate Windows permission behavior",
+      "validate Web permission behavior",
+      "normalize cross-target denial states",
+      "reconcile resolver license provenance",
+      "decide whether Baseflow-inspired API/behaviour satisfies independence requirements"
+    ]
+  },
+  "security": {
+    "source_verdict": "CLEAR",
+    "source_complete": true,
+    "findings": [],
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "REVIEW",
+    "vulnerability_database_checked": false,
+    "unresolved_dependency_versions": [
+      "meta:^1.18.0",
+      "plugin_platform_interface:^2.1.8",
+      "web:^1.1.1"
+    ],
+    "executed_untrusted_code": false,
+    "certification_eligible": false,
+    "review_note": "Static source and supply chain are clear, but exact dependency versions are unresolved so OSV was not queried. Researcher license resolution returned null while the pinned upstream LICENSE file is MIT."
+  },
+  "decision": {
+    "shortlisted": true,
+    "preferred_declared_target_coverage": true,
+    "full_required_target_candidate": true,
+    "runtime_certified": false,
+    "submission_ready": false,
+    "certification_asserted": false
+  }
+}
