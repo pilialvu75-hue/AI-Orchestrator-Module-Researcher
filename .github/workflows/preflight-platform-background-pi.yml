@@ -35,7 +35,8 @@ jobs:
             --repository Supervisor/supervisor \
             --commit dbca8d457e61d8707c40f99c78330b87939483a3 \
             --release-tag 4.3.0 \
-            --source-version 4.3.0
+            --source-version 4.3.0 \
+            | tee supervisor-preflight.json
 
       - name: Preflight RunWisp pinned snapshot
         env:
@@ -49,4 +50,15 @@ jobs:
           researcher preflight-pinned \
             --repository runwisp/runwisp \
             --commit 112f226e63273fd5c0e90959cda42aba80299c37 \
-            --source-version snapshot-2026-09-14
+            --source-version snapshot-2026-09-14 \
+            | tee runwisp-preflight.json
+
+      - name: Upload immutable Raspberry Pi preflight evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-background-execution-pi-preflight-evidence
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            supervisor-preflight.json
+            runwisp-preflight.json
