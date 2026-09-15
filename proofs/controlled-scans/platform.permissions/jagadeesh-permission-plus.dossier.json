@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.permissions",
+  "contract_id": "platform.permissions.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "lifecycle": "SCREENED",
+  "candidate": {
+    "provider": "github",
+    "repository": "jagadeeshchoudhary/permission_plus",
+    "name": "permission_plus",
+    "source_version": "1.0.0",
+    "commit_sha": "67b6993f01be6ebe47d2310fc5e491e175eb4a1c",
+    "tree_sha": "61bc13e53e88d196106fc80ddab211b5b98fc644",
+    "license_spdx": "MIT"
+  },
+  "required_targets": ["android", "windows", "linux", "macos", "ios", "web"],
+  "declared_targets": ["android", "ios", "linux", "macos", "windows", "web"],
+  "federated_backends": {
+    "linux": {
+      "repository": "jagadeeshchoudhary/permission_plus_linux",
+      "source_version": "1.0.0",
+      "commit_sha": "3a2e42674678324fdd0a333111866c7f11923711",
+      "tree_sha": "e95746b2e1d3aaa906d9e5778075061486235bb9",
+      "license_spdx": "MIT",
+      "source_security": "CLEAR",
+      "supply_chain": "CLEAR",
+      "vulnerability_verdict": "REVIEW",
+      "runtime_note": "For standard Linux binaries all permission types are returned as granted. Flatpak/Snap portal-backed permission semantics are explicitly not implemented."
+    },
+    "apple": {
+      "repository": "jagadeeshchoudhary/permission_plus_apple",
+      "source_version": "1.0.0",
+      "commit_sha": "710daa6e3a26546a13bd0f2de085bcc771ce9145",
+      "tree_sha": "cd0934ae995af21313bdd915cb39852f7e798878",
+      "license_spdx": "MIT",
+      "targets": ["ios", "macos"],
+      "source_security": "CLEAR",
+      "supply_chain": "CLEAR",
+      "vulnerability_verdict": "REVIEW",
+      "runtime_note": "Shared Darwin backend contains native Swift handlers for camera/microphone, Bluetooth, contacts, EventKit, location, notifications and additional permission families."
+    }
+  },
+  "evidence": {
+    "all_required_targets_declared": true,
+    "linux_backend_source_pinned": true,
+    "macos_backend_source_pinned": true,
+    "linux_permission_status_and_request_implemented": true,
+    "linux_sandbox_portal_policy_implemented": false,
+    "macos_native_permission_handlers_present": true,
+    "runtime_target_validation_completed": false
+  },
+  "security": {
+    "root_source_verdict": "CLEAR",
+    "root_supply_chain_verdict": "CLEAR",
+    "root_vulnerability_verdict": "REVIEW",
+    "linux_source_verdict": "CLEAR",
+    "linux_supply_chain_verdict": "CLEAR",
+    "linux_vulnerability_verdict": "REVIEW",
+    "apple_source_verdict": "CLEAR",
+    "apple_supply_chain_verdict": "CLEAR",
+    "apple_vulnerability_verdict": "REVIEW",
+    "vulnerability_database_checked": false,
+    "executed_untrusted_code": false,
+    "certification_eligible": false,
+    "review_note": "Root and pinned federated backend source scans are clear, but exact Pub dependency versions remain unresolved, so OSV was not queried."
+  },
+  "decision": {
+    "shortlisted": true,
+    "counts_toward_research_target_depth": true,
+    "full_required_target_candidate": true,
+    "runtime_certified": false,
+    "submission_ready": false,
+    "certification_asserted": false
+  }
+}
