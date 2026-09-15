@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.permissions",
+  "contract_id": "platform.permissions.v1",
+  "contract_version": "1.0",
+  "contract_status": "draft",
+  "lifecycle": "SCREENED",
+  "candidate": {
+    "provider": "github",
+    "repository": "Baseflow/flutter-permission-handler",
+    "component_path": "permission_handler",
+    "name": "permission_handler",
+    "source_version": "13.0.2",
+    "release_tag": null,
+    "commit_sha": "fc60b52afbd076d90f25ee950952cbd434e88595",
+    "tree_sha": "340ae26957acc68855c823bc1a66fb6318e6f843",
+    "license_spdx": "MIT"
+  },
+  "required_targets": ["android", "windows", "linux", "macos", "ios", "web"],
+  "declared_targets": ["android", "ios", "web", "windows"],
+  "evidence": {
+    "permission_status_query": true,
+    "permission_request": true,
+    "denial_state_model": true,
+    "service_status": true,
+    "open_app_settings": true,
+    "linux_declared": false,
+    "macos_declared": false,
+    "runtime_target_validation_completed": false
+  },
+  "adaptation": {
+    "recommended_role": "established reference and partial backend behind platform.permissions where declared platform packages apply",
+    "required_policy_work": [
+      "Linux backend or explicit unsupported policy",
+      "macOS backend or explicit unsupported policy",
+      "cross-target denial-state normalization",
+      "settings navigation policy",
+      "runtime permission request policy",
+      "target-specific behavioral tests"
+    ]
+  },
+  "security": {
+    "source_verdict": "CLEAR",
+    "source_complete": true,
+    "findings": [],
+    "supply_chain_verdict": "CLEAR",
+    "vulnerability_verdict": "REVIEW",
+    "vulnerability_database_checked": false,
+    "unresolved_dependency_versions": [
+      "meta:^1.7.0",
+      "permission_handler_android:^14.1.0",
+      "permission_handler_apple:^9.5.0",
+      "permission_handler_html:^0.1.4+0",
+      "permission_handler_platform_interface:^4.4.0",
+      "permission_handler_windows:^0.2.2"
+    ],
+    "executed_untrusted_code": false,
+    "certification_eligible": false,
+    "review_note": "Static source and supply chain are clear, but exact dependency versions are unresolved so OSV was not queried."
+  },
+  "decision": {
+    "shortlisted": true,
+    "preferred_established_reference": true,
+    "full_required_target_candidate": false,
+    "submission_ready": false,
+    "certification_asserted": false
+  }
+}
