@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from .engine import ResearchEngine
 from .models import utc_now
 from .observability import EventLevel, sanitize_payload
+from .target_engine import TargetAwareResearchEngine
 
 
-class RestartSafeResearchEngine(ResearchEngine):
-    """ResearchEngine variant that reconciles interrupted Library intake first."""
+class RestartSafeResearchEngine(TargetAwareResearchEngine):
+    """Target-aware engine variant that reconciles interrupted Library intake first."""
 
     def run_cycle(self) -> dict[str, Any]:
         resume = getattr(self.submission, "resume_pending", None)
