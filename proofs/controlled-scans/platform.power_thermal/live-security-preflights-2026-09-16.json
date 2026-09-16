@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "capability_id": "platform.power_thermal",
+  "evidence_date": "2026-09-16",
+  "workflow_runs": [35045954431],
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "repository": "fluttercommunity/plus_plugins",
+      "commit_sha": "93361872f025cc1b12a9477f628c541b483bf81f",
+      "component_path": "packages/battery_plus/battery_plus",
+      "release_tag": "battery_plus-v7.1.1",
+      "source_version": "7.1.1",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "source": {"verdict": "CLEAR", "complete": true, "finding_counts": {}},
+      "supply_chain": {"verdict": "CLEAR"},
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database_checked": false,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:battery_plus_platform_interface:^2.0.1",
+          "version_unresolved:Pub:meta:^1.8.0",
+          "version_unresolved:Pub:upower:^0.7.0",
+          "version_unresolved:Pub:web:^1.0.0"
+        ]
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "muxable/flutter_thermal",
+      "commit_sha": "fc1e2c43ba25175f449a2d008fe52e5889006e38",
+      "release_tag": "v1.2.2",
+      "source_version": "1.2.2",
+      "state": "CLEAR",
+      "security_preflight_clear": true,
+      "source": {"verdict": "CLEAR", "complete": true, "finding_counts": {}},
+      "supply_chain": {"verdict": "CLEAR"},
+      "vulnerability": {
+        "verdict": "CLEAR",
+        "database_checked": true,
+        "queried_components": 24,
+        "hits": [],
+        "unresolved": []
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "LibreHardwareMonitor/LibreHardwareMonitor",
+      "commit_sha": "3d331e3370efb858411f19511373eff65a218701",
+      "release_tag": "v0.9.6",
+      "source_version": "0.9.6",
+      "state": "BLOCKED",
+      "security_preflight_clear": false,
+      "source": {
+        "verdict": "BLOCK",
+        "complete": false,
+        "finding_counts": {
+          "opaque_or_precompiled_artifact": 13,
+          "source_blob_unreadable": 9,
+          "dynamic_remote_code": 1,
+          "process_execution": 3
+        },
+        "key_findings": [
+          {
+            "rule_id": "opaque_or_precompiled_artifact",
+            "severity": "HIGH",
+            "path": "LibreHardwareMonitor/Resources/PawnIO_setup.exe"
+          },
+          {
+            "rule_id": "dynamic_remote_code",
+            "severity": "CRITICAL",
+            "path": "LibreHardwareMonitor/Resources/Web/js/jquery-1.7.2.min.js"
+          },
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "LibreHardwareMonitor/UI/MainForm.cs"
+          }
+        ]
+      },
+      "supply_chain": {"verdict": "NOT_ANALYZED"},
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false,
+        "hits": [],
+        "unresolved": ["earlier_security_or_supply_chain_gate_not_clear"]
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "lm-sensors/lm-sensors",
+      "commit_sha": "1667b850a1ce38151dae17156276f981be6fb557",
+      "release_tag": "V3-6-0",
+      "source_version": "3.6.0",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "source": {
+        "verdict": "REVIEW",
+        "complete": false,
+        "finding_counts": {"source_blob_unreadable": 2}
+      },
+      "supply_chain": {
+        "verdict": "NOT_ANALYZED",
+        "reason": "no_supported_dependency_manifest"
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false,
+        "hits": [],
+        "unresolved": ["earlier_security_or_supply_chain_gate_not_clear"]
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "exelban/stats",
+      "commit_sha": "b4251e2ba05511de6b51b296d7b9e98a9c6545f5",
+      "release_tag": "v3.0.16",
+      "source_version": "3.0.16",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "source": {
+        "verdict": "REVIEW",
+        "complete": false,
+        "finding_counts": {
+          "opaque_or_precompiled_artifact": 1,
+          "process_execution": 3
+        },
+        "key_findings": [
+          {
+            "rule_id": "opaque_or_precompiled_artifact",
+            "severity": "HIGH",
+            "path": "Kit/lldb/libleveldb.a"
+          },
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "Kit/scripts/SMJobBlessUtil.py"
+          }
+        ]
+      },
+      "supply_chain": {"verdict": "NOT_ANALYZED"},
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false,
+        "hits": [],
+        "unresolved": ["earlier_security_or_supply_chain_gate_not_clear"]
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "raspberrypi/utils",
+      "commit_sha": "ebc4a56bac3a896d5c14e56fe27dcd6cb36dd373",
+      "component_path": "vcgencmd",
+      "source_version": "2026-09-14",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "source": {"verdict": "REVIEW", "complete": true, "finding_counts": {}},
+      "supply_chain": {
+        "verdict": "NOT_ANALYZED",
+        "reason": "no_supported_dependency_manifest"
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false,
+        "hits": [],
+        "unresolved": ["earlier_security_or_supply_chain_gate_not_clear"]
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "jodinathan/js_bindings",
+      "commit_sha": "d89c98428e8f9a5b3532263263cf32599521e949",
+      "source_version": "0.1.2+2",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "source": {
+        "verdict": "REVIEW",
+        "complete": true,
+        "finding_counts": {"process_execution": 1},
+        "key_findings": [
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "tool/crawler/build.dart",
+            "evidence": "Process.start("
+          }
+        ]
+      },
+      "supply_chain": {"verdict": "CLEAR"},
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false,
+        "hits": [],
+        "unresolved": ["earlier_security_or_supply_chain_gate_not_clear"]
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    }
+  ]
+}
