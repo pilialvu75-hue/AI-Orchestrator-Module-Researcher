@@ -17,21 +17,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - id: llama-cpp
+          - id: llama-cpp-backends
             repository: ggml-org/llama.cpp
             commit: b29c606e28a01b1bc8c1351026a0fa6e616bf6c4
             source_version: 0.4.1
+            component_path: ggml/src
             release_tag: v0.4.1
-          - id: onnxruntime
+          - id: onnxruntime-providers
             repository: microsoft/onnxruntime
             commit: f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7
             source_version: 1.30.0
+            component_path: onnxruntime/core/providers
             release_tag: v1.30.0
-          - id: wllama
-            repository: ngxson/wllama
-            commit: 766d28e03eeac044fe055327d06b83d3f9b84544
-            source_version: 3.5.1
-            release_tag: 3.5.1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -49,6 +46,7 @@ jobs:
           UPSTREAM_REPOSITORY: ${{ matrix.repository }}
           UPSTREAM_COMMIT: ${{ matrix.commit }}
           SOURCE_VERSION: ${{ matrix.source_version }}
+          COMPONENT_PATH: ${{ matrix.component_path }}
           RELEASE_TAG: ${{ matrix.release_tag }}
           CANDIDATE_ID: ${{ matrix.id }}
         run: |
@@ -57,6 +55,7 @@ jobs:
             --repository "$UPSTREAM_REPOSITORY" \
             --commit "$UPSTREAM_COMMIT" \
             --source-version "$SOURCE_VERSION" \
+            --component-path "$COMPONENT_PATH" \
             --release-tag "$RELEASE_TAG" \
             | tee "${CANDIDATE_ID}-preflight.json"
       - name: Upload immutable evidence
