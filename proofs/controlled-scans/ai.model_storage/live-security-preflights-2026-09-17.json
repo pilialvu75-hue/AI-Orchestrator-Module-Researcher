@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "capability_id": "ai.model_storage",
+  "evidence_date": "2026-09-17",
+  "workflow_runs": [35201866672],
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "repository": "NathanKolbas/huggingface_hub_dart",
+      "source_version": "0.0.3",
+      "commit_sha": "9cc45ef5681858af0777b6ba8c8295d30f6dcfae",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "REVIEW",
+        "complete": true,
+        "admission_eligible": false,
+        "scanned_files": 74,
+        "scanned_bytes": 339866,
+        "finding_rule_ids": ["secret_environment_access"],
+        "key_findings": [
+          {
+            "rule_id": "secret_environment_access",
+            "severity": "REVIEW",
+            "path": "lib/src/_auth.dart",
+            "evidence": "environment key resembles a secret: HF_TOKEN"
+          },
+          {
+            "rule_id": "secret_environment_access",
+            "severity": "REVIEW",
+            "path": "lib/src/constants.dart",
+            "evidence": "environment key resembles a secret: HF_TOKEN_PATH"
+          }
+        ]
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false,
+        "admission_eligible": false,
+        "unresolved": ["earlier_security_or_supply_chain_gate_not_clear"]
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "whuppi/cellar",
+      "source_version": "1.0.0",
+      "commit_sha": "430784710654f9ea329067e1978e82e7b6f91fec",
+      "state": "CLEAR",
+      "security_preflight_clear": true,
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "scanned_files": 87,
+        "scanned_bytes": 459767,
+        "finding_rule_ids": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "lockfiles_present": ["pubspec.lock"]
+      },
+      "vulnerability": {
+        "verdict": "CLEAR",
+        "database_checked": true,
+        "admission_eligible": true,
+        "queried_components": 49,
+        "hits": [],
+        "unresolved": []
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "landxcape/resumable_downloader",
+      "source_version": "0.1.2",
+      "commit_sha": "aec93d1c32846a0b361e1eb74ff98ed0db478fe1",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "CLEAR",
+        "complete": true,
+        "admission_eligible": true,
+        "scanned_files": 108,
+        "scanned_bytes": 337983,
+        "finding_rule_ids": []
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true,
+        "lockfiles_present": []
+      },
+      "vulnerability": {
+        "verdict": "REVIEW",
+        "database_checked": false,
+        "admission_eligible": false,
+        "hits": [],
+        "unresolved": [
+          "version_unresolved:Pub:collection:^1.19.1",
+          "version_unresolved:Pub:crypto:^3.0.6",
+          "version_unresolved:Pub:dio:^5.10.0",
+          "version_unresolved:Pub:path_provider:^2.1.5"
+        ]
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    }
+  ]
+}

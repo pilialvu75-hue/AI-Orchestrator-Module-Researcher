@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "capability_id": "ai.model_storage",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_status": "needed",
+  "need_authority": "staged_not_authoritative",
+  "priority": "high",
+  "desired_candidates_per_target": 2,
+  "required_targets": [
+    "android",
+    "windows",
+    "linux",
+    "macos",
+    "ios",
+    "raspberry_pi"
+  ],
+  "contract": {
+    "contract_id": "ai.model_storage.v1",
+    "version": "1.0",
+    "status": "draft",
+    "detail_gap": true,
+    "known_boundary": "Manage large local model artifacts through durable identity/version metadata, staged or resumable transfer, integrity verification, atomic promotion into readable storage, migration/rollback policy and explicit cleanup/quota handling.",
+    "integrity_policy": "A model must not become runtime-ready merely because a transfer completed. Expected digest and/or application-owned signature/format validation must succeed before atomic promotion; incomplete or rejected staging remains non-authoritative.",
+    "secret_policy": "Hub credentials and signed URLs are inputs to retrieval, not model-storage metadata. Tokens must be supplied through an approved secret provider and never copied into manifests, logs or durable transfer state.",
+    "migration_policy": "Migration must preserve the previously valid model until replacement bytes and metadata are verified. Version switches, partition moves and cleanup are distinct from download completion.",
+    "raspberry_pi_policy": "Linux compatibility can count for discovery only. Raspberry-Pi-specific filesystem, free-space, durability and performance validation remains mandatory before certification."
+  },
+  "candidates": [
+    {
+      "id": "NathanKolbas/huggingface_hub_dart",
+      "repository": "NathanKolbas/huggingface_hub_dart",
+      "source_version": "0.0.3",
+      "commit_sha": "9cc45ef5681858af0777b6ba8c8295d30f6dcfae",
+      "release_tag": "v0.0.3",
+      "role": "model_revision_and_content_addressed_cache",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "raspberry_pi"
+      ],
+      "platform_basis": "Upstream explicitly reports Windows, macOS, Linux, Android and iOS tested. Raspberry Pi is counted only as Linux architecture-level discovery evidence.",
+      "functional_evidence": [
+        "Hugging Face model/file and snapshot download APIs",
+        "cache layout separates refs, commit snapshots and content blobs",
+        "LFS cache blobs are identified by SHA-256",
+        "offline/local-files-only lookup exists",
+        "v0.0.3 adds hf_transfer support"
+      ],
+      "maturity_constraint": "Upstream labels the Dart client work-in-progress and Flutter-dependent; Raspberry Pi is not tested explicitly.",
+      "security_state": "REVIEW",
+      "security_admitted": false,
+      "runtime_validated": false,
+      "raspberry_pi_validated": false
+    },
+    {
+      "id": "whuppi/cellar",
+      "repository": "whuppi/cellar",
+      "source_version": "1.0.0",
+      "commit_sha": "430784710654f9ea329067e1978e82e7b6f91fec",
+      "release_tag": "v1.0.0",
+      "role": "atomic_cross_platform_object_storage",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "raspberry_pi"
+      ],
+      "platform_basis": "Pure Dart storage supports Android via cellar_flutter, iOS, macOS, Windows, Linux and CLI/server use; Raspberry Pi is architecture-level Linux/Dart evidence only.",
+      "functional_evidence": [
+        "streaming write/read for large model weights with bounded memory",
+        "filesystem writes use temp-file then rename atomic promotion",
+        "partition copy/move and whole-partition migration APIs",
+        "persistent/cache/scratch lifecycle partitions and quota/age cleanup",
+        "materialization to a native file path for FFI model runtimes"
+      ],
+      "known_constraint": "Cellar is a local storage substrate, not a remote model downloader. Same-key concurrent writers must be serialized by the application. Cryptography is provided through an application-owned seam rather than bundled primitives.",
+      "security_state": "CLEAR",
+      "security_admitted": true,
+      "runtime_validated": false,
+      "raspberry_pi_validated": false
+    },
+    {
+      "id": "landxcape/resumable_downloader",
+      "repository": "landxcape/resumable_downloader",
+      "source_version": "0.1.2",
+      "commit_sha": "aec93d1c32846a0b361e1eb74ff98ed0db478fe1",
+      "release_tag": "0.1.2",
+      "role": "resumable_staged_transfer_and_integrity_gate",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios"
+      ],
+      "platform_basis": "Flutter-first foreground transfer component using portable Dart/Flutter dependencies. It is retained as native transfer/integrity research, not Raspberry Pi evidence.",
+      "functional_evidence": [
+        "multipart HTTP range download with durable checkpoints and resume",
+        "single staged output with fallback when range requests are unavailable",
+        "expected SHA-256 validation before completion",
+        "custom application validator for signature/format policy",
+        "checksum or validation rejection discards staged state rather than exposing unverified output",
+        "restoration metadata intentionally excludes headers, cookies, bearer tokens and signed URLs"
+      ],
+      "known_constraint": "Foreground-oriented: it does not promise continued mobile transfer after OS termination. Background mobile adapters are out of scope/upstream future work.",
+      "security_state": "REVIEW",
+      "security_admitted": false,
+      "runtime_validated": false
+    }
+  ],
+  "per_target_candidate_coverage": {
+    "android": 3,
+    "windows": 3,
+    "linux": 3,
+    "macos": 3,
+    "ios": 3,
+    "raspberry_pi": 2
+  },
+  "per_target_candidate_depth_satisfied": true,
+  "independent_candidate_pairs": {
+    "android": [
+      "whuppi/cellar",
+      "landxcape/resumable_downloader"
+    ],
+    "windows": [
+      "whuppi/cellar",
+      "landxcape/resumable_downloader"
+    ],
+    "linux": [
+      "whuppi/cellar",
+      "NathanKolbas/huggingface_hub_dart"
+    ],
+    "macos": [
+      "whuppi/cellar",
+      "landxcape/resumable_downloader"
+    ],
+    "ios": [
+      "whuppi/cellar",
+      "landxcape/resumable_downloader"
+    ],
+    "raspberry_pi": [
+      "whuppi/cellar",
+      "NathanKolbas/huggingface_hub_dart"
+    ]
+  },
+  "research_findings": {
+    "model_identity": "huggingface_hub_dart provides a concrete revision-aware cache model using refs, commit snapshots and content blobs rather than one mutable filename.",
+    "atomic_storage": "cellar streams large objects without loading them fully into memory and performs native filesystem writes through a temporary file followed by rename, preserving the previous object after interrupted writes.",
+    "migration": "cellar exposes cross-partition moves and whole-partition migration, but an AI-Orchestrator model schema/version migration state machine remains application-owned and unvalidated.",
+    "transfer_integrity": "resumable_downloader provides durable HTTP-range checkpoints, SHA-256 and application validators before finalization; rejected staged state is discarded.",
+    "security": "cellar is fully CLEAR including SBOM/OSV. huggingface_hub_dart is REVIEW because it intentionally reads HF_TOKEN/HF_TOKEN_PATH. resumable_downloader has CLEAR source/supply-chain but REVIEW vulnerability status because primary dependency versions are not lock-resolved.",
+    "raspberry_pi": "Two Linux-level discovery families exist (cellar plus huggingface_hub_dart), but neither constitutes Raspberry-Pi board/filesystem/performance validation."
+  },
+  "decision": {
+    "two_candidate_independence_satisfied": true,
+    "per_target_candidate_depth_satisfied": true,
+    "coverage_blockers": [],
+    "discovery_depth_closed": true,
+    "composite_strategy_required": true,
+    "single_winner": null,
+    "security_admission_closed": false,
+    "contract_conformance_closed": false,
+    "runtime_validation_closed": false,
+    "integrity_policy_validation_closed": false,
+    "migration_validation_closed": false,
+    "quota_and_disk_pressure_validation_closed": false,
+    "background_transfer_policy_closed": false,
+    "raspberry_pi_hardware_validation_closed": false,
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false,
+    "library_write_attempted": false,
+    "next_action": "Keep discovery depth closed while defining the provider-neutral model manifest/state machine: immutable model identity and revision, staging/checkpoints, expected digest/signature policy, atomic promotion, rollback/migration, quota cleanup and secret indirection. Then complete admission and target-specific runtime/filesystem tests."
+  }
+}
