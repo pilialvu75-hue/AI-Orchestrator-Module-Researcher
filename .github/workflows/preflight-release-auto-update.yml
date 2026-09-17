@@ -1,0 +1,78 @@
+name: Preflight release.auto_update candidates
+
+on:
+  push:
+    branches:
+      - proof-release-auto-update-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    name: candidate (${{ matrix.id }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: desktop-updater
+            repository: MarlonJD/flutter_desktop_updater
+            commit: 4aead4528bdbe72087c23e987014df3a81c8f975
+            component_path: ''
+            source_version: 3.1.6
+            release_tag: v3.1.6
+          - id: qasimov-desktop-updater
+            repository: Qasimovv/flutter_desktop_updater
+            commit: b0dc1028c913020d75c51aa0d38da74de1de72e6
+            component_path: ''
+            source_version: 1.0.0
+            release_tag: v1.0.0
+          - id: play-in-app-update
+            repository: orestesgaolin/play_core_libraries
+            commit: 98a12561dcc535ef85d26fa81552b6bb3913b961
+            component_path: in_app_update
+            source_version: 1.0.0
+            release_tag: play_in_app_update-1.0.0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+      - name: Preflight ${{ matrix.id }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DRY_RUN: 'true'
+          ALLOW_LIBRARY_WRITE: 'false'
+          DIAGNOSTICS_ENABLED: 'false'
+          DATA_DIR: ${{ runner.temp }}/researcher-${{ matrix.id }}
+          UPSTREAM_REPOSITORY: ${{ matrix.repository }}
+          UPSTREAM_COMMIT: ${{ matrix.commit }}
+          COMPONENT_PATH: ${{ matrix.component_path }}
+          SOURCE_VERSION: ${{ matrix.source_version }}
+          RELEASE_TAG: ${{ matrix.release_tag }}
+          CANDIDATE_ID: ${{ matrix.id }}
+        run: |
+          set -euo pipefail
+          args=(
+            preflight-pinned
+            --repository "$UPSTREAM_REPOSITORY"
+            --commit "$UPSTREAM_COMMIT"
+            --source-version "$SOURCE_VERSION"
+            --release-tag "$RELEASE_TAG"
+          )
+          if [[ -n "$COMPONENT_PATH" ]]; then
+            args+=(--component-path "$COMPONENT_PATH")
+          fi
+          researcher "${args[@]}" | tee "${CANDIDATE_ID}-preflight.json"
+      - name: Upload immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-auto-update-${{ matrix.id }}-evidence
+          path: ${{ matrix.id }}-preflight.json
+          if-no-files-found: ignore
+          retention-days: 7
