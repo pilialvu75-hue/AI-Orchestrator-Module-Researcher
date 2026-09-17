@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "capability_id": "ai.acceleration_backend",
+  "evidence_date": "2026-09-16",
+  "workflow_runs": [35046782759, 35047022039],
+  "certification_asserted": false,
+  "functional_or_contract_fit_asserted": false,
+  "library_accessed": false,
+  "library_write_attempted": false,
+  "executed_untrusted_code": false,
+  "results": [
+    {
+      "repository": "ggml-org/llama.cpp",
+      "source_version": "0.4.1",
+      "commit_sha": "b29c606e28a01b1bc8c1351026a0fa6e616bf6c4",
+      "scope": "full_repository",
+      "component_path": null,
+      "state": "BLOCKED",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "BLOCK",
+        "complete": false,
+        "admission_eligible": false,
+        "scanned_files": 796,
+        "scanned_bytes": 16633136,
+        "finding_count": 9,
+        "finding_rule_ids": [
+          "opaque_or_precompiled_artifact",
+          "process_execution",
+          "scan_byte_budget_exceeded",
+          "secret_environment_access",
+          "shell_download_execute",
+          "source_blob_unreadable"
+        ],
+        "key_findings": [
+          {
+            "rule_id": "opaque_or_precompiled_artifact",
+            "severity": "HIGH",
+            "path": "examples/llama.android/gradle/wrapper/gradle-wrapper.jar"
+          },
+          {
+            "rule_id": "scan_byte_budget_exceeded",
+            "severity": "HIGH",
+            "path": "ggml/src/ggml-opencl/ggml-opencl.cpp"
+          },
+          {
+            "rule_id": "shell_download_execute",
+            "severity": "CRITICAL",
+            "path": "app/llama.cpp"
+          },
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "common/subproc.h"
+          }
+        ]
+      },
+      "supply_chain": {
+        "verdict": "CLEAR",
+        "admission_eligible": true
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "ggml-org/llama.cpp",
+      "source_version": "0.4.1",
+      "commit_sha": "b29c606e28a01b1bc8c1351026a0fa6e616bf6c4",
+      "scope": "backend_component",
+      "component_path": "ggml/src",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "REVIEW",
+        "complete": true,
+        "admission_eligible": false,
+        "scanned_files": 584,
+        "scanned_bytes": 15495344,
+        "finding_count": 1,
+        "finding_rule_ids": ["process_execution"],
+        "key_findings": [
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "ggml/src/ggml-virtgpu/regenerate_remoting.py"
+          }
+        ]
+      },
+      "supply_chain": {
+        "verdict": "NOT_ANALYZED",
+        "admission_eligible": false,
+        "finding_rule_ids": ["no_supported_dependency_manifest"]
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "microsoft/onnxruntime",
+      "source_version": "1.30.0",
+      "commit_sha": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+      "scope": "full_repository",
+      "component_path": null,
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "REVIEW",
+        "complete": false,
+        "admission_eligible": false,
+        "scanned_files": 799,
+        "scanned_bytes": 13526105,
+        "finding_count": 33,
+        "finding_rule_ids": [
+          "install_hook",
+          "opaque_or_precompiled_artifact",
+          "process_execution",
+          "scan_file_budget_exceeded",
+          "secret_environment_access",
+          "source_blob_unreadable",
+          "unscanned_submodule"
+        ],
+        "key_findings": [
+          {
+            "rule_id": "unscanned_submodule",
+            "severity": "HIGH",
+            "path": "cmake/external/emsdk"
+          },
+          {
+            "rule_id": "opaque_or_precompiled_artifact",
+            "severity": "HIGH",
+            "path": "cmake/external/git.Win32.2.41.03.patch/msys-2.0.dll"
+          },
+          {
+            "rule_id": "scan_file_budget_exceeded",
+            "severity": "HIGH",
+            "path": "js/react_native/cpp/SessionUtils.cpp"
+          },
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "js/common/build.js"
+          }
+        ]
+      },
+      "supply_chain": {
+        "verdict": "REVIEW",
+        "admission_eligible": false,
+        "finding_rule_ids": [
+          "dependency_name_requires_review",
+          "non_registry_dependency_requires_review",
+          "npm_lifecycle_hook"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "microsoft/onnxruntime",
+      "source_version": "1.30.0",
+      "commit_sha": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+      "scope": "execution_provider_component",
+      "component_path": "onnxruntime/core/providers",
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "REVIEW",
+        "complete": false,
+        "admission_eligible": false,
+        "scanned_files": 800,
+        "scanned_bytes": 6708987,
+        "finding_count": 1,
+        "finding_rule_ids": ["scan_file_budget_exceeded"],
+        "key_findings": [
+          {
+            "rule_id": "scan_file_budget_exceeded",
+            "severity": "HIGH",
+            "path": "onnxruntime/core/providers/dml/DmlExecutionProvider/src/External/DirectMLHelpers/AbstractOperatorDesc.h"
+          }
+        ]
+      },
+      "supply_chain": {
+        "verdict": "NOT_ANALYZED",
+        "admission_eligible": false,
+        "finding_rule_ids": ["no_supported_dependency_manifest"]
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    },
+    {
+      "repository": "ngxson/wllama",
+      "source_version": "3.5.1",
+      "commit_sha": "766d28e03eeac044fe055327d06b83d3f9b84544",
+      "scope": "full_repository",
+      "component_path": null,
+      "state": "REVIEW",
+      "security_preflight_clear": false,
+      "security": {
+        "verdict": "REVIEW",
+        "complete": false,
+        "admission_eligible": false,
+        "scanned_files": 96,
+        "scanned_bytes": 1435997,
+        "finding_count": 4,
+        "finding_rule_ids": [
+          "opaque_or_precompiled_artifact",
+          "process_execution",
+          "secret_environment_access",
+          "unscanned_submodule"
+        ],
+        "key_findings": [
+          {
+            "rule_id": "unscanned_submodule",
+            "severity": "HIGH",
+            "path": "llama.cpp"
+          },
+          {
+            "rule_id": "opaque_or_precompiled_artifact",
+            "severity": "HIGH",
+            "path": "src/wasm/wllama.wasm"
+          },
+          {
+            "rule_id": "process_execution",
+            "severity": "HIGH",
+            "path": "scripts/check_package_size.js"
+          }
+        ]
+      },
+      "supply_chain": {
+        "verdict": "REVIEW",
+        "admission_eligible": false,
+        "finding_rule_ids": [
+          "auxiliary_dependency_file_out_of_primary_scope",
+          "dependency_name_requires_review"
+        ]
+      },
+      "vulnerability": {
+        "verdict": "NOT_ANALYZED",
+        "database_checked": false
+      },
+      "executed_untrusted_code": false,
+      "library_accessed": false,
+      "library_write_attempted": false,
+      "certification_asserted": false
+    }
+  ]
+}
