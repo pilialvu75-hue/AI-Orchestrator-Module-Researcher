@@ -66,6 +66,16 @@ jobs:
             exit 1
           fi
 
+      - name: Report diagnostics credential state
+        env:
+          DIAGNOSTICS_GITHUB_TOKEN: ${{ secrets.RESEARCHER_DIAGNOSTICS_TOKEN }}
+        run: |
+          if [[ -z "${DIAGNOSTICS_GITHUB_TOKEN}" ]]; then
+            echo "::warning::RESEARCHER_DIAGNOSTICS_TOKEN is not configured; the Researcher will record MISCONFIGURED locally and the workflow artifact remains the fallback evidence."
+          else
+            echo "Dedicated Researcher diagnostics credential is configured."
+          fi
+
       - name: Install Researcher
         run: python -m pip install --disable-pip-version-check .
 
@@ -77,7 +87,11 @@ jobs:
           LIBRARY_REF: main
           DRY_RUN: "false"
           ALLOW_LIBRARY_WRITE: "true"
-          DIAGNOSTICS_ENABLED: "false"
+          DIAGNOSTICS_ENABLED: "true"
+          DIAGNOSTICS_GITHUB_TOKEN: ${{ secrets.RESEARCHER_DIAGNOSTICS_TOKEN }}
+          DIAGNOSTICS_REPOSITORY: pilialvu75-hue/Ai-orchestrator-diagnostics
+          DIAGNOSTICS_INSTANCE_ID: pinned-intake-${{ github.run_id }}-${{ github.run_attempt }}
+          RESEARCHER_COMMIT: ${{ github.sha }}
           DATA_DIR: ${{ runner.temp }}/researcher-data
           CAPABILITY: ${{ inputs.capability }}
           UPSTREAM_REPOSITORY: ${{ inputs.repository }}
@@ -107,3 +121,37 @@ jobs:
             args+=(--rescan)
           fi
           researcher "${args[@]}"
+
+      - name: Preserve sanitized intake diagnostics
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          evidence="${RUNNER_TEMP}/intake-diagnostics"
+          mkdir -p "$evidence"
+          cat > "$evidence/run.json" <<EOF
+          {
+            "schema": "ai-orchestrator.researcher-intake-run.v1",
+            "run_id": "${GITHUB_RUN_ID}",
+            "run_attempt": "${GITHUB_RUN_ATTEMPT}",
+            "researcher_commit": "${GITHUB_SHA}",
+            "capability": "${{ inputs.capability }}",
+            "upstream_repository": "${{ inputs.repository }}",
+            "upstream_commit": "${{ inputs.commit }}",
+            "library_repository": "pilialvu75-hue/AI-Orchestrator-Module-Library",
+            "library_ref": "main"
+          }
+          EOF
+          if [[ -d "${RUNNER_TEMP}/researcher-data" ]]; then
+            find "${RUNNER_TEMP}/researcher-data" -maxdepth 2 -type f -printf '%P\n' | sort > "$evidence/data-files.txt"
+          else
+            : > "$evidence/data-files.txt"
+          fi
+
+      - name: Upload intake diagnostics artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinned-intake-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/intake-diagnostics
+          if-no-files-found: error
+          retention-days: 30
