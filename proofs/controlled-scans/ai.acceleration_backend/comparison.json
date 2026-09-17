@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "capability_id": "ai.acceleration_backend",
+  "need_source": "catalog/needs.platform-extension.json",
+  "need_status": "needed",
+  "need_authority": "staged_not_authoritative",
+  "priority": "high",
+  "desired_candidates_per_target": 2,
+  "required_targets": [
+    "android",
+    "windows",
+    "linux",
+    "macos",
+    "ios",
+    "web",
+    "raspberry_pi"
+  ],
+  "contract": {
+    "contract_id": "ai.acceleration_backend.v1",
+    "version": "1.0",
+    "status": "draft",
+    "detail_gap": true,
+    "known_boundary": "Detect acceleration backends actually available on the current device, select only a compatible backend, expose an explicit CPU fallback and preserve backend/model incompatibility instead of inferring acceleration from the operating system alone.",
+    "non_equivalence_policy": "Operating-system support, a backend compiled into a runtime, device availability, model compatibility and measured acceleration are distinct facts and must not be treated as semantically interchangeable.",
+    "runtime_selection_policy": "Selection must be probe-driven and fail closed: a backend is eligible only after runtime availability and model compatibility are confirmed; otherwise the adapter must report unsupported/unavailable and use an explicit compatible fallback."
+  },
+  "candidates": [
+    {
+      "id": "ggml-org/llama.cpp",
+      "repository": "ggml-org/llama.cpp",
+      "source_version": "0.4.1",
+      "commit_sha": "b29c606e28a01b1bc8c1351026a0fa6e616bf6c4",
+      "release_tag": "v0.4.1",
+      "role": "gguf_native_acceleration_runtime",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "raspberry_pi"
+      ],
+      "backend_family": "GGUF/ggml with CPU plus Metal, CUDA, HIP, Vulkan, SYCL, OpenCL, Hexagon and other native backends",
+      "full_repo_security_state": "BLOCKED",
+      "scoped_security_state": "REVIEW",
+      "scoped_component_path": "ggml/src",
+      "security_admitted": false,
+      "runtime_validated": false,
+      "hardware_validated": false,
+      "known_constraint": "Full-repository preflight is BLOCKED. The backend-only scan is complete but remains REVIEW because regeneration tooling can execute subprocesses and the scoped tree has no supported dependency manifest."
+    },
+    {
+      "id": "microsoft/onnxruntime",
+      "repository": "microsoft/onnxruntime",
+      "source_version": "1.30.0",
+      "commit_sha": "f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7",
+      "release_tag": "v1.30.0",
+      "role": "cross_platform_execution_provider_runtime",
+      "research_targets": [
+        "android",
+        "windows",
+        "linux",
+        "macos",
+        "ios",
+        "web",
+        "raspberry_pi"
+      ],
+      "backend_family": "ONNX execution providers including CPU, CUDA, TensorRT, OpenVINO, QNN, NNAPI, CoreML, DirectML, WebNN, WebGPU and XNNPACK",
+      "full_repo_security_state": "REVIEW",
+      "scoped_security_state": "REVIEW",
+      "scoped_component_path": "onnxruntime/core/providers",
+      "security_admitted": false,
+      "runtime_validated": false,
+      "hardware_validated": false,
+      "known_constraint": "The provider-only scan remains REVIEW and incomplete because the scanner reached its 800-file budget; supply-chain/vulnerability admission therefore remains open."
+    },
+    {
+      "id": "ngxson/wllama",
+      "repository": "ngxson/wllama",
+      "source_version": "3.5.1",
+      "commit_sha": "766d28e03eeac044fe055327d06b83d3f9b84544",
+      "release_tag": "3.5.1",
+      "role": "browser_wasm_webgpu_llama_integration",
+      "research_targets": [
+        "web"
+      ],
+      "backend_family": "llama.cpp browser integration using WebAssembly SIMD and WebGPU",
+      "full_repo_security_state": "REVIEW",
+      "security_admitted": false,
+      "runtime_validated": false,
+      "hardware_validated": false,
+      "known_constraint": "The source contains an unscanned llama.cpp submodule, precompiled WASM and process-execution tooling. WebGPU and multithreading also depend on browser/device capabilities and deployment headers."
+    }
+  ],
+  "per_target_candidate_coverage": {
+    "android": 2,
+    "windows": 2,
+    "linux": 2,
+    "macos": 2,
+    "ios": 2,
+    "web": 2,
+    "raspberry_pi": 2
+  },
+  "per_target_candidate_depth_satisfied": true,
+  "independent_candidate_pairs": {
+    "android": [
+      "ggml-org/llama.cpp",
+      "microsoft/onnxruntime"
+    ],
+    "windows": [
+      "ggml-org/llama.cpp",
+      "microsoft/onnxruntime"
+    ],
+    "linux": [
+      "ggml-org/llama.cpp",
+      "microsoft/onnxruntime"
+    ],
+    "macos": [
+      "ggml-org/llama.cpp",
+      "microsoft/onnxruntime"
+    ],
+    "ios": [
+      "ggml-org/llama.cpp",
+      "microsoft/onnxruntime"
+    ],
+    "web": [
+      "microsoft/onnxruntime",
+      "ngxson/wllama"
+    ],
+    "raspberry_pi": [
+      "ggml-org/llama.cpp",
+      "microsoft/onnxruntime"
+    ]
+  },
+  "research_findings": {
+    "llama_cpp": "Pinned llama.cpp documents broad ggml backend coverage. Its Android binding detects host CPU features and supports Arm SME2/x86 AMX, while the pinned tree also documents Apple XCFramework packaging.",
+    "onnxruntime": "Pinned ONNX Runtime is a cross-platform accelerator. The provider registry contains CPU, CUDA, TensorRT, OpenVINO, QNN, NNAPI, CoreML, DirectML, WebNN, WebGPU and XNNPACK among other providers.",
+    "web": "ONNX Runtime Web exposes WebAssembly/WebGPU integration. wllama provides an independent browser candidate relative to ONNX Runtime, using WebAssembly SIMD and optional WebGPU offload over the llama.cpp ecosystem.",
+    "raspberry_pi": "llama.cpp provides Linux/ARM-native research coverage and ONNX Runtime v1.30.0 publishes a Linux AArch64 artifact. These are architecture-level signals only; no Raspberry Pi board/OS/model performance certification is asserted.",
+    "security": "No candidate is security admitted. Full llama.cpp is BLOCKED; full ONNX Runtime and wllama are REVIEW. Backend-scoped llama.cpp and ONNX Runtime are also REVIEW, with ONNX incomplete because the scanner hit its file budget."
+  },
+  "decision": {
+    "two_candidate_independence_satisfied": true,
+    "per_target_candidate_depth_satisfied": true,
+    "coverage_blockers": [],
+    "discovery_depth_closed": true,
+    "security_admission_closed": false,
+    "contract_conformance_closed": false,
+    "runtime_validation_closed": false,
+    "backend_probe_contract_closed": false,
+    "model_compatibility_validation_closed": false,
+    "target_hardware_validation_closed": false,
+    "raspberry_pi_hardware_validation_closed": false,
+    "web_browser_validation_closed": false,
+    "composite_strategy_required": true,
+    "single_winner": null,
+    "submission_ready": false,
+    "runtime_certified": false,
+    "certification_asserted": false,
+    "library_write_attempted": false,
+    "next_action": "Keep discovery depth closed but admission open. Define the runtime capability-probe and fallback contract, isolate smaller provider/backend scopes where possible, complete security/SBOM/OSV gates, then run target-specific hardware and model-compatibility validation."
+  }
+}
