@@ -25,13 +25,10 @@ class LibrarySnapshot:
 
 
 class GitHubLibrarySource:
+    # catalog/needs.json is the single authoritative queue. The Library's
+    # deterministic reconciler folds staged platform extensions into it.
     _NEED_SOURCES = (
         ("catalog/needs.json", "needs.json", "authoritative"),
-        (
-            "catalog/needs.platform-extension.json",
-            "needs.platform-extension.json",
-            "staged-platform-extension",
-        ),
     )
 
     def __init__(
