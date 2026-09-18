@@ -1,0 +1,65 @@
+name: Autonomous Library Seeding
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: autonomous-library-seeding
+  cancel-in-progress: false
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify dedicated Library credential
+        env:
+          LIBRARY_GITHUB_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
+        run: |
+          if [[ -z "${LIBRARY_GITHUB_TOKEN}" ]]; then
+            echo "Missing RESEARCHER_LIBRARY_TOKEN repository secret." >&2
+            exit 1
+          fi
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+      - name: Run one bounded seeding cycle
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          LIBRARY_GITHUB_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
+          LIBRARY_REPOSITORY: pilialvu75-hue/AI-Orchestrator-Module-Library
+          LIBRARY_REF: main
+          RESEARCHER_MODE: SEEDING
+          DRY_RUN: "false"
+          ALLOW_LIBRARY_WRITE: "true"
+          DIAGNOSTICS_ENABLED: "true"
+          DIAGNOSTICS_GITHUB_TOKEN: ${{ secrets.RESEARCHER_DIAGNOSTICS_TOKEN }}
+          DIAGNOSTICS_REPOSITORY: pilialvu75-hue/Ai-orchestrator-diagnostics
+          DIAGNOSTICS_INSTANCE_ID: autonomous-seeding-${{ github.run_id }}-${{ github.run_attempt }}
+          RESEARCHER_COMMIT: ${{ github.sha }}
+          DATA_DIR: ${{ runner.temp }}/researcher-data
+        run: researcher once
+      - name: Preserve sanitized seeding diagnostics
+        if: ${{ always() }}
+        run: |
+          evidence="${RUNNER_TEMP}/seeding-diagnostics"
+          mkdir -p "$evidence"
+          cat > "$evidence/run.json" <<EOF
+          {"schema":"ai-orchestrator.researcher-seeding-run.v1","run_id":"${GITHUB_RUN_ID}","run_attempt":"${GITHUB_RUN_ATTEMPT}","researcher_commit":"${GITHUB_SHA}","library_repository":"pilialvu75-hue/AI-Orchestrator-Module-Library","mode":"SEEDING"}
+          EOF
+      - name: Upload seeding diagnostics artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomous-seeding-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/seeding-diagnostics
+          if-no-files-found: error
+          retention-days: 14
