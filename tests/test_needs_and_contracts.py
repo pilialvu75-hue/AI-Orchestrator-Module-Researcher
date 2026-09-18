@@ -31,7 +31,7 @@ class FakeApi:
 
 
 class NeedsTests(unittest.TestCase):
-    def test_parser_merges_authoritative_and_platform_extension_and_cache_fallback(
+    def test_parser_reads_reconciled_authoritative_needs_and_cache_fallback(
         self,
     ) -> None:
         needs_payload = {
@@ -94,7 +94,7 @@ class NeedsTests(unittest.TestCase):
             "contracts/index.json": contracts_payload,
             "examples/module.manifest.example.json": manifest_example,
         }
-        expected = ["voice.stt", "platform.audio_io"]
+        expected = ["voice.stt"]
         with tempfile.TemporaryDirectory() as tmp:
             source = GitHubLibrarySource(FakeApi(payloads), "x/y", "main", Path(tmp))
             needs, meta = source.load_needs()
@@ -107,14 +107,8 @@ class NeedsTests(unittest.TestCase):
             )
             self.assertEqual(standard, "1.0.0")
             self.assertFalse(meta["used_cache"])
-            self.assertEqual(
-                meta["sources"],
-                ["authoritative", "staged-platform-extension"],
-            )
-            self.assertEqual(
-                meta["items"][1]["source_kind"],
-                "staged-platform-extension",
-            )
+            self.assertEqual(meta["sources"], ["authoritative"])
+            self.assertEqual(meta["items"][0]["source_kind"], "authoritative")
 
             source.api = FakeApi(payloads, fail=True)
             cached, cached_meta = source.load_needs()
@@ -144,29 +138,31 @@ class NeedsTests(unittest.TestCase):
             self.assertEqual([need.capability_id for need in needs], ["voice.tts"])
             self.assertEqual(meta["sources"], ["authoritative"])
 
-    def test_duplicate_capability_across_need_sources_fails_closed(self) -> None:
-        duplicate = {
+    def test_staging_extension_is_not_a_second_researcher_queue(self) -> None:
+        authoritative = {
             "schema_version": 1,
-            "updated_at": "2026-09-14T20:00:00Z",
+            "updated_at": "2026-09-18T12:30:13Z",
             "items": [
                 {
-                    "capability_id": "voice.stt",
-                    "title": "duplicate",
+                    "capability_id": "platform.filesystem",
+                    "title": "Filesystem",
                     "priority": "high",
                     "desired_candidates": 2,
                     "status": "needed",
-                    "targets": ["android"],
+                    "targets": ["android", "desktop"],
                 }
             ],
         }
         payloads = {
-            "catalog/needs.json": duplicate,
-            "catalog/needs.platform-extension.json": duplicate,
+            "catalog/needs.json": authoritative,
+            "catalog/needs.platform-extension.json": authoritative,
         }
         with tempfile.TemporaryDirectory() as tmp:
             source = GitHubLibrarySource(FakeApi(payloads), "x/y", "main", Path(tmp))
-            with self.assertRaisesRegex(ValueError, "Duplicate capability"):
-                source.load_needs()
+            needs, meta = source.load_needs()
+            self.assertEqual([need.capability_id for need in needs], ["platform.filesystem"])
+            self.assertEqual(meta["sources"], ["authoritative"])
+
 
 
 if __name__ == "__main__":
