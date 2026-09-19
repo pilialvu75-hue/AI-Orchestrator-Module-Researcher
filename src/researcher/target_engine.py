@@ -330,12 +330,26 @@ class TargetAwareResearchEngine(ResearchEngine):
             security_blocked = [d for d in dossiers if d.lifecycle == "SECURITY_BLOCKED"]
             review_reason_counts: dict[str, int] = {}
             for dossier in security_review:
-                reason = self._rejection_reason(
-                    dossier.lifecycle,
-                    dossier.candidate,
-                    dossier.security,
-                    dossier.vulnerability_admission,
-                ) or "security_review:unknown"
+                admission = dossier.security_evidence.get("admission_gate")
+                vulnerability = dossier.security_evidence.get("vulnerability_gate")
+                admission_eligible = bool(
+                    isinstance(admission, dict) and admission.get("admission_eligible")
+                )
+                if admission_eligible and isinstance(vulnerability, dict):
+                    report = vulnerability.get("vulnerability_report")
+                    verdict = (
+                        str(report.get("verdict", "unknown")).lower()
+                        if isinstance(report, dict)
+                        else "unknown"
+                    )
+                    reason = f"vulnerability_review:{verdict}"
+                else:
+                    verdict = (
+                        str(admission.get("verdict", "unknown")).lower()
+                        if isinstance(admission, dict)
+                        else "unknown"
+                    )
+                    reason = f"security_review:{verdict}"
                 review_reason_counts[reason] = review_reason_counts.get(reason, 0) + 1
             shortlist_payload = {
                 "schema_version": 1,
