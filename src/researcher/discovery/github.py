@@ -281,7 +281,7 @@ class GitHubDiscoveryProvider:
             license_meta = meta.get("license")
             if isinstance(license_meta, dict):
                 key = license_meta.get("spdx_id")
-                license_spdx = None if key in {None, "NOASSERTION"} else str(key)
+                license_spdx = None if key is None else str(key)
 
             owner_raw = meta.get("owner")
             owner = (
