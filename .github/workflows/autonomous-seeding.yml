@@ -43,7 +43,7 @@ jobs:
           DIAGNOSTICS_ENABLED: "true"
           DIAGNOSTICS_GITHUB_TOKEN: ${{ secrets.RESEARCHER_DIAGNOSTICS_TOKEN }}
           DIAGNOSTICS_REPOSITORY: pilialvu75-hue/Ai-orchestrator-diagnostics
-          DIAGNOSTICS_INSTANCE_ID: autonomous-seeding-${{ github.run_id }}-${{ github.run_attempt }}
+          DIAGNOSTICS_INSTANCE_ID: github-actions-autonomous-seeding
           RESEARCHER_COMMIT: ${{ github.sha }}
           DATA_DIR: ${{ runner.temp }}/researcher-data
         run: researcher once
