@@ -40,12 +40,32 @@ class GitHubDiscoveryProvider:
         self.dart_releases = DartStableReleaseResolver(api, self._observe)
 
     @staticmethod
-    def _query(need: Need) -> str:
+    def _queries(need: Need) -> tuple[str, ...]:
+        # Capability IDs are internal taxonomy, not necessarily words used by
+        # upstream projects. Start precise, then relax deterministically so an
+        # internal label such as ai.acceleration_backend cannot make discovery
+        # permanently return zero results.
         title_terms = " ".join(
             word for word in need.title.replace("/", " ").split() if len(word) >= 4
         )
-        capability_terms = " ".join(need.capability_id.replace(".", " ").split())
-        return f"{title_terms} {capability_terms} in:name,description,readme archived:false"
+        capability_words = [
+            word for word in need.capability_id.replace(".", " ").replace("_", " ").split()
+            if len(word) >= 3
+        ]
+        capability_terms = " ".join(capability_words)
+        raw = (
+            f"{title_terms} {capability_terms}".strip(),
+            title_terms.strip(),
+            capability_terms.strip(),
+        )
+        seen: set[str] = set()
+        queries: list[str] = []
+        for terms in raw:
+            if not terms or terms in seen:
+                continue
+            seen.add(terms)
+            queries.append(f"{terms} in:name,description,readme archived:false")
+        return tuple(queries)
 
     def _observe(self, response: GitHubResponse) -> None:
         self.rate_limits.observe_headers(response.headers)
@@ -206,13 +226,28 @@ class GitHubDiscoveryProvider:
                 "github_rate_limit",
             )
             return []
-        query = urllib.parse.quote(self._query(need), safe="")
-        response = self.api.get(
-            f"/search/repositories?q={query}&sort=updated&order=desc&per_page={min(limit, 20)}"
-        )
-        self._observe(response)
-        data = response.data
-        items = data.get("items", []) if isinstance(data, dict) else []
+        items: list[Any] = []
+        seen_repositories: set[str] = set()
+        for raw_query in self._queries(need):
+            query = urllib.parse.quote(raw_query, safe="")
+            response = self.api.get(
+                f"/search/repositories?q={query}&sort=updated&order=desc&per_page={min(limit, 20)}"
+            )
+            self._observe(response)
+            data = response.data
+            raw_items = data.get("items", []) if isinstance(data, dict) else []
+            for raw in raw_items:
+                if not isinstance(raw, dict):
+                    continue
+                full_name = str(raw.get("full_name", "")).lower()
+                if not full_name or full_name in seen_repositories:
+                    continue
+                seen_repositories.add(full_name)
+                items.append(raw)
+                if len(items) >= limit:
+                    break
+            if len(items) >= limit:
+                break
         candidates: list[Candidate] = []
         for raw in items:
             if not isinstance(raw, dict):

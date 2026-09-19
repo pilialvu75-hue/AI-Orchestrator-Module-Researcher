@@ -246,5 +246,13 @@ class GitHubDiscoveryTests(unittest.TestCase):
         )
 
 
+    def test_query_fallback_relaxes_internal_capability_taxonomy(self) -> None:
+        requested = need("ai.acceleration_backend")
+        queries = GitHubDiscoveryProvider._queries(requested)
+        self.assertGreaterEqual(len(queries), 2)
+        self.assertIn("acceleration backend", queries[0])
+        self.assertTrue(any("acceleration backend" in query for query in queries))
+        self.assertTrue(all("archived:false" in query for query in queries))
+
 if __name__ == "__main__":
     unittest.main()
