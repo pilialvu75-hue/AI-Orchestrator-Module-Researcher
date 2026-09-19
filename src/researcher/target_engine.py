@@ -328,6 +328,12 @@ class TargetAwareResearchEngine(ResearchEngine):
             shortlisted = [d for d in dossiers if d.lifecycle == "SHORTLISTED"]
             security_review = [d for d in dossiers if d.lifecycle == "SECURITY_REVIEW"]
             security_blocked = [d for d in dossiers if d.lifecycle == "SECURITY_BLOCKED"]
+            rejection_reason_counts: dict[str, int] = {}
+            for row in all_rows:
+                reason = row.get("rejection_reason")
+                if reason:
+                    key = str(reason)
+                    rejection_reason_counts[key] = rejection_reason_counts.get(key, 0) + 1
             review_reason_counts: dict[str, int] = {}
             for dossier in security_review:
                 admission = dossier.security_evidence.get("admission_gate")
@@ -412,6 +418,7 @@ class TargetAwareResearchEngine(ResearchEngine):
                 "shortlisted": len(shortlisted),
                 "security_review": len(security_review),
                 "security_review_reasons": dict(sorted(review_reason_counts.items())),
+                "rejection_reasons": dict(sorted(rejection_reason_counts.items())),
                 "security_blocked": len(security_blocked),
                 "recovered_submissions": recovered,
                 "prepared_submissions": all_prepared,
