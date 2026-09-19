@@ -85,6 +85,35 @@ class EngineObservabilityTests(unittest.TestCase):
             "pre_screen:archived",
         )
 
+        unknown = replace(candidate("unknown-license", "c" * 40), license_spdx=None)
+        unknown_security = FakeSecurityScanner().scan(unknown)
+        unknown_vulnerability = FakeVulnerabilityScanner().scan(
+            unknown, unknown_security
+        )
+        self.assertEqual(
+            ResearchEngine._rejection_reason(
+                "REJECTED", unknown, unknown_security, unknown_vulnerability
+            ),
+            "pre_screen:license_unknown",
+        )
+
+        noassertion = replace(
+            candidate("noassertion-license", "d" * 40), license_spdx="NOASSERTION"
+        )
+        noassertion_security = FakeSecurityScanner().scan(noassertion)
+        noassertion_vulnerability = FakeVulnerabilityScanner().scan(
+            noassertion, noassertion_security
+        )
+        self.assertEqual(
+            ResearchEngine._rejection_reason(
+                "REJECTED",
+                noassertion,
+                noassertion_security,
+                noassertion_vulnerability,
+            ),
+            "pre_screen:license_noassertion",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
