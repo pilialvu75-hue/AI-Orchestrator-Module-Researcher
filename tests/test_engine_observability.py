@@ -72,9 +72,15 @@ class EngineObservabilityTests(unittest.TestCase):
             "unstable_source_ref",
         )
         c.extra["source_stable"] = True
-        c.archived = True
+        archived = candidate("archived-stt", "b" * 40, archived=True)
+        archived_security = FakeSecurityScanner().scan(archived)
+        archived_vulnerability = FakeVulnerabilityScanner().scan(
+            archived, archived_security
+        )
         self.assertEqual(
-            ResearchEngine._rejection_reason("REJECTED", c, security, vulnerability),
+            ResearchEngine._rejection_reason(
+                "REJECTED", archived, archived_security, archived_vulnerability
+            ),
             "pre_screen:archived",
         )
 
