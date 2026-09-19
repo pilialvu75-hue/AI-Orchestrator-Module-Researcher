@@ -253,8 +253,21 @@ class ResearchEngine:
             return "unstable_source_ref"
         if candidate.archived:
             return "pre_screen:archived"
-        if classify_license(candidate.license_spdx)["fit"] < 0.45:
-            return "pre_screen:license_fit"
+        license_info = classify_license(candidate.license_spdx)
+        if license_info["fit"] < 0.45:
+            classification = str(license_info["classification"])
+            spdx = candidate.license_spdx
+            if spdx is None:
+                return "pre_screen:license_unknown"
+            if spdx == "NOASSERTION":
+                return "pre_screen:license_noassertion"
+            if spdx in {"SSPL-1.0", "BUSL-1.1"}:
+                return "pre_screen:license_source_available"
+            if spdx.startswith("AGPL"):
+                return "pre_screen:license_agpl"
+            if spdx.startswith("GPL"):
+                return "pre_screen:license_gpl"
+            return f"pre_screen:license_{classification}"
         return "pre_screen:recommendation_threshold"
 
     def _submit_dossier(
