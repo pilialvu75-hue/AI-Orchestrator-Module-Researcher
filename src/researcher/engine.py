@@ -251,7 +251,11 @@ class ResearchEngine:
             return f"security_review:{security_report.verdict.value.lower()}"
         if candidate.extra.get("source_stable") is False:
             return "unstable_source_ref"
-        return "pre_screen_threshold_or_policy"
+        if candidate.archived:
+            return "pre_screen:archived"
+        if classify_license(candidate.license_spdx)["fit"] < 0.45:
+            return "pre_screen:license_fit"
+        return "pre_screen:recommendation_threshold"
 
     def _submit_dossier(
         self,
