@@ -61,6 +61,23 @@ class EngineObservabilityTests(unittest.TestCase):
             self.assertNotIn("repository", candidate_event["public_payload"])
             self.assertEqual(candidate_event["public_payload"]["capability_id"], "voice.stt")
 
+    def test_rejection_reason_distinguishes_prescreen_gates(self) -> None:
+        c = candidate("alpha-stt", "a" * 40)
+        security = FakeSecurityScanner().scan(c)
+        vulnerability = FakeVulnerabilityScanner().scan(c, security)
+
+        c.extra["source_stable"] = False
+        self.assertEqual(
+            ResearchEngine._rejection_reason("REJECTED", c, security, vulnerability),
+            "unstable_source_ref",
+        )
+        c.extra["source_stable"] = True
+        c.archived = True
+        self.assertEqual(
+            ResearchEngine._rejection_reason("REJECTED", c, security, vulnerability),
+            "pre_screen:archived",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
