@@ -83,6 +83,16 @@ class FakeGitHubApi:
         raise AssertionError(f"unexpected path: {path}")
 
 
+class FakeNoAssertionGitHubApi(FakeGitHubApi):
+    def get(self, path: str) -> GitHubResponse:
+        response = super().get(path)
+        if path == "/repos/owner/repo" and isinstance(response.data, dict):
+            data = dict(response.data)
+            data["license"] = {"spdx_id": "NOASSERTION"}
+            return GitHubResponse(data, response.headers)
+        return response
+
+
 class FakeDartMonorepoApi:
     def __init__(self, resolve_stable: bool = True) -> None:
         self.resolve_stable = resolve_stable
@@ -212,6 +222,15 @@ class GitHubDiscoveryTests(unittest.TestCase):
         self.assertTrue(candidate.extra["codeql_present"])
         self.assertEqual(candidate.extra["dependency_manifests"], ["packages/core/pubspec.yaml"])
         self.assertIn("/repos/owner/repo/git/trees/tree123?recursive=1", api.calls)
+
+    def test_preserves_github_noassertion_for_license_diagnostics(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            api = FakeNoAssertionGitHubApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
+            candidates = provider.discover(need("network.http"), limit=1)
+            self.assertEqual(len(candidates), 1)
+            self.assertEqual(candidates[0].license_spdx, "NOASSERTION")
 
     def test_does_not_attach_unrelated_latest_release(self) -> None:
         candidate, _ = self._discover("b" * 40)
