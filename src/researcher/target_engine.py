@@ -328,6 +328,29 @@ class TargetAwareResearchEngine(ResearchEngine):
             shortlisted = [d for d in dossiers if d.lifecycle == "SHORTLISTED"]
             security_review = [d for d in dossiers if d.lifecycle == "SECURITY_REVIEW"]
             security_blocked = [d for d in dossiers if d.lifecycle == "SECURITY_BLOCKED"]
+            review_reason_counts: dict[str, int] = {}
+            for dossier in security_review:
+                admission = dossier.security_evidence.get("admission_gate")
+                vulnerability = dossier.security_evidence.get("vulnerability_gate")
+                admission_eligible = bool(
+                    isinstance(admission, dict) and admission.get("admission_eligible")
+                )
+                if admission_eligible and isinstance(vulnerability, dict):
+                    report = vulnerability.get("vulnerability_report")
+                    verdict = (
+                        str(report.get("verdict", "unknown")).lower()
+                        if isinstance(report, dict)
+                        else "unknown"
+                    )
+                    reason = f"vulnerability_review:{verdict}"
+                else:
+                    verdict = (
+                        str(admission.get("verdict", "unknown")).lower()
+                        if isinstance(admission, dict)
+                        else "unknown"
+                    )
+                    reason = f"security_review:{verdict}"
+                review_reason_counts[reason] = review_reason_counts.get(reason, 0) + 1
             shortlist_payload = {
                 "schema_version": 1,
                 "capability_id": need.capability_id,
@@ -388,6 +411,7 @@ class TargetAwareResearchEngine(ResearchEngine):
                 "new_analyzed": len(dossiers),
                 "shortlisted": len(shortlisted),
                 "security_review": len(security_review),
+                "security_review_reasons": dict(sorted(review_reason_counts.items())),
                 "security_blocked": len(security_blocked),
                 "recovered_submissions": recovered,
                 "prepared_submissions": all_prepared,
