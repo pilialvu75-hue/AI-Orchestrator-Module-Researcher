@@ -278,10 +278,29 @@ class GitHubDiscoveryProvider:
             release_tag = self._release_tag_for_commit(full_name, sha)
 
             license_spdx: str | None = None
+            license_source = "repository_metadata"
             license_meta = meta.get("license")
             if isinstance(license_meta, dict):
                 key = license_meta.get("spdx_id")
                 license_spdx = None if key is None else str(key)
+
+            # GitHub's repository metadata often omits license detection even when
+            # a LICENSE/COPYING file is present. Ask the dedicated license endpoint
+            # for authoritative GitHub-side detection; never execute upstream code.
+            if license_spdx in {None, "NOASSERTION"} and tree_evidence.get("license_file_url"):
+                try:
+                    detected = self.api.get(f"/repos/{full_name}/license")
+                    self._observe(detected)
+                    detected_data = detected.data if isinstance(detected.data, dict) else {}
+                    detected_license = detected_data.get("license")
+                    if isinstance(detected_license, dict):
+                        detected_key = detected_license.get("spdx_id")
+                        if detected_key not in {None, "NOASSERTION"}:
+                            license_spdx = str(detected_key)
+                            license_source = "github_license_endpoint"
+                except GitHubApiError as exc:
+                    if exc.status not in {403, 404, 422}:
+                        raise
 
             owner_raw = meta.get("owner")
             owner = (
@@ -344,6 +363,7 @@ class GitHubDiscoveryProvider:
                         "codeql_present": bool(tree_evidence.get("codeql_present")),
                         "provenance_tree_sha": tree_evidence.get("provenance_tree_sha"),
                         "release_tag_verified": release_tag is not None,
+                        "license_detection_source": license_source,
                         **release_metadata,
                     },
                 )
