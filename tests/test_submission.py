@@ -92,5 +92,24 @@ class SubmissionTests(unittest.TestCase):
                 )
 
 
+    def test_manifest_preserves_upstream_license_attribution_provenance(self) -> None:
+        dossier = self._dossier()
+        manifest = build_manifest(self.need, self.contract, "1.0.0", dossier)
+        provenance = manifest["provenance"]
+        self.assertEqual(provenance["license"], dossier.candidate.license_spdx)
+        self.assertEqual(provenance["license_source_url"], dossier.candidate.license_file_url)
+        self.assertEqual(
+            provenance["attribution"]["upstream_repository"],
+            dossier.candidate.upstream_url,
+        )
+        self.assertEqual(
+            provenance["attribution"]["upstream_commit"],
+            dossier.candidate.commit_sha,
+        )
+        self.assertTrue(provenance["attribution"]["preserve_upstream_notices"])
+        self.assertTrue(
+            provenance["attribution"]["obligations_must_be_validated_before_promotion"]
+        )
+
 if __name__ == "__main__":
     unittest.main()
