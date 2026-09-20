@@ -98,6 +98,7 @@ _LOCKFILE_NAMES = {
 }
 _MANIFEST_NAMES = {
     "cargo.toml",
+    "cmakelists.txt",
     "go.mod",
     "package.json",
     "pubspec.yaml",
@@ -106,6 +107,8 @@ _MANIFEST_NAMES = {
 }
 _GIT_SHA = re.compile(r"^[0-9a-fA-F]{40}$")
 _PACKAGE_NAME = re.compile(r"^[A-Za-z0-9_.-]+$")
+_CMAKE_BRACKET_COMMENT = re.compile(r"#\[(=*)\[.*?\]\1\]", re.DOTALL)
+_CMAKE_TOKEN = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"|([^\s()]+)')
 
 
 def _finding(
@@ -193,7 +196,12 @@ def _analyze_package_json(
                     )
                 )
 
-    for section in ("dependencies", "optionalDependencies", "peerDependencies", "devDependencies"):
+    for section in (
+        "dependencies",
+        "optionalDependencies",
+        "peerDependencies",
+        "devDependencies",
+    ):
         raw = payload.get(section)
         if not isinstance(raw, dict):
             continue
@@ -202,7 +210,14 @@ def _analyze_package_json(
                 continue
             source, immutable = _npm_dependency_source(value)
             dependencies.append(
-                _dependency("npm", name, value, source, artifact.path, immutable=immutable)
+                _dependency(
+                    "npm",
+                    name,
+                    value,
+                    source,
+                    artifact.path,
+                    immutable=immutable,
+                )
             )
             if source == "git":
                 findings.append(
@@ -275,13 +290,27 @@ def _analyze_pubspec(
         constraint = fields.get("constraint", "")
         if constraint and constraint not in {"null", "{}"}:
             dependencies.append(
-                _dependency("pub", name, constraint, "hosted", artifact.path, immutable=True)
+                _dependency(
+                    "pub",
+                    name,
+                    constraint,
+                    "hosted",
+                    artifact.path,
+                    immutable=True,
+                )
             )
             continue
         if "path" in fields:
             value = fields["path"]
             dependencies.append(
-                _dependency("pub", name, value, "path", artifact.path, immutable=False)
+                _dependency(
+                    "pub",
+                    name,
+                    value,
+                    "path",
+                    artifact.path,
+                    immutable=False,
+                )
             )
             findings.append(
                 _finding(
@@ -298,7 +327,14 @@ def _analyze_pubspec(
             immutable = bool(_GIT_SHA.fullmatch(ref))
             rendered = f"{url} ref={ref or '<mutable/default>'}"
             dependencies.append(
-                _dependency("pub", name, rendered, "git", artifact.path, immutable=immutable)
+                _dependency(
+                    "pub",
+                    name,
+                    rendered,
+                    "git",
+                    artifact.path,
+                    immutable=immutable,
+                )
             )
             findings.append(
                 _finding(
@@ -353,7 +389,14 @@ def _analyze_cargo_toml(
         for name, value in raw.items():
             if isinstance(value, str):
                 dependencies.append(
-                    _dependency("cargo", name, value, "registry", artifact.path, immutable=True)
+                    _dependency(
+                        "cargo",
+                        name,
+                        value,
+                        "registry",
+                        artifact.path,
+                        immutable=True,
+                    )
                 )
                 continue
             if not isinstance(value, dict):
@@ -363,7 +406,14 @@ def _analyze_cargo_toml(
                 rendered = f"{value['git']} rev={ref or '<mutable/default>'}"
                 immutable = bool(_GIT_SHA.fullmatch(ref))
                 dependencies.append(
-                    _dependency("cargo", name, rendered, "git", artifact.path, immutable=immutable)
+                    _dependency(
+                        "cargo",
+                        name,
+                        rendered,
+                        "git",
+                        artifact.path,
+                        immutable=immutable,
+                    )
                 )
                 findings.append(
                     _finding(
@@ -404,7 +454,14 @@ def _analyze_cargo_toml(
             else:
                 version = str(value.get("version") or "")
                 dependencies.append(
-                    _dependency("cargo", name, version, "registry", artifact.path, immutable=True)
+                    _dependency(
+                        "cargo",
+                        name,
+                        version,
+                        "registry",
+                        artifact.path,
+                        immutable=True,
+                    )
                 )
     return dependencies, findings
 
@@ -434,9 +491,13 @@ def _analyze_pyproject(
             source = "registry"
             immutable = True
             lower = raw.lower()
-            if " @ " in raw and ("git+" in lower or "http://" in lower or "https://" in lower):
+            if " @ " in raw and (
+                "git+" in lower or "http://" in lower or "https://" in lower
+            ):
                 source = "direct_url"
-                immutable = bool(re.search(r"@[0-9a-fA-F]{40}(?:[#?]|$)", raw))
+                immutable = bool(
+                    re.search(r"@[0-9a-fA-F]{40}(?:[#?]|$)", raw)
+                )
                 findings.append(
                     _finding(
                         "direct_url_dependency_requires_review",
@@ -448,7 +509,14 @@ def _analyze_pyproject(
             name_match = re.match(r"\s*([A-Za-z0-9_.-]+)", raw)
             name = name_match.group(1) if name_match else raw[:80]
             dependencies.append(
-                _dependency("pypi", name, raw, source, artifact.path, immutable=immutable)
+                _dependency(
+                    "pypi",
+                    name,
+                    raw,
+                    source,
+                    artifact.path,
+                    immutable=immutable,
+                )
             )
     return dependencies, findings
 
@@ -463,9 +531,13 @@ def _analyze_requirements(
         if not line or line.startswith("#"):
             continue
         lower = line.lower()
-        if lower.startswith(("-e ", "--editable ", "git+", "http://", "https://", "file:")):
+        if lower.startswith(
+            ("-e ", "--editable ", "git+", "http://", "https://", "file:")
+        ):
             source = "direct_or_editable"
-            immutable = bool(re.search(r"@[0-9a-fA-F]{40}(?:[#?]|$)", line))
+            immutable = bool(
+                re.search(r"@[0-9a-fA-F]{40}(?:[#?]|$)", line)
+            )
             findings.append(
                 _finding(
                     "direct_url_dependency_requires_review",
@@ -481,7 +553,14 @@ def _analyze_requirements(
             name_match = re.match(r"([A-Za-z0-9_.-]+)", line)
             name = name_match.group(1) if name_match else line[:80]
         dependencies.append(
-            _dependency("pypi", name, line, source, artifact.path, immutable=immutable)
+            _dependency(
+                "pypi",
+                name,
+                line,
+                source,
+                artifact.path,
+                immutable=immutable,
+            )
         )
     return dependencies, findings
 
@@ -531,6 +610,284 @@ def _analyze_go_mod(
     return dependencies, findings
 
 
+def _strip_cmake_comments(content: str) -> str:
+    content = _CMAKE_BRACKET_COMMENT.sub("", content)
+    output: list[str] = []
+    in_quote = False
+    escaped = False
+    skipping = False
+    for char in content:
+        if skipping:
+            if char == "\n":
+                skipping = False
+                output.append(char)
+            continue
+        if escaped:
+            output.append(char)
+            escaped = False
+            continue
+        if char == "\\" and in_quote:
+            output.append(char)
+            escaped = True
+            continue
+        if char == '"':
+            in_quote = not in_quote
+            output.append(char)
+            continue
+        if char == "#" and not in_quote:
+            skipping = True
+            continue
+        output.append(char)
+    return "".join(output)
+
+
+def _cmake_commands(content: str) -> list[tuple[str, str]]:
+    cleaned = _strip_cmake_comments(content)
+    commands: list[tuple[str, str]] = []
+    start_re = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)\s*\(")
+    offset = 0
+    while offset < len(cleaned):
+        match = start_re.search(cleaned, offset)
+        if match is None:
+            break
+        name = match.group(1).lower()
+        body_start = match.end()
+        depth = 1
+        in_quote = False
+        escaped = False
+        index = body_start
+        while index < len(cleaned) and depth > 0:
+            char = cleaned[index]
+            if escaped:
+                escaped = False
+            elif char == "\\" and in_quote:
+                escaped = True
+            elif char == '"':
+                in_quote = not in_quote
+            elif not in_quote:
+                if char == "(":
+                    depth += 1
+                elif char == ")":
+                    depth -= 1
+            index += 1
+        if depth != 0:
+            commands.append((name, cleaned[body_start:]))
+            break
+        commands.append((name, cleaned[body_start : index - 1]))
+        offset = index
+    return commands
+
+
+def _cmake_tokens(body: str) -> list[str]:
+    result: list[str] = []
+    for match in _CMAKE_TOKEN.finditer(body):
+        quoted, plain = match.groups()
+        token = quoted if quoted is not None else plain
+        if token:
+            result.append(token)
+    return result
+
+
+def _cmake_keyword(tokens: list[str], keyword: str) -> str:
+    upper = keyword.upper()
+    for index, token in enumerate(tokens[:-1]):
+        if token.upper() == upper:
+            return tokens[index + 1]
+    return ""
+
+
+def _cmake_dependency_name(tokens: list[str], fallback: str) -> str:
+    if not tokens:
+        return fallback
+    candidate = tokens[0].strip("'\"")
+    return candidate if _PACKAGE_NAME.fullmatch(candidate) else fallback
+
+
+def _analyze_cmake(
+    artifact: SourceArtifact,
+) -> tuple[list[DependencyReference], list[SupplyChainFinding]]:
+    dependencies: list[DependencyReference] = []
+    findings: list[SupplyChainFinding] = []
+    commands = _cmake_commands(artifact.content)
+    if not commands and artifact.content.strip():
+        return [], [
+            _finding(
+                "cmake_parse_inconclusive",
+                SupplyChainSeverity.REVIEW,
+                artifact.path,
+                "CMake source contained no parseable command blocks",
+            )
+        ]
+
+    for command, body in commands:
+        tokens = _cmake_tokens(body)
+        if command in {"fetchcontent_declare", "externalproject_add"}:
+            name = _cmake_dependency_name(tokens, command)
+            repository = _cmake_keyword(tokens, "GIT_REPOSITORY")
+            git_tag = _cmake_keyword(tokens, "GIT_TAG")
+            url = _cmake_keyword(tokens, "URL")
+            url_hash = _cmake_keyword(tokens, "URL_HASH")
+            if repository:
+                immutable = bool(_GIT_SHA.fullmatch(git_tag))
+                rendered = f"{repository} ref={git_tag or '<mutable/default>'}"
+                dependencies.append(
+                    _dependency(
+                        "cmake",
+                        name,
+                        rendered,
+                        "git",
+                        artifact.path,
+                        immutable=immutable,
+                    )
+                )
+                findings.append(
+                    _finding(
+                        "cmake_git_dependency_requires_review",
+                        SupplyChainSeverity.REVIEW,
+                        artifact.path,
+                        f"{name}: {rendered}",
+                    )
+                )
+                if not immutable:
+                    findings.append(
+                        _finding(
+                            "cmake_git_dependency_unpinned",
+                            SupplyChainSeverity.REVIEW,
+                            artifact.path,
+                            f"{name}: GIT_TAG is not an exact 40-character commit",
+                        )
+                    )
+            elif url:
+                immutable = bool(
+                    re.fullmatch(
+                        r"(?i)(?:SHA256|SHA512)=[0-9a-f]{64,128}",
+                        url_hash,
+                    )
+                )
+                rendered = f"{url} hash={url_hash or '<missing>'}"
+                dependencies.append(
+                    _dependency(
+                        "cmake",
+                        name,
+                        rendered,
+                        "remote_archive",
+                        artifact.path,
+                        immutable=immutable,
+                    )
+                )
+                findings.append(
+                    _finding(
+                        "cmake_remote_dependency_requires_review",
+                        SupplyChainSeverity.REVIEW,
+                        artifact.path,
+                        f"{name}: {rendered}",
+                    )
+                )
+                if not immutable:
+                    findings.append(
+                        _finding(
+                            "cmake_remote_dependency_unpinned",
+                            SupplyChainSeverity.REVIEW,
+                            artifact.path,
+                            f"{name}: remote archive has no supported cryptographic URL_HASH",
+                        )
+                    )
+            else:
+                findings.append(
+                    _finding(
+                        "cmake_external_dependency_inconclusive",
+                        SupplyChainSeverity.REVIEW,
+                        artifact.path,
+                        f"{command}({body})",
+                    )
+                )
+            continue
+
+        if command in {"find_package", "find_library", "pkg_check_modules"}:
+            name = _cmake_dependency_name(tokens, command)
+            dependencies.append(
+                _dependency(
+                    "cmake",
+                    name,
+                    " ".join(tokens[:12]),
+                    "system",
+                    artifact.path,
+                    immutable=False,
+                )
+            )
+            findings.append(
+                _finding(
+                    "cmake_system_dependency_requires_review",
+                    SupplyChainSeverity.REVIEW,
+                    artifact.path,
+                    f"{command}({body})",
+                )
+            )
+            continue
+
+        if command == "file" and tokens and tokens[0].upper() == "DOWNLOAD":
+            findings.append(
+                _finding(
+                    "cmake_build_time_download_requires_review",
+                    SupplyChainSeverity.REVIEW,
+                    artifact.path,
+                    f"file({body})",
+                )
+            )
+            continue
+
+        if command == "execute_process":
+            findings.append(
+                _finding(
+                    "cmake_process_execution_requires_review",
+                    SupplyChainSeverity.REVIEW,
+                    artifact.path,
+                    f"execute_process({body})",
+                )
+            )
+            continue
+
+        if command == "cpmaddpackage":
+            name = _cmake_keyword(tokens, "NAME") or _cmake_dependency_name(
+                tokens,
+                command,
+            )
+            repository = _cmake_keyword(tokens, "GITHUB_REPOSITORY") or _cmake_keyword(
+                tokens,
+                "GIT_REPOSITORY",
+            )
+            version = _cmake_keyword(tokens, "GIT_TAG") or _cmake_keyword(
+                tokens,
+                "VERSION",
+            )
+            rendered = " ".join(part for part in (repository, version) if part)
+            dependencies.append(
+                _dependency(
+                    "cmake",
+                    name,
+                    rendered or "CPMAddPackage",
+                    "cpm",
+                    artifact.path,
+                    immutable=bool(_GIT_SHA.fullmatch(version)),
+                )
+            )
+            findings.append(
+                _finding(
+                    "cmake_cpm_dependency_requires_review",
+                    SupplyChainSeverity.REVIEW,
+                    artifact.path,
+                    f"CPMAddPackage({body})",
+                )
+            )
+
+    return dependencies, findings
+
+
+def _is_cmake_manifest(path: str) -> bool:
+    name = path.rsplit("/", 1)[-1].lower()
+    return name == "cmakelists.txt" or name.endswith(".cmake")
+
+
 def analyze_supply_chain(artifacts: Iterable[SourceArtifact]) -> SupplyChainReport:
     material = tuple(artifacts)
     if not material:
@@ -560,7 +917,7 @@ def analyze_supply_chain(artifacts: Iterable[SourceArtifact]) -> SupplyChainRepo
 
     for artifact in material:
         name = artifact.path.rsplit("/", 1)[-1].lower()
-        if name not in _MANIFEST_NAMES:
+        if name not in _MANIFEST_NAMES and not _is_cmake_manifest(artifact.path):
             continue
         manifests.append(artifact.path)
         if name == "package.json":
@@ -575,13 +932,18 @@ def analyze_supply_chain(artifacts: Iterable[SourceArtifact]) -> SupplyChainRepo
             deps, issues = _analyze_requirements(artifact)
         elif name == "go.mod":
             deps, issues = _analyze_go_mod(artifact)
+        elif _is_cmake_manifest(artifact.path):
+            deps, issues = _analyze_cmake(artifact)
         else:
             deps, issues = [], []
         dependencies.extend(deps)
         findings.extend(issues)
 
     for dependency in dependencies:
-        if not _PACKAGE_NAME.fullmatch(dependency.name) and dependency.source == "registry":
+        if (
+            not _PACKAGE_NAME.fullmatch(dependency.name)
+            and dependency.source == "registry"
+        ):
             findings.append(
                 _finding(
                     "dependency_name_requires_review",
