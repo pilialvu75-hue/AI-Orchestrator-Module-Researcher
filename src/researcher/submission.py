@@ -85,6 +85,14 @@ def build_manifest(
             "source_task_id": dossier.fingerprint,
             "license": candidate.license_spdx,
             "license_file": "provenance/LICENSE",
+            "license_source_url": candidate.license_file_url,
+            "license_detection_source": candidate.extra.get("license_detection_source"),
+            "attribution": {
+                "upstream_repository": candidate.upstream_url,
+                "upstream_commit": candidate.commit_sha,
+                "preserve_upstream_notices": True,
+                "obligations_must_be_validated_before_promotion": True,
+            },
             "retrieved_at": candidate.acquired_at,
         },
         "validation": {
