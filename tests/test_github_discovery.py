@@ -85,6 +85,10 @@ class FakeGitHubApi:
 
 class FakeNoAssertionGitHubApi(FakeGitHubApi):
     def get(self, path: str) -> GitHubResponse:
+        if path == "/repos/owner/repo/license":
+            self.calls.append(path)
+            headers = {"X-RateLimit-Remaining": "100", "X-RateLimit-Reset": "9999999999"}
+            return GitHubResponse({"license": {"spdx_id": "NOASSERTION"}}, headers)
         response = super().get(path)
         if path == "/repos/owner/repo" and isinstance(response.data, dict):
             data = dict(response.data)
