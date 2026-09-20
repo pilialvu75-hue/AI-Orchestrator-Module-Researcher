@@ -93,8 +93,27 @@ class SubmissionTests(unittest.TestCase):
 
 
     def test_manifest_preserves_upstream_license_attribution_provenance(self) -> None:
-        dossier = self._dossier()
-        manifest = build_manifest(self.need, self.contract, "1.0.0", dossier)
+        n = need()
+        c = candidate("alpha", "a" * 40)
+        ctr = contract()
+        score = CandidateScorer().score(n, c, ctr)
+        dossier = Dossier(
+            1,
+            n.capability_id,
+            c,
+            candidate_fingerprint(n.capability_id, c),
+            score,
+            "SHORTLISTED",
+            (),
+            integration_estimate(c, n),
+            security_evidence(c),
+            maintenance_evidence(c),
+            classify_license(c.license_spdx),
+            {"manifest_files_detected": []},
+            {"commands": []},
+            utc_now(),
+        )
+        manifest = build_manifest(n, ctr, "1.0.0", dossier)
         provenance = manifest["provenance"]
         self.assertEqual(provenance["license"], dossier.candidate.license_spdx)
         self.assertEqual(provenance["license_source_url"], dossier.candidate.license_file_url)
