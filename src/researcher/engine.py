@@ -528,6 +528,27 @@ class ResearchEngine:
                             None if supply_chain is None else supply_chain.verdict.value
                         ),
                         "vulnerability_verdict": vulnerability_admission.report.verdict.value,
+                        "security_complete": security_report.complete,
+                        "security_finding_rules": sorted(
+                            {item.rule_id for item in security_report.findings}
+                        ),
+                        "security_opaque_artifact_count": len(
+                            security_report.opaque_artifacts
+                        ),
+                        "security_submodule_count": len(security_report.submodules),
+                        "supply_chain_finding_rules": (
+                            []
+                            if supply_chain is None
+                            else sorted(
+                                {item.rule_id for item in supply_chain.findings}
+                            )
+                        ),
+                        "vulnerability_unresolved": list(
+                            vulnerability_admission.sbom.unresolved
+                        ),
+                        "vulnerability_hit_count": len(
+                            vulnerability_admission.report.hits
+                        ),
                     },
                 )
                 dossiers.append(dossier)
