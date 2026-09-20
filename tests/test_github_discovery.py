@@ -93,6 +93,15 @@ class FakeNoAssertionGitHubApi(FakeGitHubApi):
         return response
 
 
+class FakeRecoveredLicenseGitHubApi(FakeNoAssertionGitHubApi):
+    def get(self, path: str) -> GitHubResponse:
+        if path == "/repos/owner/repo/license":
+            self.calls.append(path)
+            headers = {"X-RateLimit-Remaining": "100", "X-RateLimit-Reset": "9999999999"}
+            return GitHubResponse({"license": {"spdx_id": "Apache-2.0"}}, headers)
+        return super().get(path)
+
+
 class FakeDartMonorepoApi:
     def __init__(self, resolve_stable: bool = True) -> None:
         self.resolve_stable = resolve_stable
@@ -231,6 +240,20 @@ class GitHubDiscoveryTests(unittest.TestCase):
             candidates = provider.discover(need("network.http"), limit=1)
             self.assertEqual(len(candidates), 1)
             self.assertEqual(candidates[0].license_spdx, "NOASSERTION")
+
+    def test_recovers_license_from_github_license_endpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            api = FakeRecoveredLicenseGitHubApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
+            candidates = provider.discover(need("network.http"), limit=1)
+            self.assertEqual(len(candidates), 1)
+            self.assertEqual(candidates[0].license_spdx, "Apache-2.0")
+            self.assertEqual(
+                candidates[0].extra["license_detection_source"],
+                "github_license_endpoint",
+            )
+            self.assertIn("/repos/owner/repo/license", api.calls)
 
     def test_does_not_attach_unrelated_latest_release(self) -> None:
         candidate, _ = self._discover("b" * 40)
