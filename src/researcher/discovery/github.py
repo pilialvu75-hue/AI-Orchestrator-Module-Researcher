@@ -287,7 +287,7 @@ class GitHubDiscoveryProvider:
             # GitHub's repository metadata often omits license detection even when
             # a LICENSE/COPYING file is present. Ask the dedicated license endpoint
             # for authoritative GitHub-side detection; never execute upstream code.
-            if license_spdx in {None, "NOASSERTION"} and tree_evidence.get("license_file_url"):
+            if license_spdx in {None, "NOASSERTION"}:
                 try:
                     detected = self.api.get(f"/repos/{full_name}/license")
                     self._observe(detected)
@@ -298,6 +298,19 @@ class GitHubDiscoveryProvider:
                         if detected_key not in {None, "NOASSERTION"}:
                             license_spdx = str(detected_key)
                             license_source = "github_license_endpoint"
+                    detected_path = detected_data.get("path")
+                    if (
+                        tree_evidence.get("license_file_url") is None
+                        and isinstance(detected_path, str)
+                        and detected_path.strip()
+                    ):
+                        encoded_license_path = urllib.parse.quote(
+                            detected_path.strip(), safe="/"
+                        )
+                        tree_evidence["license_file_url"] = (
+                            f"https://github.com/{full_name}/blob/{sha}/"
+                            f"{encoded_license_path}"
+                        )
                 except GitHubApiError as exc:
                     if exc.status not in {403, 404, 422}:
                         raise
