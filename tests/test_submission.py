@@ -15,7 +15,7 @@ from researcher.dedup import candidate_fingerprint
 from researcher.dossiers import DossierStore
 from researcher.models import Dossier, utc_now
 from researcher.scoring import CandidateScorer
-from researcher.submission import DryRunSubmissionClient
+from researcher.submission import DryRunSubmissionClient, build_manifest
 
 from helpers import candidate, contract, need
 
