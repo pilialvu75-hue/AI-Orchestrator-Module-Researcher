@@ -536,10 +536,12 @@ class ResearchEngine:
                             security_report.opaque_artifacts
                         ),
                         "security_submodule_count": len(security_report.submodules),
-                        "supply_chain_reasons": (
+                        "supply_chain_finding_rules": (
                             []
                             if supply_chain is None
-                            else list(supply_chain.reasons)
+                            else sorted(
+                                {item.rule_id for item in supply_chain.findings}
+                            )
                         ),
                         "vulnerability_unresolved": list(
                             vulnerability_admission.sbom.unresolved
