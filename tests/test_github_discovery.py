@@ -106,6 +106,30 @@ class FakeRecoveredLicenseGitHubApi(FakeNoAssertionGitHubApi):
         return super().get(path)
 
 
+
+class FakeLicenseEndpointOnlyApi(FakeNoAssertionGitHubApi):
+    def get(self, path: str) -> GitHubResponse:
+        if path == "/repos/owner/repo/license":
+            self.calls.append(path)
+            headers = {"X-RateLimit-Remaining": "100", "X-RateLimit-Reset": "9999999999"}
+            return GitHubResponse(
+                {"path": "LICENSE.txt", "license": {"spdx_id": "MIT"}},
+                headers,
+            )
+        response = super().get(path)
+        if path == "/repos/owner/repo/git/trees/tree123?recursive=1" and isinstance(
+            response.data, dict
+        ):
+            data = dict(response.data)
+            data["tree"] = [
+                entry
+                for entry in data.get("tree", [])
+                if entry.get("path") != "LICENSE"
+            ]
+            return GitHubResponse(data, response.headers)
+        return response
+
+
 class FakeDartMonorepoApi:
     def __init__(self, resolve_stable: bool = True) -> None:
         self.resolve_stable = resolve_stable
@@ -255,6 +279,26 @@ class GitHubDiscoveryTests(unittest.TestCase):
             self.assertEqual(candidates[0].license_spdx, "Apache-2.0")
             self.assertEqual(
                 candidates[0].extra["license_detection_source"],
+                "github_license_endpoint",
+            )
+            self.assertIn("/repos/owner/repo/license", api.calls)
+
+
+    def test_recovers_license_even_when_tree_has_no_license_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            api = FakeLicenseEndpointOnlyApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
+            candidates = provider.discover(need("network.http"), limit=1)
+            self.assertEqual(len(candidates), 1)
+            item = candidates[0]
+            self.assertEqual(item.license_spdx, "MIT")
+            self.assertEqual(
+                item.license_file_url,
+                f"https://github.com/owner/repo/blob/{'a' * 40}/LICENSE.txt",
+            )
+            self.assertEqual(
+                item.extra["license_detection_source"],
                 "github_license_endpoint",
             )
             self.assertIn("/repos/owner/repo/license", api.calls)
