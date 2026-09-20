@@ -39,7 +39,7 @@ _PUBLIC_FIELDS = {
     "security_finding_rules",
     "security_opaque_artifact_count",
     "security_submodule_count",
-    "supply_chain_reasons",
+    "supply_chain_finding_rules",
     "vulnerability_unresolved",
     "vulnerability_hit_count",
     "shortlisted",
