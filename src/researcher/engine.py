@@ -88,11 +88,20 @@ class ResearchEngine:
                 < need.desired_candidates
             ]
 
-        def key(need: Need) -> tuple[int, int, str]:
+        def key(need: Need) -> tuple[int, int, int, str]:
             completed = self.state.count_completed_submissions(need.capability_id)
             shortage = max(0, need.desired_candidates - completed)
-            last_scan = self.state.last_scan(need.capability_id) or ""
-            return (_PRIORITY.get(need.priority, 99), -shortage, last_scan)
+            last_scan = self.state.last_scan(need.capability_id)
+            # Breadth first: every active Library need gets a first pass before
+            # an already-scanned capability is revisited. Priority still orders
+            # peers within the same scan cohort.
+            scan_cohort = 0 if last_scan is None else 1
+            return (
+                scan_cohort,
+                _PRIORITY.get(need.priority, 99),
+                -shortage,
+                last_scan or "",
+            )
 
         return sorted(active, key=key)
 
