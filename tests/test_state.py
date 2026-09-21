@@ -146,5 +146,18 @@ class StateTests(unittest.TestCase):
 
 
 
+    def test_improvement_proposal_queue_is_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = SQLiteStateStore(Path(tmp) / "state.db")
+            kwargs = {
+                "proposal_id": "proposal-1",
+                "capability_id": "voice.tts",
+                "novelty": ("topic:streaming",),
+                "acceptance_gates": ("implementation_tests_pass",),
+            }
+            self.assertTrue(store.record_improvement_proposal(**kwargs))
+            self.assertFalse(store.record_improvement_proposal(**kwargs))
+
+
 if __name__ == "__main__":
     unittest.main()
