@@ -17,8 +17,7 @@ class KnowledgeTests(unittest.TestCase):
         self.assertFalse(source.direct_reuse)
 
     def test_novelty_keeps_only_new_signals(self) -> None:
-        c = candidate("alpha", "a" * 40)
-        c.topics = ("vulkan", "gpu")
+        c = replace(candidate("alpha", "a" * 40), topics=("vulkan", "gpu"))
         source = research_source("ai.acceleration_backend", c)
         delta = novelty_delta({"topic:vulkan"}, source)
         self.assertIn("topic:gpu", delta)
