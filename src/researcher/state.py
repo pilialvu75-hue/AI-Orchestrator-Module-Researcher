@@ -628,6 +628,37 @@ class SQLiteStateStore:
             )
         return novelty
 
+    def capability_knowledge(self, capability_id: str) -> dict[str, Any]:
+        """Return a compact cumulative view; source code is intentionally excluded."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT source_id, direct_reuse, research_use, signals_json, novelty_json
+                FROM research_sources
+                WHERE capability_id=?
+                ORDER BY first_seen_at ASC
+                """,
+                (capability_id,),
+            ).fetchall()
+        signals: set[str] = set()
+        novel: set[str] = set()
+        direct_reuse_sources = 0
+        research_sources = 0
+        for row in rows:
+            signals.update(json.loads(str(row["signals_json"])))
+            novel.update(json.loads(str(row["novelty_json"])))
+            direct_reuse_sources += int(row["direct_reuse"])
+            research_sources += int(row["research_use"])
+        return {
+            "schema_version": 1,
+            "capability_id": capability_id,
+            "source_count": len(rows),
+            "research_source_count": research_sources,
+            "direct_reuse_source_count": direct_reuse_sources,
+            "signals": sorted(signals),
+            "novel_signals": sorted(novel),
+        }
+
     def update_scan(
         self,
         capability_id: str,
