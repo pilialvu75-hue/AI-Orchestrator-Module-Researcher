@@ -50,6 +50,9 @@ def _parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Compatibility flag; DRY_RUN is default",
     )
+    sweep = sub.add_parser("sweep", help="Run a bounded breadth-first research sweep")
+    sweep.add_argument("--cycles", type=int, default=4)
+    sub.add_parser("handoffs", help="Print pending implementation requests")
     sub.add_parser("worker", help="Run persistent worker")
     sub.add_parser("dashboard", help="Run health/status HTTP server")
     sub.add_parser("status", help="Print durable state")
@@ -156,6 +159,27 @@ def main() -> None:
         result = app.engine.run_cycle()
         _sync_diagnostics(app)
         print(json.dumps(result, indent=2, sort_keys=True))
+        return
+    if args.command == "sweep":
+        cycles = max(1, min(int(args.cycles), 24))
+        results = [app.engine.run_cycle() for _ in range(cycles)]
+        _sync_diagnostics(app)
+        print(
+            json.dumps(
+                {"state": "COMPLETE", "cycles": cycles, "results": results},
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
+    if args.command == "handoffs":
+        print(
+            json.dumps(
+                app.state.pending_implementation_requests(),
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return
     if args.command == "admit-pinned":
         result = resolve_and_admit_component_candidate(
