@@ -46,7 +46,9 @@ jobs:
           DIAGNOSTICS_INSTANCE_ID: github-actions-autonomous-seeding
           RESEARCHER_COMMIT: ${{ github.sha }}
           DATA_DIR: ${{ runner.temp }}/researcher-data
-        run: researcher once | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
+        run: |
+          researcher once | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
+          researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json"
       - name: Preserve sanitized seeding diagnostics
         if: ${{ always() }}
         run: |
@@ -54,6 +56,9 @@ jobs:
           mkdir -p "$evidence"
           if [[ -s "${RUNNER_TEMP}/researcher-cycle-result.json" ]]; then
             cp "${RUNNER_TEMP}/researcher-cycle-result.json" "$evidence/cycle-result.json"
+          fi
+          if [[ -s "${RUNNER_TEMP}/researcher-events.json" ]]; then
+            cp "${RUNNER_TEMP}/researcher-events.json" "$evidence/events.json"
           fi
           cat > "$evidence/run.json" <<EOF
           {"schema":"ai-orchestrator.researcher-seeding-run.v1","run_id":"${GITHUB_RUN_ID}","run_attempt":"${GITHUB_RUN_ATTEMPT}","researcher_commit":"${GITHUB_SHA}","library_repository":"pilialvu75-hue/AI-Orchestrator-Module-Library","mode":"SEEDING"}
