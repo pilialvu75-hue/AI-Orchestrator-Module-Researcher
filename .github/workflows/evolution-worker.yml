@@ -1,0 +1,48 @@
+name: Module Evolution Worker
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 */2 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: module-evolution-worker
+  cancel-in-progress: false
+
+jobs:
+  evolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+      - name: Restore durable Researcher state
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/researcher-data
+          key: researcher-state-v2-${{ github.run_id }}
+          restore-keys: |
+            researcher-state-v2-
+          enableCrossOsArchive: false
+      - name: Claim bounded evolution work
+        env:
+          DATA_DIR: ${{ runner.temp }}/researcher-data
+          RESEARCHER_MODE: IMPROVEMENT
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+        run: |
+          researcher evolve --limit 2 | tee "${RUNNER_TEMP}/evolution-work.json"
+      - name: Preserve evolution handoff
+        uses: actions/upload-artifact@v4
+        with:
+          name: module-evolution-work-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/evolution-work.json
+          if-no-files-found: error
+          retention-days: 14
