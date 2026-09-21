@@ -29,6 +29,30 @@ class KnowledgeTests(unittest.TestCase):
         self.assertNotIn("topic:vulkan", delta)
 
 
+    def test_research_signals_capture_non_code_engineering_evidence(self) -> None:
+        c = replace(
+            candidate("alpha", "a" * 40),
+            description="Fast Vulkan acceleration backend with fallback scheduling",
+            release_tag="v1.2.3",
+            license_file_url="https://example.invalid/LICENSE",
+            extra={
+                "dependency_manifests": ["native/CMakeLists.txt", "Cargo.toml"],
+                "tests_present": True,
+                "ci_present": True,
+                "security_policy_present": True,
+                "source_stable": True,
+            },
+        )
+        source = research_source("ai.acceleration_backend", c)
+        self.assertIn("practice:tests_present", source.signals)
+        self.assertIn("practice:ci_present", source.signals)
+        self.assertIn("practice:security_policy_present", source.signals)
+        self.assertIn("source:stable", source.signals)
+        self.assertIn("release:pinned", source.signals)
+        self.assertIn("license:evidence_present", source.signals)
+        self.assertIn("concept:vulkan", source.signals)
+        self.assertIn("manifest_kind:cargo.toml", source.signals)
+
     def test_improvement_requires_actual_novelty(self) -> None:
         knowledge = {"source_count": 3}
         self.assertEqual(
