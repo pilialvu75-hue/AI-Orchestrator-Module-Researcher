@@ -674,6 +674,94 @@ class SQLiteStateStore:
             )
         return True
 
+    def transition_improvement_proposal(
+        self,
+        proposal_id: str,
+        *,
+        expected_state: str,
+        new_state: str,
+    ) -> bool:
+        """Atomically move one proposal through the evolution lifecycle."""
+        allowed = {
+            "PROPOSED": {"QUEUED", "REJECTED"},
+            "QUEUED": {"VALIDATING", "REJECTED"},
+            "VALIDATING": {"ACCEPTED", "REJECTED", "QUEUED"},
+        }
+        if new_state not in allowed.get(expected_state, set()):
+            return False
+        now = utc_now()
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE improvement_proposals
+                SET state=?, updated_at=?
+                WHERE proposal_id=? AND state=?
+                """,
+                (new_state, now, proposal_id, expected_state),
+            )
+        return cursor.rowcount == 1
+
+    def claim_improvement_proposal(self) -> dict[str, Any] | None:
+        """Claim the oldest proposal exactly once for isolated implementation."""
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            row = conn.execute(
+                """
+                SELECT proposal_id FROM improvement_proposals
+                WHERE state='PROPOSED'
+                ORDER BY created_at ASC
+                LIMIT 1
+                """
+            ).fetchone()
+            if row is None:
+                return None
+            proposal_id = str(row["proposal_id"])
+            conn.execute(
+                """
+                UPDATE improvement_proposals
+                SET state='QUEUED', updated_at=?
+                WHERE proposal_id=? AND state='PROPOSED'
+                """,
+                (utc_now(), proposal_id),
+            )
+        requests = self.implementation_requests_for_state("QUEUED", proposal_id=proposal_id)
+        return requests[0] if requests else None
+
+    def implementation_requests_for_state(
+        self,
+        state: str,
+        *,
+        proposal_id: str | None = None,
+        limit: int = 20,
+    ) -> list[dict[str, Any]]:
+        query = """
+            SELECT proposal_id, capability_id, novelty_json,
+                   acceptance_gates_json, state, created_at
+            FROM improvement_proposals
+            WHERE state=?
+        """
+        params: list[Any] = [state]
+        if proposal_id is not None:
+            query += " AND proposal_id=?"
+            params.append(proposal_id)
+        query += " ORDER BY created_at ASC LIMIT ?"
+        params.append(limit)
+        with self._connect() as conn:
+            rows = conn.execute(query, tuple(params)).fetchall()
+        return [
+            {
+                "schema_version": 1,
+                "request_type": "library_module_improvement",
+                "proposal_id": str(row["proposal_id"]),
+                "capability_id": str(row["capability_id"]),
+                "knowledge_delta": tuple(json.loads(str(row["novelty_json"]))),
+                "acceptance_gates": tuple(json.loads(str(row["acceptance_gates_json"]))),
+                "mutation_policy": "isolated_candidate_no_library_mutation",
+                "state": str(row["state"]),
+            }
+            for row in rows
+        ]
+
     def pending_implementation_requests(self, limit: int = 20) -> list[dict[str, Any]]:
         """Expose proposed work without granting permission to mutate Library."""
         with self._connect() as conn:
