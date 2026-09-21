@@ -44,6 +44,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RESEARCHER_CANTIERE_TOKEN }}
           WORK_FILE: ${{ runner.temp }}/evolution-work.json
           TARGET_REPOSITORY: pilialvu75-hue/Ai-orchestrator-riserva
+        id: dispatch
         run: |
           python - <<'PY'
           import json
@@ -93,6 +94,35 @@ jobs:
               except urllib.error.HTTPError as exc:
                   raise SystemExit(f"Cantiere dispatch failed with HTTP {exc.code}") from exc
               print(f"Dispatched proposal {item['proposal_id']} to Cantiere.")
+          PY
+      - name: Requeue work when Cantiere dispatch fails
+        if: ${{ failure() && steps.dispatch.outcome == 'failure' }}
+        env:
+          DATA_DIR: ${{ runner.temp }}/researcher-data
+          RESEARCHER_MODE: IMPROVEMENT
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          WORK_FILE: ${{ runner.temp }}/evolution-work.json
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+
+          with open(os.environ["WORK_FILE"], encoding="utf-8") as handle:
+              claimed = json.load(handle).get("claimed", [])
+          failures = []
+          for item in claimed:
+              proposal_id = item["proposal_id"]
+              result = subprocess.run(
+                  ["researcher", "requeue-evolution", proposal_id],
+                  check=False,
+              )
+              if result.returncode != 0:
+                  failures.append(proposal_id)
+          if failures:
+              raise SystemExit("Failed to requeue: " + ", ".join(failures))
+          print(f"Requeued {len(claimed)} failed dispatch claim(s).")
           PY
       - name: Preserve evolution handoff
         uses: actions/upload-artifact@v4

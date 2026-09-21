@@ -56,6 +56,8 @@ def _parser() -> argparse.ArgumentParser:
     sub.add_parser("handoffs", help="Print pending implementation requests")
     evolve = sub.add_parser("evolve", help="Claim bounded module evolution work")
     evolve.add_argument("--limit", type=int, default=1)
+    requeue = sub.add_parser("requeue-evolution", help="Return a failed dispatch claim to PROPOSED")
+    requeue.add_argument("proposal_id")
     sub.add_parser("worker", help="Run persistent worker")
     sub.add_parser("dashboard", help="Run health/status HTTP server")
     sub.add_parser("status", help="Print durable state")
@@ -183,6 +185,12 @@ def main() -> None:
                 sort_keys=True,
             )
         )
+        return
+    if args.command == "requeue-evolution":
+        ok = app.state.requeue_improvement_proposal(args.proposal_id)
+        print(json.dumps({"proposal_id": args.proposal_id, "requeued": ok}, sort_keys=True))
+        if not ok:
+            raise SystemExit(2)
         return
     if args.command == "evolve":
         limit = max(1, min(int(args.limit), 8))

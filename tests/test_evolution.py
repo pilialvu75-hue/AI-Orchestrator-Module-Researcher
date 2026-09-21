@@ -37,3 +37,21 @@ def test_invalid_transition_cannot_skip_validation(tmp_path) -> None:
     assert not state.transition_improvement_proposal(
         "p2", expected_state="PROPOSED", new_state="ACCEPTED"
     )
+
+
+def test_failed_dispatch_claim_can_be_requeued_and_reclaimed(tmp_path) -> None:
+    state = SQLiteStateStore(tmp_path / "researcher.db")
+    assert state.record_improvement_proposal(
+        proposal_id="retry-1",
+        capability_id="network.http",
+        novelty=("practice:tests_present",),
+        acceptance_gates=("implementation_tests_pass",),
+    )
+    first = state.claim_improvement_proposal()
+    assert first is not None
+    assert first["proposal_id"] == "retry-1"
+    assert state.requeue_improvement_proposal("retry-1")
+    second = state.claim_improvement_proposal()
+    assert second is not None
+    assert second["proposal_id"] == "retry-1"
+    assert not state.requeue_improvement_proposal("missing")

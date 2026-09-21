@@ -684,7 +684,8 @@ class SQLiteStateStore:
         """Atomically move one proposal through the evolution lifecycle."""
         allowed = {
             "PROPOSED": {"QUEUED", "REJECTED"},
-            "QUEUED": {"VALIDATING", "REJECTED"},
+            # A dispatch failure may safely return an unconsumed claim to the queue.
+            "QUEUED": {"PROPOSED", "VALIDATING", "REJECTED"},
             "VALIDATING": {"ACCEPTED", "REJECTED", "QUEUED"},
         }
         if new_state not in allowed.get(expected_state, set()):
@@ -700,6 +701,14 @@ class SQLiteStateStore:
                 (new_state, now, proposal_id, expected_state),
             )
         return cursor.rowcount == 1
+
+    def requeue_improvement_proposal(self, proposal_id: str) -> bool:
+        """Return an unconsumed dispatch claim to PROPOSED for a later retry."""
+        return self.transition_improvement_proposal(
+            proposal_id,
+            expected_state="QUEUED",
+            new_state="PROPOSED",
+        )
 
     def claim_improvement_proposal(self) -> dict[str, Any] | None:
         """Claim the oldest proposal exactly once for isolated implementation."""
