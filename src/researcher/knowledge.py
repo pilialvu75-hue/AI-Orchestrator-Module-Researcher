@@ -43,7 +43,38 @@ def source_signals(candidate: Candidate) -> tuple[str, ...]:
     signals.update(f"topic:{topic.lower()}" for topic in candidate.topics)
     manifests = candidate.extra.get("dependency_manifests", [])
     if isinstance(manifests, list):
-        signals.update(f"manifest:{item}" for item in manifests if isinstance(item, str))
+        signals.update(
+            f"manifest_kind:{str(item).rsplit('/', 1)[-1].lower()}"
+            for item in manifests
+            if isinstance(item, str)
+        )
+
+    # Preserve compact technical evidence that can drive an independent
+    # implementation without retaining or transferring upstream source code.
+    for key in (
+        "tests_present",
+        "ci_present",
+        "readme_present",
+        "security_policy_present",
+        "dependabot_present",
+        "codeql_present",
+    ):
+        if candidate.extra.get(key) is True:
+            signals.add(f"practice:{key}")
+
+    if candidate.release_tag:
+        signals.add("release:pinned")
+    if candidate.extra.get("source_stable") is True:
+        signals.add("source:stable")
+    if candidate.license_file_url:
+        signals.add("license:evidence_present")
+    if candidate.description:
+        words = {
+            word.strip(".,:;()[]{}").lower()
+            for word in candidate.description.split()
+            if len(word.strip(".,:;()[]{}")) >= 5
+        }
+        signals.update(f"concept:{word}" for word in sorted(words)[:12])
     if candidate.archived:
         signals.add("archived")
     return tuple(sorted(signals))
