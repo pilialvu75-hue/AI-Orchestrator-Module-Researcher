@@ -60,10 +60,27 @@ jobs:
           researcher sweep --cycles 4 | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
           researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json"
           researcher handoffs > "${RUNNER_TEMP}/researcher-handoffs.json"
-          # Prove the sweep produced actionable evolution work while the same
-          # restored state is still mounted. The scheduled worker will later
-          # claim from the persisted queue.
-          researcher evolve --limit 2 > "${RUNNER_TEMP}/researcher-evolution-preview.json"
+          # Summarize actionable evolution work without claiming it. Claims are
+          # owned exclusively by Module Evolution Worker so seeding cannot strand
+          # PROPOSED work in QUEUED.
+          python - <<'PY'
+          import json
+          import os
+
+          source = os.path.join(os.environ["RUNNER_TEMP"], "researcher-handoffs.json")
+          target = os.path.join(os.environ["RUNNER_TEMP"], "researcher-evolution-preview.json")
+          with open(source, encoding="utf-8") as handle:
+              handoffs = json.load(handle)
+          preview = {
+              "state": "READY" if handoffs else "IDLE",
+              "pending_count": len(handoffs),
+              "proposal_ids": [item["proposal_id"] for item in handoffs[:8]],
+              "capability_ids": sorted({item["capability_id"] for item in handoffs}),
+              "mutated_state": False,
+          }
+          with open(target, "w", encoding="utf-8") as handle:
+              json.dump(preview, handle, indent=2, sort_keys=True)
+          PY
       - name: Preserve sanitized seeding diagnostics
         if: ${{ always() }}
         run: |
