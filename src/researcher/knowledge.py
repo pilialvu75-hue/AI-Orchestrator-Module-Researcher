@@ -103,6 +103,7 @@ def improvement_signal(
 @dataclass(frozen=True)
 class ImprovementProposal:
     schema_version: int
+    proposal_id: str
     capability_id: str
     action: str
     reason: str
@@ -122,8 +123,12 @@ def build_improvement_proposal(
     decision = improvement_signal(knowledge, novelty)
     if decision["action"] != "CONSIDER_IMPROVEMENT":
         return None
+    fingerprint = hashlib.sha256(
+        (capability_id + "\n" + "\n".join(sorted(novelty))).encode()
+    ).hexdigest()
     return ImprovementProposal(
         schema_version=1,
+        proposal_id=fingerprint,
         capability_id=capability_id,
         action="EVALUATE_IMPROVEMENT",
         reason=str(decision["reason"]),
