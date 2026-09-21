@@ -193,7 +193,7 @@ def main() -> None:
             if item is None:
                 break
             claimed.append(item.as_dict())
-        print(json.dumps({"state": "READY" if claimed else "IDLE", "claimed": claimed}, indent=2, sort_keys=True))
+        payload = {"state": "READY" if claimed else "IDLE", "claimed": claimed}\n        print(json.dumps(payload, indent=2, sort_keys=True))
         return
     if args.command == "admit-pinned":
         result = resolve_and_admit_component_candidate(
