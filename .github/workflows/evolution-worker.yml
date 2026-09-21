@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: module-evolution-worker
+  group: researcher-state-v2
   cancel-in-progress: false
 
 jobs:
