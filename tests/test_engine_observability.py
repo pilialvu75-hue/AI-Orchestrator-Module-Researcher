@@ -7,6 +7,7 @@ from dataclasses import replace
 
 from researcher.comparison import ComparisonEngine
 from researcher.dossiers import DossierStore
+from researcher.dedup import candidate_fingerprint
 from researcher.engine import ResearchEngine
 from researcher.models import ResearchMode
 from researcher.observability import EventLogger
@@ -105,6 +106,50 @@ class EngineObservabilityTests(unittest.TestCase):
                     for signal in handoffs[0]["knowledge_delta"]
                 )
             )
+
+    def test_known_candidate_backfills_v2_knowledge_and_handoff(self) -> None:
+        n = need("ai.acceleration_backend")
+        library = FakeLibrary([n])
+        known = replace(
+            candidate("legacy-gpu-backend", "f" * 40),
+            license_spdx=None,
+            language="C++",
+            topics=("vulkan", "gpu", "acceleration"),
+            description="Vulkan GPU acceleration backend with CPU fallback scheduling",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            state = SQLiteStateStore(data / "state.db")
+            dossiers = DossierStore(data)
+            fingerprint = candidate_fingerprint(n.capability_id, known)
+            state.upsert_candidate(
+                fingerprint,
+                n.capability_id,
+                known.repository,
+                known.commit_sha,
+                "REJECTED",
+                0.1,
+                str(data / "legacy.json"),
+                "pre_screen:license_unknown",
+            )
+            engine = ResearchEngine(
+                library,
+                library,
+                FakeDiscovery([known]),
+                state,
+                dossiers,
+                CandidateScorer(),
+                ComparisonEngine(),
+                DryRunSubmissionClient(dossiers),
+                ResearchMode.SEEDING,
+                event_logger=EventLogger(state),
+            )
+            result = engine.run_cycle()
+            self.assertEqual(result["state"], "COMPLETED")
+            handoffs = state.pending_implementation_requests()
+            self.assertEqual(len(handoffs), 1)
+            self.assertEqual(handoffs[0]["capability_id"], n.capability_id)
+            self.assertTrue(handoffs[0]["knowledge_delta"])
 
     def test_rank_needs_gives_unscanned_capabilities_a_first_pass(self) -> None:
         first = need()
