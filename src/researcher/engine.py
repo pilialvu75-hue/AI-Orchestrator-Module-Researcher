@@ -337,6 +337,56 @@ class ResearchEngine:
                 recovered.append(summary)
         return recovered
 
+    def backfill_research_knowledge(self, *, limit: int = 100) -> dict[str, Any]:
+        """Migrate persisted dossier metadata into Research V2 knowledge safely."""
+        migrated = 0
+        proposed = 0
+        skipped = 0
+        capabilities = self.state.capabilities_missing_research_knowledge(limit=limit)
+        for capability_id in capabilities:
+            for row in self.state.candidates_missing_research_knowledge(
+                capability_id, limit=limit
+            ):
+                try:
+                    candidate = self.dossiers.load_research_candidate(
+                        capability_id, str(row["fingerprint"])
+                    )
+                except RuntimeError:
+                    skipped += 1
+                    continue
+                source = research_source(capability_id, candidate)
+                novelty = self.state.record_research_source(
+                    source_id=source.source_id,
+                    capability_id=source.capability_id,
+                    repository=source.repository,
+                    commit_sha=source.commit_sha,
+                    direct_reuse=source.direct_reuse,
+                    research_use=source.research_use,
+                    signals=source.signals,
+                )
+                migrated += 1
+                proposal = build_improvement_proposal(
+                    capability_id,
+                    self.state.capability_knowledge(capability_id),
+                    novelty,
+                )
+                if proposal is not None and self.state.record_improvement_proposal(
+                    proposal_id=proposal.proposal_id,
+                    capability_id=proposal.capability_id,
+                    novelty=proposal.novelty,
+                    acceptance_gates=proposal.acceptance_gates,
+                ):
+                    proposed += 1
+        result = {
+            "state": "COMPLETE",
+            "capabilities": len(capabilities),
+            "migrated": migrated,
+            "proposed": proposed,
+            "skipped": skipped,
+        }
+        self._emit(EventLevel.INFO, "research_knowledge_backfill", result)
+        return result
+
     def run_cycle(self) -> dict[str, Any]:
         self.state.set_json("engine_state", "RUNNING")
         self.state.set_json("last_error", None)
