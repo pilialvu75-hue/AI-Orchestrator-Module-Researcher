@@ -38,6 +38,7 @@ jobs:
           key: researcher-state-v2-${{ github.run_id }}
           restore-keys: |
             researcher-state-v2-
+          enableCrossOsArchive: false
       - name: Run bounded multi-need seeding sweep
         env:
           GITHUB_TOKEN: ${{ github.token }}
