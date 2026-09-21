@@ -57,6 +57,7 @@ jobs:
           RESEARCHER_COMMIT: ${{ github.sha }}
           DATA_DIR: ${{ runner.temp }}/researcher-data
         run: |
+          researcher backfill-knowledge --limit 250 | tee "${RUNNER_TEMP}/researcher-backfill-result.json"
           researcher sweep --cycles 4 | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
           researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json"
           researcher handoffs > "${RUNNER_TEMP}/researcher-handoffs.json"
@@ -86,6 +87,9 @@ jobs:
         run: |
           evidence="${RUNNER_TEMP}/seeding-diagnostics"
           mkdir -p "$evidence"
+          if [[ -s "${RUNNER_TEMP}/researcher-backfill-result.json" ]]; then
+            cp "${RUNNER_TEMP}/researcher-backfill-result.json" "$evidence/backfill-result.json"
+          fi
           if [[ -s "${RUNNER_TEMP}/researcher-cycle-result.json" ]]; then
             cp "${RUNNER_TEMP}/researcher-cycle-result.json" "$evidence/cycle-result.json"
           fi

@@ -388,6 +388,27 @@ class SQLiteStateStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def candidates_missing_research_knowledge(
+        self, capability_id: str, *, limit: int = 100
+    ) -> list[dict[str, Any]]:
+        """Return persisted candidates not yet represented in Research V2 memory."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT c.*
+                FROM candidates c
+                LEFT JOIN research_sources r
+                  ON r.capability_id = c.capability_id
+                 AND r.repository = c.repository
+                 AND r.commit_sha = c.commit_sha
+                WHERE c.capability_id=? AND r.source_id IS NULL
+                ORDER BY c.first_seen_at ASC
+                LIMIT ?
+                """,
+                (capability_id, limit),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
     @staticmethod
     def _encode_submission_payload(payload: dict[str, Any]) -> str:
         return json.dumps(payload, sort_keys=True, separators=(",", ":"))
@@ -800,6 +821,22 @@ class SQLiteStateStore:
             }
             for row in rows
         ]
+
+    def capabilities_missing_research_knowledge(self, *, limit: int = 100) -> list[str]:
+        """Find persisted candidate capabilities that predate V2 research memory."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT c.capability_id
+                FROM candidates c
+                LEFT JOIN research_sources r ON r.capability_id = c.capability_id
+                WHERE r.capability_id IS NULL
+                ORDER BY c.capability_id ASC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [str(row["capability_id"]) for row in rows]
 
     def capability_knowledge(self, capability_id: str) -> dict[str, Any]:
         """Return a compact cumulative view; source code is intentionally excluded."""

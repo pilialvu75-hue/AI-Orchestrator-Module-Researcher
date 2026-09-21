@@ -29,6 +29,35 @@ class DossierStore:
             )
         return path
 
+    def load_research_candidate(self, capability_id: str, fingerprint: str) -> Candidate:
+        """Recover candidate metadata for Research V2 backfill from any saved dossier.
+
+        Unlike submission recovery this does not require SHORTLISTED lifecycle: the
+        candidate metadata is research evidence only and is never executed or promoted.
+        Identity is still reconstructed from trusted identifiers and checked strictly.
+        """
+        path = self._dossier_path(capability_id, fingerprint)
+        if not path.is_file():
+            raise RuntimeError(
+                f"Persisted dossier missing for {capability_id}:{fingerprint}"
+            )
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            candidate_raw = dict(raw["candidate"])
+            candidate_raw["topics"] = tuple(candidate_raw.get("topics", ()))
+            candidate = Candidate(**candidate_raw)
+        except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError(
+                f"Persisted research dossier unreadable for {capability_id}:{fingerprint}"
+            ) from exc
+        identity_matches = (
+            str(raw.get("capability_id")) == capability_id
+            and str(raw.get("fingerprint")) == fingerprint
+        )
+        if not identity_matches:
+            raise RuntimeError("Persisted research dossier identity mismatch")
+        return candidate
+
     def load_dossier(self, capability_id: str, fingerprint: str) -> Dossier:
         """Load a locally persisted dossier for restart recovery.
 
