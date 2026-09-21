@@ -50,7 +50,11 @@ class DossierStore:
             raise RuntimeError(
                 f"Persisted research dossier unreadable for {capability_id}:{fingerprint}"
             ) from exc
-        if str(raw.get("capability_id")) != capability_id or str(raw.get("fingerprint")) != fingerprint:
+        identity_matches = (
+            str(raw.get("capability_id")) == capability_id
+            and str(raw.get("fingerprint")) == fingerprint
+        )
+        if not identity_matches:
             raise RuntimeError("Persisted research dossier identity mismatch")
         return candidate
 
