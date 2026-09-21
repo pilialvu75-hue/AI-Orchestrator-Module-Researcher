@@ -62,6 +62,50 @@ class EngineObservabilityTests(unittest.TestCase):
             self.assertNotIn("repository", candidate_event["public_payload"])
             self.assertEqual(candidate_event["public_payload"]["capability_id"], "voice.stt")
 
+    def test_research_only_candidate_produces_actionable_handoff(self) -> None:
+        n = need("ai.acceleration_backend")
+        library = FakeLibrary([n])
+        research_only = replace(
+            candidate("gpu-backend", "e" * 40),
+            license_spdx=None,
+            language="C++",
+            topics=("vulkan", "gpu", "acceleration"),
+            description="Vulkan GPU acceleration backend with CPU fallback scheduling",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            state = SQLiteStateStore(data / "state.db")
+            dossiers = DossierStore(data)
+            engine = ResearchEngine(
+                library,
+                library,
+                FakeDiscovery([research_only]),
+                state,
+                dossiers,
+                CandidateScorer(),
+                ComparisonEngine(),
+                DryRunSubmissionClient(dossiers),
+                ResearchMode.SEEDING,
+                event_logger=EventLogger(state),
+            )
+            result = engine.run_cycle()
+            self.assertEqual(result["state"], "COMPLETED")
+            handoffs = state.pending_implementation_requests()
+            self.assertEqual(len(handoffs), 1)
+            self.assertEqual(handoffs[0]["capability_id"], "ai.acceleration_backend")
+            self.assertEqual(
+                handoffs[0]["mutation_policy"],
+                "isolated_candidate_no_library_mutation",
+            )
+            self.assertTrue(handoffs[0]["knowledge_delta"])
+            self.assertFalse(
+                any(
+                    research_only.repository in signal
+                    or research_only.upstream_url in signal
+                    for signal in handoffs[0]["knowledge_delta"]
+                )
+            )
+
     def test_rank_needs_gives_unscanned_capabilities_a_first_pass(self) -> None:
         first = need()
         second = replace(first, capability_id="network.http", title="HTTP")
