@@ -39,6 +39,61 @@ jobs:
           ALLOW_LIBRARY_WRITE: "false"
         run: |
           researcher evolve --limit 2 | tee "${RUNNER_TEMP}/evolution-work.json"
+      - name: Dispatch validated work to Cantiere
+        env:
+          GH_TOKEN: ${{ secrets.RESEARCHER_CANTIERE_TOKEN }}
+          WORK_FILE: ${{ runner.temp }}/evolution-work.json
+          TARGET_REPOSITORY: pilialvu75-hue/Ai-orchestrator-riserva
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          token = os.environ.get("GH_TOKEN", "").strip()
+          with open(os.environ["WORK_FILE"], encoding="utf-8") as handle:
+              payload = json.load(handle)
+          claimed = payload.get("claimed", [])
+          if not claimed:
+              print("No evolution work to dispatch.")
+              raise SystemExit(0)
+          if not token:
+              raise SystemExit("RESEARCHER_CANTIERE_TOKEN is required when work is claimed")
+
+          target = os.environ["TARGET_REPOSITORY"]
+          url = f"https://api.github.com/repos/{target}/dispatches"
+          for item in claimed:
+              client_payload = {
+                  "proposal_id": item["proposal_id"],
+                  "capability_id": item["capability_id"],
+                  "knowledge_delta": item["knowledge_delta"],
+                  "acceptance_gates": item["acceptance_gates"],
+                  "mutation_policy": item["mutation_policy"],
+              }
+              body = json.dumps({
+                  "event_type": "researcher_evolution_work",
+                  "client_payload": client_payload,
+              }).encode()
+              request = urllib.request.Request(
+                  url,
+                  data=body,
+                  method="POST",
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {token}",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "Content-Type": "application/json",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      if response.status != 204:
+                          raise RuntimeError(f"unexpected dispatch status {response.status}")
+              except urllib.error.HTTPError as exc:
+                  raise SystemExit(f"Cantiere dispatch failed with HTTP {exc.code}") from exc
+              print(f"Dispatched proposal {item['proposal_id']} to Cantiere.")
+          PY
       - name: Preserve evolution handoff
         uses: actions/upload-artifact@v4
         with:
