@@ -674,6 +674,36 @@ class SQLiteStateStore:
             )
         return True
 
+    def pending_implementation_requests(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Expose proposed work without granting permission to mutate Library."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT proposal_id, capability_id, novelty_json,
+                       acceptance_gates_json, state, created_at
+                FROM improvement_proposals
+                WHERE state='PROPOSED'
+                ORDER BY created_at ASC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "schema_version": 1,
+                "request_type": "library_module_improvement",
+                "proposal_id": str(row["proposal_id"]),
+                "capability_id": str(row["capability_id"]),
+                "knowledge_delta": tuple(json.loads(str(row["novelty_json"]))),
+                "acceptance_gates": tuple(
+                    json.loads(str(row["acceptance_gates_json"]))
+                ),
+                "mutation_policy": "isolated_candidate_no_library_mutation",
+                "state": str(row["state"]),
+            }
+            for row in rows
+        ]
+
     def capability_knowledge(self, capability_id: str) -> dict[str, Any]:
         """Return a compact cumulative view; source code is intentionally excluded."""
         with self._connect() as conn:
