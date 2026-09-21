@@ -534,6 +534,14 @@ class ResearchEngine:
                     knowledge,
                     novelty,
                 )
+                proposal_queued = False
+                if proposal is not None:
+                    proposal_queued = self.state.record_improvement_proposal(
+                        proposal_id=proposal.proposal_id,
+                        capability_id=proposal.capability_id,
+                        novelty=proposal.novelty,
+                        acceptance_gates=proposal.acceptance_gates,
+                    )
                 research_value = (
                     "DIRECT_REUSE"
                     if license_info.get("direct_reuse")
@@ -564,6 +572,7 @@ class ResearchEngine:
                         "improvement_action": (
                             proposal.action if proposal is not None else "NO_CHANGE"
                         ),
+                        "improvement_proposal_queued": proposal_queued,
                         "security_verdict": security_report.verdict.value,
                         "supply_chain_verdict": (
                             None if supply_chain is None else supply_chain.verdict.value
