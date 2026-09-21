@@ -9,7 +9,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: autonomous-library-seeding
+  # Both workflows mutate the same cached SQLite state. Serialize them so a
+  # seeding run cannot fork state while the evolution worker is claiming work.
+  group: researcher-state-v2
   cancel-in-progress: false
 
 jobs:
@@ -58,6 +60,10 @@ jobs:
           researcher sweep --cycles 4 | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
           researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json"
           researcher handoffs > "${RUNNER_TEMP}/researcher-handoffs.json"
+          # Prove the sweep produced actionable evolution work while the same
+          # restored state is still mounted. The scheduled worker will later
+          # claim from the persisted queue.
+          researcher evolve --limit 2 > "${RUNNER_TEMP}/researcher-evolution-preview.json"
       - name: Preserve sanitized seeding diagnostics
         if: ${{ always() }}
         run: |
@@ -71,6 +77,9 @@ jobs:
           fi
           if [[ -s "${RUNNER_TEMP}/researcher-handoffs.json" ]]; then
             cp "${RUNNER_TEMP}/researcher-handoffs.json" "$evidence/handoffs.json"
+          fi
+          if [[ -s "${RUNNER_TEMP}/researcher-evolution-preview.json" ]]; then
+            cp "${RUNNER_TEMP}/researcher-evolution-preview.json" "$evidence/evolution-preview.json"
           fi
           cat > "$evidence/run.json" <<EOF
           {"schema":"ai-orchestrator.researcher-seeding-run.v1","run_id":"${GITHUB_RUN_ID}","run_attempt":"${GITHUB_RUN_ATTEMPT}","researcher_commit":"${GITHUB_SHA}","library_repository":"pilialvu75-hue/AI-Orchestrator-Module-Library","mode":"SEEDING"}
