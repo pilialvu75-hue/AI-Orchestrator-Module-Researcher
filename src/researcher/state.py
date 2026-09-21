@@ -93,6 +93,17 @@ class SQLiteStateStore:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS improvement_proposals (
+                    proposal_id TEXT PRIMARY KEY,
+                    capability_id TEXT NOT NULL,
+                    novelty_json TEXT NOT NULL,
+                    acceptance_gates_json TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_improvement_proposals_capability
+                    ON improvement_proposals(capability_id, updated_at);
                 CREATE TABLE IF NOT EXISTS research_sources (
                     source_id TEXT PRIMARY KEY,
                     capability_id TEXT NOT NULL,
@@ -627,6 +638,41 @@ class SQLiteStateStore:
                 ),
             )
         return novelty
+
+    def record_improvement_proposal(
+        self,
+        *,
+        proposal_id: str,
+        capability_id: str,
+        novelty: tuple[str, ...],
+        acceptance_gates: tuple[str, ...],
+    ) -> bool:
+        """Queue a proposal once; execution remains a separate gated stage."""
+        now = utc_now()
+        with self._connect() as conn:
+            existing = conn.execute(
+                "SELECT 1 FROM improvement_proposals WHERE proposal_id=?",
+                (proposal_id,),
+            ).fetchone()
+            if existing is not None:
+                return False
+            conn.execute(
+                """
+                INSERT INTO improvement_proposals(
+                    proposal_id, capability_id, novelty_json,
+                    acceptance_gates_json, state, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'PROPOSED', ?, ?)
+                """,
+                (
+                    proposal_id,
+                    capability_id,
+                    json.dumps(novelty, sort_keys=True),
+                    json.dumps(acceptance_gates, sort_keys=True),
+                    now,
+                    now,
+                ),
+            )
+        return True
 
     def capability_knowledge(self, capability_id: str) -> dict[str, Any]:
         """Return a compact cumulative view; source code is intentionally excluded."""
