@@ -159,5 +159,26 @@ class StateTests(unittest.TestCase):
             self.assertFalse(store.record_improvement_proposal(**kwargs))
 
 
+    def test_pending_handoff_cannot_authorize_library_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = SQLiteStateStore(Path(tmp) / "state.db")
+            store.record_improvement_proposal(
+                proposal_id="proposal-audio",
+                capability_id="platform.audio_io",
+                novelty=("topic:backpressure",),
+                acceptance_gates=(
+                    "implementation_tests_pass",
+                    "security_gates_pass",
+                ),
+            )
+            requests = store.pending_implementation_requests()
+            self.assertEqual(len(requests), 1)
+            self.assertEqual(requests[0]["state"], "PROPOSED")
+            self.assertEqual(
+                requests[0]["mutation_policy"],
+                "isolated_candidate_no_library_mutation",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
