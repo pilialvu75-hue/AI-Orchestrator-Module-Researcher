@@ -3,7 +3,12 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 
-from researcher.knowledge import improvement_signal, novelty_delta, research_source
+from researcher.knowledge import (
+    build_improvement_proposal,
+    improvement_signal,
+    novelty_delta,
+    research_source,
+)
 from helpers import candidate
 
 
@@ -33,6 +38,23 @@ class KnowledgeTests(unittest.TestCase):
         signal = improvement_signal(knowledge, ("topic:retry",))
         self.assertEqual(signal["action"], "CONSIDER_IMPROVEMENT")
         self.assertEqual(signal["novelty_count"], 1)
+
+
+    def test_improvement_proposal_is_gated_and_not_created_without_delta(self) -> None:
+        knowledge = {"source_count": 4}
+        self.assertIsNone(
+            build_improvement_proposal("storage.local_db", knowledge, ())
+        )
+        proposal = build_improvement_proposal(
+            "storage.local_db",
+            knowledge,
+            ("topic:migration",),
+        )
+        self.assertIsNotNone(proposal)
+        assert proposal is not None
+        self.assertEqual(proposal.action, "EVALUATE_IMPROVEMENT")
+        self.assertIn("regression_tests_pass", proposal.acceptance_gates)
+        self.assertIn("security_gates_pass", proposal.acceptance_gates)
 
 
 if __name__ == "__main__":
