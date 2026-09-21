@@ -28,14 +28,28 @@ REVIEW_REQUIRED = STRONG_COPYLEFT | {"SSPL-1.0", "BUSL-1.1", "NOASSERTION"}
 
 def classify_license(spdx: str | None) -> dict[str, Any]:
     if spdx is None:
-        return {\n            "classification": "unknown",\n            "fit": 0.45,\n            "warning": "license_unknown_direct_reuse_unverified",\n            "direct_reuse": False,\n            "research_use": True,\n        }
+        return {
+            "classification": "unknown",
+            "fit": 0.45,
+            "warning": "license_unknown_direct_reuse_unverified",
+            "direct_reuse": False,
+            "research_use": True,
+        }
     if spdx in PERMISSIVE:
-        return {\n            "classification": "permissive",\n            "fit": 1.0,\n            "warning": None,\n            "direct_reuse": True,\n            "research_use": True,\n        }
+        return {
+            "classification": "permissive",
+            "fit": 1.0,
+            "warning": None,
+            "direct_reuse": True,
+            "research_use": True,
+        }
     if spdx in REVIEW_REQUIRED:
         return {
             "classification": "review_required",
             "fit": 0.25,
             "warning": f"license_obligations:{spdx}",
+            "direct_reuse": False,
+            "research_use": True,
         }
     if spdx.startswith("LGPL") or spdx.startswith("MPL"):
         return {"classification": "conditional", "fit": 0.65, "warning": f"license_review:{spdx}", "direct_reuse": True, "research_use": True}
