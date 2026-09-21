@@ -98,3 +98,41 @@ def improvement_signal(
         "novelty_count": novelty_count,
         "source_count": source_count,
     }
+
+
+@dataclass(frozen=True)
+class ImprovementProposal:
+    schema_version: int
+    capability_id: str
+    action: str
+    reason: str
+    source_count: int
+    novelty: tuple[str, ...]
+    acceptance_gates: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def build_improvement_proposal(
+    capability_id: str,
+    knowledge: dict[str, Any],
+    novelty: tuple[str, ...],
+) -> ImprovementProposal | None:
+    decision = improvement_signal(knowledge, novelty)
+    if decision["action"] != "CONSIDER_IMPROVEMENT":
+        return None
+    return ImprovementProposal(
+        schema_version=1,
+        capability_id=capability_id,
+        action="EVALUATE_IMPROVEMENT",
+        reason=str(decision["reason"]),
+        source_count=int(decision["source_count"]),
+        novelty=tuple(sorted(novelty)),
+        acceptance_gates=(
+            "implementation_tests_pass",
+            "security_gates_pass",
+            "regression_tests_pass",
+            "library_contract_pass",
+        ),
+    )
