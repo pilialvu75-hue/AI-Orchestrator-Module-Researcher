@@ -463,6 +463,33 @@ class ResearchEngine:
             for candidate in candidates:
                 fingerprint = candidate_fingerprint(need.capability_id, candidate)
                 if self.state.is_known_candidate(fingerprint):
+                    # V2 knowledge extraction was introduced after many candidates
+                    # had already been persisted. Re-observe their metadata so the
+                    # durable ResearchSource/ImprovementProposal layer can be
+                    # backfilled without re-running admission or copying source.
+                    source = research_source(need.capability_id, candidate)
+                    novelty = self.state.record_research_source(
+                        source_id=source.source_id,
+                        capability_id=source.capability_id,
+                        repository=source.repository,
+                        commit_sha=source.commit_sha,
+                        direct_reuse=source.direct_reuse,
+                        research_use=source.research_use,
+                        signals=source.signals,
+                    )
+                    knowledge = self.state.capability_knowledge(need.capability_id)
+                    proposal = build_improvement_proposal(
+                        need.capability_id,
+                        knowledge,
+                        novelty,
+                    )
+                    if proposal is not None:
+                        self.state.record_improvement_proposal(
+                            proposal_id=proposal.proposal_id,
+                            capability_id=proposal.capability_id,
+                            novelty=proposal.novelty,
+                            acceptance_gates=proposal.acceptance_gates,
+                        )
                     continue
 
                 preliminary = self._dossier(need, candidate, contract, "SCREENED")
