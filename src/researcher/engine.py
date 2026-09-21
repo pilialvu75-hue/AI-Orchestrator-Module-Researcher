@@ -226,9 +226,11 @@ class ResearchEngine:
         candidate: Candidate,
         shortlist_threshold: float,
     ) -> bool:
+        license_info = classify_license(candidate.license_spdx)
         return (
             dossier.scores.recommendation >= shortlist_threshold
             and dossier.scores.license_fit >= 0.45
+            and bool(license_info.get("direct_reuse"))
             and not candidate.archived
             and candidate.extra.get("source_stable") is not False
         )
@@ -505,6 +507,12 @@ class ResearchEngine:
                     security_report,
                     vulnerability_admission,
                 )
+                license_info = classify_license(candidate.license_spdx)
+                research_value = (
+                    "DIRECT_REUSE"
+                    if license_info.get("direct_reuse")
+                    else "RESEARCH_SOURCE"
+                )
                 self.state.upsert_candidate(
                     fingerprint,
                     need.capability_id,
@@ -523,6 +531,9 @@ class ResearchEngine:
                         "capability_id": need.capability_id,
                         "provider": candidate.provider,
                         "lifecycle": lifecycle,
+                        "research_value": research_value,
+                        "direct_reuse": bool(license_info.get("direct_reuse")),
+                        "research_use": bool(license_info.get("research_use")),
                         "security_verdict": security_report.verdict.value,
                         "supply_chain_verdict": (
                             None if supply_chain is None else supply_chain.verdict.value
