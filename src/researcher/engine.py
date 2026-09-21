@@ -13,7 +13,7 @@ from .comparison import ComparisonEngine
 from .dedup import candidate_fingerprint
 from .discovery.base import DiscoveryProvider
 from .dossiers import DossierStore
-from .knowledge import research_source
+from .knowledge import build_improvement_proposal, research_source
 from .library import ContractSource, NeedSource
 from .models import Candidate, Dossier, Need, ResearchMode, utc_now
 from .observability import EventLevel, EventLogger, sanitize_payload
@@ -528,6 +528,12 @@ class ResearchEngine:
                     research_use=source.research_use,
                     signals=source.signals,
                 )
+                knowledge = self.state.capability_knowledge(need.capability_id)
+                proposal = build_improvement_proposal(
+                    need.capability_id,
+                    knowledge,
+                    novelty,
+                )
                 research_value = (
                     "DIRECT_REUSE"
                     if license_info.get("direct_reuse")
@@ -555,6 +561,9 @@ class ResearchEngine:
                         "direct_reuse": bool(license_info.get("direct_reuse")),
                         "research_use": bool(license_info.get("research_use")),
                         "novelty_signal_count": len(novelty),
+                        "improvement_action": (
+                            proposal.action if proposal is not None else "NO_CHANGE"
+                        ),
                         "security_verdict": security_report.verdict.value,
                         "supply_chain_verdict": (
                             None if supply_chain is None else supply_chain.verdict.value
