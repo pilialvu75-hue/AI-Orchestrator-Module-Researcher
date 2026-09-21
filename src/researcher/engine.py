@@ -266,7 +266,7 @@ class ResearchEngine:
         if candidate.archived:
             return "pre_screen:archived"
         license_info = classify_license(candidate.license_spdx)
-        if license_info["fit"] < 0.45:
+        if not bool(license_info.get("direct_reuse")):
             classification = str(license_info["classification"])
             spdx = candidate.license_spdx
             if spdx is None:
