@@ -93,6 +93,31 @@ class SQLiteStateStore:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS improvement_proposals (
+                    proposal_id TEXT PRIMARY KEY,
+                    capability_id TEXT NOT NULL,
+                    novelty_json TEXT NOT NULL,
+                    acceptance_gates_json TEXT NOT NULL,
+                    state TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_improvement_proposals_capability
+                    ON improvement_proposals(capability_id, updated_at);
+                CREATE TABLE IF NOT EXISTS research_sources (
+                    source_id TEXT PRIMARY KEY,
+                    capability_id TEXT NOT NULL,
+                    repository TEXT NOT NULL,
+                    commit_sha TEXT NOT NULL,
+                    direct_reuse INTEGER NOT NULL,
+                    research_use INTEGER NOT NULL,
+                    signals_json TEXT NOT NULL,
+                    novelty_json TEXT NOT NULL,
+                    first_seen_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS idx_research_sources_capability
+                    ON research_sources(capability_id, updated_at);
                 CREATE TABLE IF NOT EXISTS scans (
                     capability_id TEXT PRIMARY KEY,
                     last_scan_at TEXT,
@@ -568,6 +593,147 @@ class SQLiteStateStore:
                 (fingerprint, capability_id, submission_id, state, target_path, now, now),
             )
         return True
+
+    def record_research_source(
+        self,
+        *,
+        source_id: str,
+        capability_id: str,
+        repository: str,
+        commit_sha: str,
+        direct_reuse: bool,
+        research_use: bool,
+        signals: tuple[str, ...],
+    ) -> tuple[str, ...]:
+        """Persist compact knowledge and return only signals new to this capability."""
+        now = utc_now()
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT signals_json FROM research_sources WHERE capability_id=?",
+                (capability_id,),
+            ).fetchall()
+            known: set[str] = set()
+            for row in rows:
+                known.update(json.loads(str(row["signals_json"])))
+            novelty = tuple(sorted(set(signals) - known))
+            conn.execute(
+                """
+                INSERT INTO research_sources(
+                    source_id, capability_id, repository, commit_sha, direct_reuse,
+                    research_use, signals_json, novelty_json, first_seen_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(source_id) DO UPDATE SET
+                    direct_reuse=excluded.direct_reuse,
+                    research_use=excluded.research_use,
+                    signals_json=excluded.signals_json,
+                    novelty_json=excluded.novelty_json,
+                    updated_at=excluded.updated_at
+                """,
+                (
+                    source_id, capability_id, repository, commit_sha,
+                    int(direct_reuse), int(research_use),
+                    json.dumps(signals, sort_keys=True),
+                    json.dumps(novelty, sort_keys=True),
+                    now, now,
+                ),
+            )
+        return novelty
+
+    def record_improvement_proposal(
+        self,
+        *,
+        proposal_id: str,
+        capability_id: str,
+        novelty: tuple[str, ...],
+        acceptance_gates: tuple[str, ...],
+    ) -> bool:
+        """Queue a proposal once; execution remains a separate gated stage."""
+        now = utc_now()
+        with self._connect() as conn:
+            existing = conn.execute(
+                "SELECT 1 FROM improvement_proposals WHERE proposal_id=?",
+                (proposal_id,),
+            ).fetchone()
+            if existing is not None:
+                return False
+            conn.execute(
+                """
+                INSERT INTO improvement_proposals(
+                    proposal_id, capability_id, novelty_json,
+                    acceptance_gates_json, state, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, 'PROPOSED', ?, ?)
+                """,
+                (
+                    proposal_id,
+                    capability_id,
+                    json.dumps(novelty, sort_keys=True),
+                    json.dumps(acceptance_gates, sort_keys=True),
+                    now,
+                    now,
+                ),
+            )
+        return True
+
+    def pending_implementation_requests(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Expose proposed work without granting permission to mutate Library."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT proposal_id, capability_id, novelty_json,
+                       acceptance_gates_json, state, created_at
+                FROM improvement_proposals
+                WHERE state='PROPOSED'
+                ORDER BY created_at ASC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [
+            {
+                "schema_version": 1,
+                "request_type": "library_module_improvement",
+                "proposal_id": str(row["proposal_id"]),
+                "capability_id": str(row["capability_id"]),
+                "knowledge_delta": tuple(json.loads(str(row["novelty_json"]))),
+                "acceptance_gates": tuple(
+                    json.loads(str(row["acceptance_gates_json"]))
+                ),
+                "mutation_policy": "isolated_candidate_no_library_mutation",
+                "state": str(row["state"]),
+            }
+            for row in rows
+        ]
+
+    def capability_knowledge(self, capability_id: str) -> dict[str, Any]:
+        """Return a compact cumulative view; source code is intentionally excluded."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT source_id, direct_reuse, research_use, signals_json, novelty_json
+                FROM research_sources
+                WHERE capability_id=?
+                ORDER BY first_seen_at ASC
+                """,
+                (capability_id,),
+            ).fetchall()
+        signals: set[str] = set()
+        novel: set[str] = set()
+        direct_reuse_sources = 0
+        research_sources = 0
+        for row in rows:
+            signals.update(json.loads(str(row["signals_json"])))
+            novel.update(json.loads(str(row["novelty_json"])))
+            direct_reuse_sources += int(row["direct_reuse"])
+            research_sources += int(row["research_use"])
+        return {
+            "schema_version": 1,
+            "capability_id": capability_id,
+            "source_count": len(rows),
+            "research_source_count": research_sources,
+            "direct_reuse_source_count": direct_reuse_sources,
+            "signals": sorted(signals),
+            "novel_signals": sorted(novel),
+        }
 
     def update_scan(
         self,

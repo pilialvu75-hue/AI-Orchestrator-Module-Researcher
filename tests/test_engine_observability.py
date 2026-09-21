@@ -62,6 +62,53 @@ class EngineObservabilityTests(unittest.TestCase):
             self.assertNotIn("repository", candidate_event["public_payload"])
             self.assertEqual(candidate_event["public_payload"]["capability_id"], "voice.stt")
 
+    def test_rank_needs_gives_unscanned_capabilities_a_first_pass(self) -> None:
+        first = need()
+        second = replace(first, capability_id="network.http", title="HTTP")
+        library = FakeLibrary([first, second])
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            state = SQLiteStateStore(data / "state.db")
+            engine = ResearchEngine(
+                library,
+                library,
+                FakeDiscovery([]),
+                state,
+                DossierStore(data),
+                CandidateScorer(),
+                ComparisonEngine(),
+                DryRunSubmissionClient(DossierStore(data)),
+                ResearchMode.SEEDING,
+            )
+            state.update_scan(first.capability_id, success=True)
+            ranked = engine._rank_needs([first, second])
+            self.assertEqual(ranked[0].capability_id, second.capability_id)
+
+    def test_consecutive_cycles_rotate_across_unscanned_needs(self) -> None:
+        first = need()
+        second = replace(first, capability_id="network.http", title="HTTP")
+        third = replace(first, capability_id="storage.local_db", title="Database")
+        library = FakeLibrary([first, second, third])
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            state = SQLiteStateStore(data / "state.db")
+            engine = ResearchEngine(
+                library,
+                library,
+                FakeDiscovery([]),
+                state,
+                DossierStore(data),
+                CandidateScorer(),
+                ComparisonEngine(),
+                DryRunSubmissionClient(DossierStore(data)),
+                ResearchMode.SEEDING,
+            )
+            selected = []
+            for _ in range(3):
+                result = engine.run_cycle()
+                selected.append(result["capability_id"])
+            self.assertEqual(len(set(selected)), 3)
+
     def test_rejection_reason_distinguishes_prescreen_gates(self) -> None:
         c = candidate("alpha-stt", "a" * 40)
         security = FakeSecurityScanner().scan(c)

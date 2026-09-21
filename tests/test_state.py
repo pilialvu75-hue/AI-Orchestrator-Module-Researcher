@@ -113,5 +113,72 @@ class StateTests(unittest.TestCase):
             )
 
 
+    def test_capability_knowledge_accumulates_only_compact_signals(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = SQLiteStateStore(Path(tmp) / "state.db")
+            first = store.record_research_source(
+                source_id="a",
+                capability_id="network.http",
+                repository="owner/a",
+                commit_sha="a" * 40,
+                direct_reuse=True,
+                research_use=True,
+                signals=("language:dart", "topic:http"),
+            )
+            second = store.record_research_source(
+                source_id="b",
+                capability_id="network.http",
+                repository="owner/b",
+                commit_sha="b" * 40,
+                direct_reuse=False,
+                research_use=True,
+                signals=("topic:http", "topic:retry"),
+            )
+            self.assertEqual(first, ("language:dart", "topic:http"))
+            self.assertEqual(second, ("topic:retry",))
+            knowledge = store.capability_knowledge("network.http")
+            self.assertEqual(knowledge["source_count"], 2)
+            self.assertEqual(knowledge["direct_reuse_source_count"], 1)
+            self.assertEqual(
+                knowledge["signals"],
+                ["language:dart", "topic:http", "topic:retry"],
+            )
+
+
+
+    def test_improvement_proposal_queue_is_idempotent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = SQLiteStateStore(Path(tmp) / "state.db")
+            kwargs = {
+                "proposal_id": "proposal-1",
+                "capability_id": "voice.tts",
+                "novelty": ("topic:streaming",),
+                "acceptance_gates": ("implementation_tests_pass",),
+            }
+            self.assertTrue(store.record_improvement_proposal(**kwargs))
+            self.assertFalse(store.record_improvement_proposal(**kwargs))
+
+
+    def test_pending_handoff_cannot_authorize_library_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = SQLiteStateStore(Path(tmp) / "state.db")
+            store.record_improvement_proposal(
+                proposal_id="proposal-audio",
+                capability_id="platform.audio_io",
+                novelty=("topic:backpressure",),
+                acceptance_gates=(
+                    "implementation_tests_pass",
+                    "security_gates_pass",
+                ),
+            )
+            requests = store.pending_implementation_requests()
+            self.assertEqual(len(requests), 1)
+            self.assertEqual(requests[0]["state"], "PROPOSED")
+            self.assertEqual(
+                requests[0]["mutation_policy"],
+                "isolated_candidate_no_library_mutation",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -13,6 +13,7 @@ from .comparison import ComparisonEngine
 from .dedup import candidate_fingerprint
 from .discovery.base import DiscoveryProvider
 from .dossiers import DossierStore
+from .knowledge import build_improvement_proposal, research_source
 from .library import ContractSource, NeedSource
 from .models import Candidate, Dossier, Need, ResearchMode, utc_now
 from .observability import EventLevel, EventLogger, sanitize_payload
@@ -88,11 +89,20 @@ class ResearchEngine:
                 < need.desired_candidates
             ]
 
-        def key(need: Need) -> tuple[int, int, str]:
+        def key(need: Need) -> tuple[int, int, int, str]:
             completed = self.state.count_completed_submissions(need.capability_id)
             shortage = max(0, need.desired_candidates - completed)
-            last_scan = self.state.last_scan(need.capability_id) or ""
-            return (_PRIORITY.get(need.priority, 99), -shortage, last_scan)
+            last_scan = self.state.last_scan(need.capability_id)
+            # Breadth first: every active Library need gets a first pass before
+            # an already-scanned capability is revisited. Priority still orders
+            # peers within the same scan cohort.
+            scan_cohort = 0 if last_scan is None else 1
+            return (
+                scan_cohort,
+                _PRIORITY.get(need.priority, 99),
+                -shortage,
+                last_scan or "",
+            )
 
         return sorted(active, key=key)
 
@@ -226,9 +236,11 @@ class ResearchEngine:
         candidate: Candidate,
         shortlist_threshold: float,
     ) -> bool:
+        license_info = classify_license(candidate.license_spdx)
         return (
             dossier.scores.recommendation >= shortlist_threshold
             and dossier.scores.license_fit >= 0.45
+            and bool(license_info.get("direct_reuse"))
             and not candidate.archived
             and candidate.extra.get("source_stable") is not False
         )
@@ -254,7 +266,7 @@ class ResearchEngine:
         if candidate.archived:
             return "pre_screen:archived"
         license_info = classify_license(candidate.license_spdx)
-        if license_info["fit"] < 0.45:
+        if not bool(license_info.get("direct_reuse")):
             classification = str(license_info["classification"])
             spdx = candidate.license_spdx
             if spdx is None:
@@ -505,6 +517,36 @@ class ResearchEngine:
                     security_report,
                     vulnerability_admission,
                 )
+                license_info = classify_license(candidate.license_spdx)
+                source = research_source(need.capability_id, candidate)
+                novelty = self.state.record_research_source(
+                    source_id=source.source_id,
+                    capability_id=source.capability_id,
+                    repository=source.repository,
+                    commit_sha=source.commit_sha,
+                    direct_reuse=source.direct_reuse,
+                    research_use=source.research_use,
+                    signals=source.signals,
+                )
+                knowledge = self.state.capability_knowledge(need.capability_id)
+                proposal = build_improvement_proposal(
+                    need.capability_id,
+                    knowledge,
+                    novelty,
+                )
+                proposal_queued = False
+                if proposal is not None:
+                    proposal_queued = self.state.record_improvement_proposal(
+                        proposal_id=proposal.proposal_id,
+                        capability_id=proposal.capability_id,
+                        novelty=proposal.novelty,
+                        acceptance_gates=proposal.acceptance_gates,
+                    )
+                research_value = (
+                    "DIRECT_REUSE"
+                    if license_info.get("direct_reuse")
+                    else "RESEARCH_SOURCE"
+                )
                 self.state.upsert_candidate(
                     fingerprint,
                     need.capability_id,
@@ -523,6 +565,14 @@ class ResearchEngine:
                         "capability_id": need.capability_id,
                         "provider": candidate.provider,
                         "lifecycle": lifecycle,
+                        "research_value": research_value,
+                        "direct_reuse": bool(license_info.get("direct_reuse")),
+                        "research_use": bool(license_info.get("research_use")),
+                        "novelty_signal_count": len(novelty),
+                        "improvement_action": (
+                            proposal.action if proposal is not None else "NO_CHANGE"
+                        ),
+                        "improvement_proposal_queued": proposal_queued,
                         "security_verdict": security_report.verdict.value,
                         "supply_chain_verdict": (
                             None if supply_chain is None else supply_chain.verdict.value
