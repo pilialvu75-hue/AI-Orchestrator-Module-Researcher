@@ -28,9 +28,9 @@ REVIEW_REQUIRED = STRONG_COPYLEFT | {"SSPL-1.0", "BUSL-1.1", "NOASSERTION"}
 
 def classify_license(spdx: str | None) -> dict[str, Any]:
     if spdx is None:
-        return {"classification": "unknown", "fit": 0.20, "warning": "license_unknown"}
+        return {\n            "classification": "unknown",\n            "fit": 0.45,\n            "warning": "license_unknown_direct_reuse_unverified",\n            "direct_reuse": False,\n            "research_use": True,\n        }
     if spdx in PERMISSIVE:
-        return {"classification": "permissive", "fit": 1.0, "warning": None}
+        return {\n            "classification": "permissive",\n            "fit": 1.0,\n            "warning": None,\n            "direct_reuse": True,\n            "research_use": True,\n        }
     if spdx in REVIEW_REQUIRED:
         return {
             "classification": "review_required",
@@ -38,8 +38,8 @@ def classify_license(spdx: str | None) -> dict[str, Any]:
             "warning": f"license_obligations:{spdx}",
         }
     if spdx.startswith("LGPL") or spdx.startswith("MPL"):
-        return {"classification": "conditional", "fit": 0.65, "warning": f"license_review:{spdx}"}
-    return {"classification": "other", "fit": 0.45, "warning": f"license_review:{spdx}"}
+        return {"classification": "conditional", "fit": 0.65, "warning": f"license_review:{spdx}", "direct_reuse": True, "research_use": True}
+    return {"classification": "other", "fit": 0.45, "warning": f"license_review:{spdx}", "direct_reuse": False, "research_use": True}
 
 
 def maintenance_evidence(candidate: Candidate) -> dict[str, Any]:
