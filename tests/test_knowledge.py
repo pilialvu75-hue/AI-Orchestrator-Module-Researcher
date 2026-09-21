@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from dataclasses import replace
 
-from researcher.knowledge import novelty_delta, research_source
+from researcher.knowledge import improvement_signal, novelty_delta, research_source
 from helpers import candidate
 
 
@@ -22,6 +22,17 @@ class KnowledgeTests(unittest.TestCase):
         delta = novelty_delta({"topic:vulkan"}, source)
         self.assertIn("topic:gpu", delta)
         self.assertNotIn("topic:vulkan", delta)
+
+
+    def test_improvement_requires_actual_novelty(self) -> None:
+        knowledge = {"source_count": 3}
+        self.assertEqual(
+            improvement_signal(knowledge, ())["action"],
+            "NO_CHANGE",
+        )
+        signal = improvement_signal(knowledge, ("topic:retry",))
+        self.assertEqual(signal["action"], "CONSIDER_IMPROVEMENT")
+        self.assertEqual(signal["novelty_count"], 1)
 
 
 if __name__ == "__main__":
