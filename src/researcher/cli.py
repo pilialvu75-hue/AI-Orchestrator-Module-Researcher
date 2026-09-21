@@ -10,6 +10,7 @@ from .capability_status import status_payload
 from .component_candidate import resolve_and_admit_component_candidate
 from .config import Config
 from .dashboard import serve
+from .evolution import EvolutionWorker
 from .observability import EventLevel
 from .scheduler import Scheduler
 from .source_preflight import run_source_preflight
@@ -53,6 +54,8 @@ def _parser() -> argparse.ArgumentParser:
     sweep = sub.add_parser("sweep", help="Run a bounded breadth-first research sweep")
     sweep.add_argument("--cycles", type=int, default=4)
     sub.add_parser("handoffs", help="Print pending implementation requests")
+    evolve = sub.add_parser("evolve", help="Claim bounded module evolution work")
+    evolve.add_argument("--limit", type=int, default=1)
     sub.add_parser("worker", help="Run persistent worker")
     sub.add_parser("dashboard", help="Run health/status HTTP server")
     sub.add_parser("status", help="Print durable state")
@@ -180,6 +183,17 @@ def main() -> None:
                 sort_keys=True,
             )
         )
+        return
+    if args.command == "evolve":
+        limit = max(1, min(int(args.limit), 8))
+        worker = EvolutionWorker(app.state)
+        claimed = []
+        for _ in range(limit):
+            item = worker.claim_next()
+            if item is None:
+                break
+            claimed.append(item.as_dict())
+        print(json.dumps({"state": "READY" if claimed else "IDLE", "claimed": claimed}, indent=2, sort_keys=True))
         return
     if args.command == "admit-pinned":
         result = resolve_and_admit_component_candidate(
