@@ -54,7 +54,10 @@ def _parser() -> argparse.ArgumentParser:
     sweep = sub.add_parser("sweep", help="Run a bounded breadth-first research sweep")
     sweep.add_argument("--cycles", type=int, default=4)
     sub.add_parser("handoffs", help="Print pending implementation requests")
-    backfill = sub.add_parser("backfill-knowledge", help="Migrate persisted dossiers into Research V2 knowledge")
+    backfill = sub.add_parser(
+        "backfill-knowledge",
+        help="Migrate persisted dossiers into Research V2 knowledge",
+    )
     backfill.add_argument("--limit", type=int, default=100)
     evolve = sub.add_parser("evolve", help="Claim bounded module evolution work")
     evolve.add_argument("--limit", type=int, default=1)
