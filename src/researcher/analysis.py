@@ -52,8 +52,20 @@ def classify_license(spdx: str | None) -> dict[str, Any]:
             "research_use": True,
         }
     if spdx.startswith("LGPL") or spdx.startswith("MPL"):
-        return {"classification": "conditional", "fit": 0.65, "warning": f"license_review:{spdx}", "direct_reuse": True, "research_use": True}
-    return {"classification": "other", "fit": 0.45, "warning": f"license_review:{spdx}", "direct_reuse": False, "research_use": True}
+        return {
+            "classification": "conditional",
+            "fit": 0.65,
+            "warning": f"license_review:{spdx}",
+            "direct_reuse": True,
+            "research_use": True,
+        }
+    return {
+        "classification": "other",
+        "fit": 0.45,
+        "warning": f"license_review:{spdx}",
+        "direct_reuse": False,
+        "research_use": True,
+    }
 
 
 def maintenance_evidence(candidate: Candidate) -> dict[str, Any]:
