@@ -26,6 +26,10 @@ class DecisionTests(unittest.TestCase):
         self.assertEqual(classify_license("MIT")["classification"], "permissive")
         self.assertEqual(classify_license("AGPL-3.0")["classification"], "review_required")
         self.assertEqual(classify_license(None)["classification"], "unknown")
+        self.assertFalse(classify_license(None)["direct_reuse"])
+        self.assertTrue(classify_license(None)["research_use"])
+        self.assertTrue(classify_license("MIT")["direct_reuse"])
+        self.assertTrue(classify_license("MIT")["research_use"])
 
     def test_scoring_is_explainable(self) -> None:
         score = CandidateScorer().score(
