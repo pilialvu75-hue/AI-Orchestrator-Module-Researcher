@@ -74,3 +74,27 @@ def novelty_delta(previous_signals: set[str], source: ResearchSource) -> tuple[s
 
 def compact_json(source: ResearchSource) -> str:
     return json.dumps(source.to_dict(), sort_keys=True, separators=(",", ":"))
+
+
+def improvement_signal(
+    knowledge: dict[str, Any],
+    novelty: tuple[str, ...],
+    *,
+    minimum_new_signals: int = 1,
+) -> dict[str, Any]:
+    """Gate evolution work: no rebuild when a discovery adds no knowledge."""
+    source_count = int(knowledge.get("source_count", 0))
+    novelty_count = len(novelty)
+    if novelty_count < minimum_new_signals:
+        return {
+            "action": "NO_CHANGE",
+            "reason": "no_material_novelty",
+            "novelty_count": novelty_count,
+            "source_count": source_count,
+        }
+    return {
+        "action": "CONSIDER_IMPROVEMENT",
+        "reason": "new_capability_knowledge",
+        "novelty_count": novelty_count,
+        "source_count": source_count,
+    }
