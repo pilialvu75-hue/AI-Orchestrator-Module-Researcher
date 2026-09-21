@@ -801,6 +801,22 @@ class SQLiteStateStore:
             for row in rows
         ]
 
+    def capabilities_missing_research_knowledge(self, *, limit: int = 100) -> list[str]:
+        """Find persisted candidate capabilities that predate V2 research memory."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT DISTINCT c.capability_id
+                FROM candidates c
+                LEFT JOIN research_sources r ON r.capability_id = c.capability_id
+                WHERE r.capability_id IS NULL
+                ORDER BY c.capability_id ASC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [str(row["capability_id"]) for row in rows]
+
     def capability_knowledge(self, capability_id: str) -> dict[str, Any]:
         """Return a compact cumulative view; source code is intentionally excluded."""
         with self._connect() as conn:
