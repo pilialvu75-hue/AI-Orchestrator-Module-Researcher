@@ -55,3 +55,25 @@ def test_failed_dispatch_claim_can_be_requeued_and_reclaimed(tmp_path) -> None:
     assert second is not None
     assert second["proposal_id"] == "retry-1"
     assert not state.requeue_improvement_proposal("missing")
+
+
+def test_recover_queued_improvement_proposals_restores_library_gate(tmp_path) -> None:
+    state = SQLiteStateStore(tmp_path / "researcher.db")
+    for proposal_id in ("legacy-1", "legacy-2"):
+        assert state.record_improvement_proposal(
+            proposal_id=proposal_id,
+            capability_id="ai.acceleration_backend",
+            novelty=("practice:ci_present",),
+            acceptance_gates=("security_gates_pass",),
+        )
+        claimed = state.claim_improvement_proposal()
+        assert claimed is not None
+        assert claimed["proposal_id"] == proposal_id
+
+    recovered = state.recover_queued_improvement_proposals(limit=8)
+    assert recovered == ["legacy-1", "legacy-2"]
+
+    pending = state.pending_implementation_requests(limit=8)
+    assert [item["proposal_id"] for item in pending] == ["legacy-1", "legacy-2"]
+    assert all(item["state"] == "PROPOSED" for item in pending)
+    assert state.recover_queued_improvement_proposals(limit=8) == []
