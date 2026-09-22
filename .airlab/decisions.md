@@ -45,3 +45,13 @@ Reconstructed from the historical Researcher conversations, predecessor reposito
 
 - Persistent roadmap/state is stored only in private repositories for now.
 - Future chats/agents must read `.airlab/handoff.md` before changing this repository.
+
+
+## First-party legacy repositories
+
+- Owner-controlled legacy private repositories may be mined as first-party sources.
+- The allowlist is owned by Module Library at `.airlab/first-party-sources.yaml`.
+- Access must be read-only and explicit.
+- Discovery does not execute legacy source code.
+- Every extracted candidate retains repository/commit provenance and still enters Module Library intake/certification.
+- This path is for reuse recovery, not for reviving old products in parallel.

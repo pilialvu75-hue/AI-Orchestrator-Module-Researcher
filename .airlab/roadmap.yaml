@@ -39,6 +39,10 @@ current_state:
   library_delivery:
     status: active
     rule: "Candidate/reference/evidence enters Library intake only."
+  first_party_legacy_mining:
+    status: planned
+    source_manifest: "Module Library .airlab/first-party-sources.yaml"
+    access_policy: "explicit allowlist, read-only, no source execution during discovery"
   direct_cantiere_code_dispatch:
     status: forbidden
   module_evolution_worker:
@@ -148,3 +152,14 @@ roadmap:
     outcome: >-
       Keep discovery/provider selection compatible with the future AIrLab Free Resource Pool
       and zero-cost policy without binding the Researcher to one provider.
+
+  - id: R10
+    title: First-party legacy repository mining
+    state: planned
+    priority: P1
+    outcome: >-
+      Consume the private Library allowlist of owner-controlled legacy repositories,
+      inspect them read-only, identify reusable components/patterns against current
+      Library needs, preserve repository/commit provenance, and submit only bounded
+      candidates to Library intake. Do not execute legacy source merely to decide
+      whether it is reusable.
