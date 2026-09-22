@@ -63,6 +63,11 @@ def _parser() -> argparse.ArgumentParser:
     evolve.add_argument("--limit", type=int, default=1)
     requeue = sub.add_parser("requeue-evolution", help="Return a failed dispatch claim to PROPOSED")
     requeue.add_argument("proposal_id")
+    recover = sub.add_parser(
+        "recover-evolution-queue",
+        help="Recover legacy direct-Cantiere QUEUED proposals back to PROPOSED",
+    )
+    recover.add_argument("--limit", type=int, default=100)
     sub.add_parser("worker", help="Run persistent worker")
     sub.add_parser("dashboard", help="Run health/status HTTP server")
     sub.add_parser("status", help="Print durable state")
@@ -201,6 +206,21 @@ def main() -> None:
         print(json.dumps({"proposal_id": args.proposal_id, "requeued": ok}, sort_keys=True))
         if not ok:
             raise SystemExit(2)
+        return
+    if args.command == "recover-evolution-queue":
+        limit = max(1, min(int(args.limit), 1000))
+        recovered = app.state.recover_queued_improvement_proposals(limit=limit)
+        print(
+            json.dumps(
+                {
+                    "state": "RECOVERED" if recovered else "IDLE",
+                    "recovered": recovered,
+                    "routing_boundary": "library_only",
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
         return
     if args.command == "evolve":
         limit = max(1, min(int(args.limit), 8))
