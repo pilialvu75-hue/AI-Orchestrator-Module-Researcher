@@ -11,6 +11,7 @@ from .component_candidate import resolve_and_admit_component_candidate
 from .config import Config
 from .dashboard import serve
 from .evolution import EvolutionWorker
+from .first_party_mining import run_first_party_mining
 from .observability import EventLevel
 from .scheduler import Scheduler
 from .source_preflight import run_source_preflight
@@ -74,6 +75,12 @@ def _parser() -> argparse.ArgumentParser:
     events = sub.add_parser("events", help="Print recent structured local events")
     events.add_argument("--limit", type=int, default=100)
     sub.add_parser("diagnostics-sync", help="Sync pending public diagnostics if enabled")
+    first_party = sub.add_parser(
+        "mine-first-party",
+        help="Read-only mine allowlisted private legacy repositories",
+    )
+    first_party.add_argument("--repositories", type=int, default=7)
+    first_party.add_argument("--findings", type=int, default=32)
 
     preflight = sub.add_parser(
         "preflight-pinned",
@@ -256,6 +263,15 @@ def main() -> None:
         return
     if args.command == "diagnostics-sync":
         print(json.dumps(_sync_diagnostics(app), indent=2, sort_keys=True))
+        return
+    if args.command == "mine-first-party":
+        result = run_first_party_mining(
+            config,
+            app.state,
+            repository_limit=max(1, min(int(args.repositories), 50)),
+            finding_limit=max(1, min(int(args.findings), 200)),
+        )
+        print(json.dumps(result, indent=2, sort_keys=True))
         return
     if args.command == "dashboard":
         serve(config.dashboard_host, config.dashboard_port, lambda: _status(app))
