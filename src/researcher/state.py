@@ -731,6 +731,40 @@ class SQLiteStateStore:
             new_state="PROPOSED",
         )
 
+    def recover_queued_improvement_proposals(self, *, limit: int = 100) -> list[str]:
+        """Recover legacy direct-Cantiere claims back to PROPOSED.
+
+        The Researcher no longer dispatches evolution work directly to Cantiere.
+        This migration helper is intentionally narrow: it only moves QUEUED
+        proposals back to PROPOSED so the Library-gated path can own the next
+        transition.
+        """
+        bounded = max(1, min(int(limit), 1000))
+        now = utc_now()
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            rows = conn.execute(
+                """
+                SELECT proposal_id
+                FROM improvement_proposals
+                WHERE state='QUEUED'
+                ORDER BY created_at ASC
+                LIMIT ?
+                """,
+                (bounded,),
+            ).fetchall()
+            proposal_ids = [str(row["proposal_id"]) for row in rows]
+            if proposal_ids:
+                conn.executemany(
+                    """
+                    UPDATE improvement_proposals
+                    SET state='PROPOSED', updated_at=?
+                    WHERE proposal_id=? AND state='QUEUED'
+                    """,
+                    ((now, proposal_id) for proposal_id in proposal_ids),
+                )
+        return proposal_ids
+
     def claim_improvement_proposal(self) -> dict[str, Any] | None:
         """Claim the oldest proposal exactly once for isolated implementation."""
         with self._connect() as conn:
