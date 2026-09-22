@@ -96,11 +96,18 @@ normalization, license/security review, deterministic certification and the
 decision about what material is eligible for Cantiere consumption. The
 Researcher never executes untrusted candidate code as part of this handoff.
 
-`Module Evolution Worker` is therefore a bounded queue/recovery and evidence
-worker only. It may recover historical `QUEUED` claims created by the retired
-direct-Cantiere path and expose pending proposals, but it must not claim work
-for direct execution, send `repository_dispatch` to Cantiere, or transfer
-source code.
+`Module Evolution Worker` is therefore a **manual-only** queue/recovery and
+evidence workflow. It is not scheduled and is not part of the autonomous
+execution path. It may recover historical `QUEUED` claims created by the
+retired direct-Cantiere path and expose pending proposals, but it must not
+claim work for direct execution, send `repository_dispatch` to Cantiere, or
+transfer source code.
+
+Autonomous discovery and delivery remains owned by `Autonomous Library Seeding`,
+which may submit only intake-scoped candidates to the Module Library after the
+Researcher admission gates pass. The Library then owns quarantine,
+normalization/certification and the certified package surface consumed by
+Cantiere.
 
 The historical repository secret `RESEARCHER_CANTIERE_TOKEN` is no longer
 used by the workflow and may be removed after the migration is verified.
