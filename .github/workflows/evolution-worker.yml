@@ -88,10 +88,10 @@ jobs:
 
           workflow = Path(".github/workflows/evolution-worker.yml").read_text(encoding="utf-8")
           forbidden = (
-              "RESEARCHER_CANTIERE_TOKEN",
-              "Ai-orchestrator-riserva",
-              "researcher_evolution_work",
-              "/dispatches",
+              "RESEARCHER_" + "CANTIERE_TOKEN",
+              "Ai-orchestrator-" + "riserva",
+              "researcher_" + "evolution_work",
+              "/" + "dispatches",
           )
           found = [value for value in forbidden if value in workflow]
           if found:
