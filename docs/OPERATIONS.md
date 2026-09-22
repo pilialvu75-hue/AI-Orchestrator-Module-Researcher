@@ -78,3 +78,24 @@ than interpolated into a shell command.
 The workflow performs the same Full-Tree, supply-chain and SBOM/OSV admission used by the
 normal engine. A result other than `SHORTLISTED` produces no Library submission. Candidate
 source code is not executed by this workflow.
+
+
+## Module evolution dispatch credential
+
+Scheduled module evolution uses a separate cross-repository credential. Configure the
+Researcher repository secret `RESEARCHER_CANTIERE_TOKEN` before enabling autonomous
+dispatch.
+
+For a fine-grained personal access token, select only
+`pilialvu75-hue/Ai-orchestrator-riserva` and grant the minimum repository permission
+required by `POST /repos/{owner}/{repo}/dispatches`: **Contents: Read and write**.
+Do not grant Actions, Administration, Workflows, Pull requests, Issues, Packages, or
+organization permissions.
+
+Do not reuse `RESEARCHER_LIBRARY_TOKEN`. Library delivery and Cantiere dispatch are
+separate trust boundaries and must remain independently revocable.
+
+The evolution worker verifies the credential before restoring or claiming durable work.
+A missing credential therefore cannot consume a proposal or create claim/requeue churn.
+If a dispatch fails after a proposal has been claimed, the existing requeue path remains
+authoritative and the claimed handoff artifact is preserved for diagnostics.
