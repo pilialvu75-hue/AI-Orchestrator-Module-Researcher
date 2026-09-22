@@ -2,6 +2,12 @@ name: Module Evolution Worker
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/evolution-worker.yml"
+      - "src/researcher/state.py"
+      - "src/researcher/cli.py"
   schedule:
     - cron: "47 */2 * * *"
 
