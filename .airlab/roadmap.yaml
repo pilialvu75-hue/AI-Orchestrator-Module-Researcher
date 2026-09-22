@@ -1,72 +1,150 @@
-schema_version: 1
+schema_version: 2
 repository: pilialvu75-hue/AI-Orchestrator-Module-Researcher
 visibility_policy: private_only
 updated_at: 2026-09-22
 authority: repository_local
+reconstructed_from:
+  - historical_project_chats
+  - predecessor_repository_state
+  - current_repository_state
+  - current_cross_repository_architecture
+
+lifecycle:
+  status: active
+  role: autonomous_module_researcher
+  predecessor: pilialvu75-hue/Ai_orchestrator-prova1
+  successor: null
+
 mission: >-
-  Continuously discover and analyze candidate capabilities requested by the
-  Module Library without executing candidates inside Cantiere or bypassing the
-  Library trust boundary.
+  Continuously discover, screen, compare and propose reusable capability candidates requested
+  by Module Library, without executing candidate code inside Cantiere or bypassing Library
+  quarantine/certification.
+
+history:
+  - "Milestone 1 was first implemented in Ai_orchestrator-prova1 with Python/SQLite, Library needs, dry-run intake, dashboard and green CI."
+  - "The definitive repository became AI-Orchestrator-Module-Researcher; the predecessor remains a recovery/reference snapshot."
+  - "Security policy evolved so external candidate source is never executed by Researcher itself."
+  - "Autonomous Library Seeding became the normal scheduled path."
+  - "A direct Researcher -> Cantiere repository-dispatch experiment was retired after live validation; code delivery now remains Library-only."
+  - "The legacy Module Evolution Worker is manual-only for recovery/audit."
+  - "Persistent private roadmap introduced on 2026-09-22."
 
 current_state:
   autonomous_seeding:
     status: active
     schedule: "17 */6 * * *"
+    cadence_hours: 6
     target: pilialvu75-hue/AI-Orchestrator-Module-Library
+    mode: SEEDING
+  library_delivery:
+    status: active
+    rule: "Candidate/reference/evidence enters Library intake only."
+  direct_cantiere_code_dispatch:
+    status: forbidden
   module_evolution_worker:
     status: manual_only
     purpose: legacy_queue_recovery_and_audit
-  direct_cantiere_code_dispatch:
-    status: forbidden
-  library_delivery:
+  durable_state:
     status: active
-    rule: "Candidate code/reference/evidence is delivered to Library intake only."
+    backend: sqlite_plus_github_actions_cache
+  zero_cost_policy:
+    status: active
+
+architecture:
+  normal_flow: "Library need -> Researcher discovery/screening -> Library intake -> Library certification -> Cantiere reuse"
+  future_control_plane:
+    status: planned
+    rule: "Structured sanitized non-code messages may flow Researcher <-> Cantiere."
+  allowed_control_events:
+    - research_request
+    - capability_gap
+    - candidate_found
+    - no_match
+    - certification_status
+    - runtime_feedback
+    - security_alert
+    - replacement_candidate_found
+  forbidden_direct_payloads:
+    - executable_candidate_code
+    - unquarantined_source_bundle
 
 invariants:
   - "Researcher never sends executable/source candidate code directly to Cantiere."
   - "Researcher may send structured metadata/control messages to Cantiere only through an explicit sanitized contract."
   - "Library remains the code quarantine/certification authority."
-  - "A missing capability recorded by Library becomes Researcher work without requiring repeated Cantiere failures."
-  - "Researcher feedback may improve search and comparison but cannot self-certify a module."
+  - "A missing capability recorded by Library becomes Researcher work on the first gap; repeated Cantiere failures are not required."
+  - "Researcher search must not block the current Cantiere build; Cantiere may create the missing capability in parallel."
+  - "Researcher may learn from Library-approved metadata and real Cantiere/device feedback without ingesting secrets or unsafe raw logs."
+  - "Researcher feedback may improve search/comparison but cannot self-certify or self-promote a module."
+  - "No paid service is silently activated; zero-cost/free-first behavior remains the default."
+  - "Roadmap/private state remains only in private repositories unless the owner changes this policy."
 
 roadmap:
   - id: R1
     title: Persist private repository roadmap
-    state: in_progress
+    state: done
     priority: P0
+
   - id: R2
     title: Consume immediate Library capability gaps
     state: planned
     priority: P0
     outcome: >-
-      Newly missing capabilities registered by Cantiere through Library become
-      visible to the next autonomous Researcher sweep.
+      Newly missing capabilities registered by Cantiere through Library become visible to
+      the next autonomous Researcher sweep without waiting for repeated regeneration.
+
   - id: R3
     title: Structured Researcher-Cantiere control plane
     state: planned
+    priority: P0
+    outcome: >-
+      Permit sanitized non-code events for needs, status, feedback and important diagnostics
+      while keeping source/executable candidate transfer Library-only.
+
+  - id: R4
+    title: Search missions derived from current Cantiere work
+    state: planned
     priority: P1
     outcome: >-
-      Permit sanitized non-code events such as research_request, candidate_found,
-      no_match, capability_gap, runtime_feedback, security_alert and status updates.
-  - id: R4
+      Let Library/Cantiere describe exact platform, API, constraints and failing behaviors so
+      the next search is targeted rather than generic.
+
+  - id: R5
     title: Learn from Cantiere-created capabilities
     state: planned
     priority: P1
     outcome: >-
-      Consume Library-approved metadata and integration feedback about original
-      Cantiere solutions to improve future search, comparison and replacement research.
-  - id: R5
+      Consume Library-approved metadata and integration outcomes about original Cantiere
+      solutions to improve future search, comparison and replacement research.
+
+  - id: R6
     title: Replacement and improvement research
     state: planned
     priority: P1
     outcome: >-
-      When Library/Cantiere reports a working but improvable capability, search for
-      safer, faster, smaller or more portable alternatives without overwriting the
-      currently certified implementation.
-  - id: R6
-    title: Application-evolution research feedback
+      When Library/Cantiere reports a working but improvable capability, search for safer,
+      faster, smaller or more portable alternatives without overwriting certified state.
+
+  - id: R7
+    title: Application-evolution feedback loop
+    state: planned
+    priority: P1
+    outcome: >-
+      Use real integration failures, regression results and physical-device observations from
+      evolved applications as research signals for subsequent candidate discovery.
+
+  - id: R8
+    title: Strong diagnostic/control events
     state: planned
     priority: P2
     outcome: >-
-      Use failures and physical-device observations from evolved applications as
-      research signals for subsequent candidate discovery.
+      Support important sanitized incidents/status events that should be visible to users or
+      orchestration layers without turning ordinary telemetry into noise.
+
+  - id: R9
+    title: Free-resource-aware discovery and execution
+    state: planned
+    priority: P2
+    outcome: >-
+      Keep discovery/provider selection compatible with the future AIrLab Free Resource Pool
+      and zero-cost policy without binding the Researcher to one provider.
