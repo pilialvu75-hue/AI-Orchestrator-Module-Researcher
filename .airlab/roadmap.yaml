@@ -1,0 +1,72 @@
+schema_version: 1
+repository: pilialvu75-hue/AI-Orchestrator-Module-Researcher
+visibility_policy: private_only
+updated_at: 2026-09-22
+authority: repository_local
+mission: >-
+  Continuously discover and analyze candidate capabilities requested by the
+  Module Library without executing candidates inside Cantiere or bypassing the
+  Library trust boundary.
+
+current_state:
+  autonomous_seeding:
+    status: active
+    schedule: "17 */6 * * *"
+    target: pilialvu75-hue/AI-Orchestrator-Module-Library
+  module_evolution_worker:
+    status: manual_only
+    purpose: legacy_queue_recovery_and_audit
+  direct_cantiere_code_dispatch:
+    status: forbidden
+  library_delivery:
+    status: active
+    rule: "Candidate code/reference/evidence is delivered to Library intake only."
+
+invariants:
+  - "Researcher never sends executable/source candidate code directly to Cantiere."
+  - "Researcher may send structured metadata/control messages to Cantiere only through an explicit sanitized contract."
+  - "Library remains the code quarantine/certification authority."
+  - "A missing capability recorded by Library becomes Researcher work without requiring repeated Cantiere failures."
+  - "Researcher feedback may improve search and comparison but cannot self-certify a module."
+
+roadmap:
+  - id: R1
+    title: Persist private repository roadmap
+    state: in_progress
+    priority: P0
+  - id: R2
+    title: Consume immediate Library capability gaps
+    state: planned
+    priority: P0
+    outcome: >-
+      Newly missing capabilities registered by Cantiere through Library become
+      visible to the next autonomous Researcher sweep.
+  - id: R3
+    title: Structured Researcher-Cantiere control plane
+    state: planned
+    priority: P1
+    outcome: >-
+      Permit sanitized non-code events such as research_request, candidate_found,
+      no_match, capability_gap, runtime_feedback, security_alert and status updates.
+  - id: R4
+    title: Learn from Cantiere-created capabilities
+    state: planned
+    priority: P1
+    outcome: >-
+      Consume Library-approved metadata and integration feedback about original
+      Cantiere solutions to improve future search, comparison and replacement research.
+  - id: R5
+    title: Replacement and improvement research
+    state: planned
+    priority: P1
+    outcome: >-
+      When Library/Cantiere reports a working but improvable capability, search for
+      safer, faster, smaller or more portable alternatives without overwriting the
+      currently certified implementation.
+  - id: R6
+    title: Application-evolution research feedback
+    state: planned
+    priority: P2
+    outcome: >-
+      Use failures and physical-device observations from evolved applications as
+      research signals for subsequent candidate discovery.
