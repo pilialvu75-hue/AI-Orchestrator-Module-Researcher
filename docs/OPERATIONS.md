@@ -80,22 +80,27 @@ normal engine. A result other than `SHORTLISTED` produces no Library submission.
 source code is not executed by this workflow.
 
 
-## Module evolution dispatch credential
+## Module evolution security boundary
 
-Scheduled module evolution uses a separate cross-repository credential. Configure the
-Researcher repository secret `RESEARCHER_CANTIERE_TOKEN` before enabling autonomous
-dispatch.
+The authoritative exchange path is:
 
-For a fine-grained personal access token, select only
-`pilialvu75-hue/Ai-orchestrator-riserva` and grant the minimum repository permission
-required by `POST /repos/{owner}/{repo}/dispatches`: **Contents: Read and write**.
-Do not grant Actions, Administration, Workflows, Pull requests, Issues, Packages, or
-organization permissions.
+`Researcher -> Module Library -> Cantiere -> Module Library`.
 
-Do not reuse `RESEARCHER_LIBRARY_TOKEN`. Library delivery and Cantiere dispatch are
-separate trust boundaries and must remain independently revocable.
+The Researcher must not dispatch evolution work directly to
+`pilialvu75-hue/Ai-orchestrator-riserva`, and it must never require a
+`RESEARCHER_CANTIERE_TOKEN`.
 
-The evolution worker verifies the credential before restoring or claiming durable work.
-A missing credential therefore cannot consume a proposal or create claim/requeue churn.
-If a dispatch fails after a proposal has been claimed, the existing requeue path remains
-authoritative and the claimed handoff artifact is preserved for diagnostics.
+Researcher discoveries and shortlisted candidates enter the Module Library
+through the existing intake-only path. The Library owns quarantine,
+normalization, license/security review, deterministic certification and the
+decision about what material is eligible for Cantiere consumption. The
+Researcher never executes untrusted candidate code as part of this handoff.
+
+`Module Evolution Worker` is therefore a bounded queue/recovery and evidence
+worker only. It may recover historical `QUEUED` claims created by the retired
+direct-Cantiere path and expose pending proposals, but it must not claim work
+for direct execution, send `repository_dispatch` to Cantiere, or transfer
+source code.
+
+The historical repository secret `RESEARCHER_CANTIERE_TOKEN` is no longer
+used by the workflow and may be removed after the migration is verified.
