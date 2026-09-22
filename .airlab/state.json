@@ -10,7 +10,8 @@
   "next_actions": [
     "R2",
     "R3",
-    "R4"
+    "R4",
+    "R10"
   ],
   "current_main_before_roadmap_update": "fe515c9450ba21b91fa45aa458d9cae8cb5ff7cb",
   "runtime": {
@@ -33,5 +34,13 @@
     "cantiere_public": "pilialvu75-hue/Ai-orchestrator-riserva",
     "diagnostics_public": "pilialvu75-hue/Ai-orchestrator-diagnostics",
     "stable_core_reference": "pilialvu75-hue/AI-Orchestrator-Core"
+  },
+  "first_party_legacy_mining": {
+    "status": "PLANNED",
+    "source_manifest_repository": "pilialvu75-hue/AI-Orchestrator-Module-Library",
+    "source_manifest_path": ".airlab/first-party-sources.yaml",
+    "access": "read_only_allowlist",
+    "execution": "forbidden_during_discovery",
+    "output": "library_intake_candidate_with_provenance"
   }
 }
