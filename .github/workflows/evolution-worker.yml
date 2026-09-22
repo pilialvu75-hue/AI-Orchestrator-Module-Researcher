@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 concurrency:
   group: researcher-state-v2
   cancel-in-progress: false
@@ -17,12 +20,25 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      - name: Verify dedicated Cantiere credential
+        env:
+          CANTIERE_TOKEN: ${{ secrets.RESEARCHER_CANTIERE_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${CANTIERE_TOKEN}" ]]; then
+            echo "::error title=Missing Cantiere credential::Configure the repository secret RESEARCHER_CANTIERE_TOKEN before scheduled evolution dispatch can run."
+            exit 1
+          fi
+
       - name: Install Researcher
         run: python -m pip install --disable-pip-version-check .
+
       - name: Restore durable Researcher state
         uses: actions/cache@v4
         with:
@@ -31,7 +47,9 @@ jobs:
           restore-keys: |
             researcher-state-v2-
           enableCrossOsArchive: false
+
       - name: Claim bounded evolution work
+        id: claim
         env:
           DATA_DIR: ${{ runner.temp }}/researcher-data
           RESEARCHER_MODE: IMPROVEMENT
@@ -39,6 +57,7 @@ jobs:
           ALLOW_LIBRARY_WRITE: "false"
         run: |
           researcher evolve --limit 2 | tee "${RUNNER_TEMP}/evolution-work.json"
+
       - name: Dispatch validated work to Cantiere
         env:
           GH_TOKEN: ${{ secrets.RESEARCHER_CANTIERE_TOKEN }}
@@ -53,14 +72,15 @@ jobs:
           import urllib.request
 
           token = os.environ.get("GH_TOKEN", "").strip()
+          if not token:
+              raise SystemExit("RESEARCHER_CANTIERE_TOKEN is required")
+
           with open(os.environ["WORK_FILE"], encoding="utf-8") as handle:
               payload = json.load(handle)
           claimed = payload.get("claimed", [])
           if not claimed:
               print("No evolution work to dispatch.")
               raise SystemExit(0)
-          if not token:
-              raise SystemExit("RESEARCHER_CANTIERE_TOKEN is required when work is claimed")
 
           target = os.environ["TARGET_REPOSITORY"]
           url = f"https://api.github.com/repos/{target}/dispatches"
@@ -90,11 +110,16 @@ jobs:
               try:
                   with urllib.request.urlopen(request, timeout=30) as response:
                       if response.status != 204:
-                          raise RuntimeError(f"unexpected dispatch status {response.status}")
+                          raise RuntimeError(
+                              f"unexpected dispatch status {response.status}"
+                          )
               except urllib.error.HTTPError as exc:
-                  raise SystemExit(f"Cantiere dispatch failed with HTTP {exc.code}") from exc
+                  raise SystemExit(
+                      f"Cantiere dispatch failed with HTTP {exc.code}"
+                  ) from exc
               print(f"Dispatched proposal {item['proposal_id']} to Cantiere.")
           PY
+
       - name: Requeue work when Cantiere dispatch fails
         if: ${{ failure() && steps.dispatch.outcome == 'failure' }}
         env:
@@ -124,8 +149,10 @@ jobs:
               raise SystemExit("Failed to requeue: " + ", ".join(failures))
           print(f"Requeued {len(claimed)} failed dispatch claim(s).")
           PY
+
       - name: Preserve evolution handoff
-        uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.claim.outcome == 'success' }}
+        uses: actions/upload-artifact@v6
         with:
           name: module-evolution-work-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/evolution-work.json
