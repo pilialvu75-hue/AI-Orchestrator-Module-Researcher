@@ -11,6 +11,7 @@ from .component_candidate import resolve_and_admit_component_candidate
 from .config import Config
 from .dashboard import serve
 from .evolution import EvolutionWorker
+from .first_party_mining import run_one_first_party_candidate
 from .observability import EventLevel
 from .scheduler import Scheduler
 from .source_preflight import run_source_preflight
@@ -177,11 +178,17 @@ def main() -> None:
         return
     if args.command == "sweep":
         cycles = max(1, min(int(args.cycles), 24))
+        first_party = run_one_first_party_candidate(app)
         results = [app.engine.run_cycle() for _ in range(cycles)]
         _sync_diagnostics(app)
         print(
             json.dumps(
-                {"state": "COMPLETE", "cycles": cycles, "results": results},
+                {
+                    "state": "COMPLETE",
+                    "cycles": cycles,
+                    "first_party": first_party,
+                    "results": results,
+                },
                 indent=2,
                 sort_keys=True,
             )
