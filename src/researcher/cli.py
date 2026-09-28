@@ -183,7 +183,12 @@ def main() -> None:
         _sync_diagnostics(app)
         print(
             json.dumps(
-                {"state": "COMPLETE", "cycles": cycles, "first_party": first_party, "results": results},
+                {
+                    "state": "COMPLETE",
+                    "cycles": cycles,
+                    "first_party": first_party,
+                    "results": results,
+                },
                 indent=2,
                 sort_keys=True,
             )
