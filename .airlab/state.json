@@ -38,7 +38,7 @@
   "first_party_legacy_mining": {
     "status": "PLANNED",
     "source_manifest_repository": "pilialvu75-hue/AI-Orchestrator-Module-Library",
-    "source_manifest_path": ".airlab/first-party-sources.yaml",
+    "source_manifest_path": ".airlab/first-party-sources.json",
     "access": "read_only_allowlist",
     "execution": "forbidden_during_discovery",
     "output": "library_intake_candidate_with_provenance"
