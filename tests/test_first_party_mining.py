@@ -55,7 +55,10 @@ class FirstPartyMiningTest(unittest.TestCase):
         )
 
     def test_sweep_selects_one_active_allowlisted_component(self) -> None:
-        app = SimpleNamespace(engine=SimpleNamespace(need_source=Source()))
+        app = SimpleNamespace(
+            config=SimpleNamespace(first_party_source_github_token="source-token"),
+            engine=SimpleNamespace(need_source=Source()),
+        )
         with patch(
             "researcher.first_party_mining.resolve_and_admit_component_candidate"
         ) as admit:
