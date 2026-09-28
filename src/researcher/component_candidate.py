@@ -387,8 +387,12 @@ def resolve_and_admit_component_candidate(
     component_path: str | None = None,
     rescan: bool = False,
 ) -> dict[str, Any]:
+    source_token = (
+        app.config.first_party_source_github_token
+        or app.config.github_token
+    )
     api = GitHubApi(
-        app.config.github_token,
+        source_token,
         app.config.github_api_base,
         uploads_base_url=app.config.github_uploads_base,
     )
