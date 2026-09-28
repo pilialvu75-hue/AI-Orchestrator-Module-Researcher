@@ -165,5 +165,62 @@ class NeedsTests(unittest.TestCase):
 
 
 
+    def test_first_party_catalog_is_loaded_and_cached_fail_closed(self) -> None:
+        catalog = {
+            "schema_version": 1,
+            "updated_at": "2026-09-28",
+            "sources": [
+                {
+                    "repository": "pilialvu75-hue/AI-Orchestrator-Core",
+                    "priority": "high",
+                    "lifecycle": "frozen_reference",
+                    "source_commit": "a" * 40,
+                    "candidates": [
+                        {
+                            "capability_id": "ai.local_inference",
+                            "component_path": "lib/core/runtime/inference",
+                            "kind": "integration_bundle",
+                        }
+                    ],
+                }
+            ],
+        }
+        payloads = {".airlab/first-party-sources.json": catalog}
+        with tempfile.TemporaryDirectory() as tmp:
+            source = GitHubLibrarySource(FakeApi(payloads), "x/y", "main", Path(tmp))
+            sources, meta = source.load_first_party_sources()
+            self.assertEqual(sources[0]["repository"], "pilialvu75-hue/AI-Orchestrator-Core")
+            self.assertEqual(sources[0]["source_commit"], "a" * 40)
+            self.assertEqual(
+                sources[0]["candidates"][0]["component_path"],
+                "lib/core/runtime/inference",
+            )
+            self.assertFalse(meta["used_cache"])
+            self.assertEqual(meta["source_path"], ".airlab/first-party-sources.json")
+
+            source.api = FakeApi(payloads, fail=True)
+            cached, cached_meta = source.load_first_party_sources()
+            self.assertEqual(cached, sources)
+            self.assertTrue(cached_meta["used_cache"])
+
+    def test_first_party_catalog_rejects_unpinned_sources(self) -> None:
+        payloads = {
+            ".airlab/first-party-sources.json": {
+                "schema_version": 1,
+                "sources": [
+                    {
+                        "repository": "pilialvu75-hue/private-source",
+                        "source_commit": "main",
+                        "candidates": [],
+                    }
+                ],
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            source = GitHubLibrarySource(FakeApi(payloads), "x/y", "main", Path(tmp))
+            with self.assertRaises(ValueError):
+                source.load_first_party_sources()
+
+
 if __name__ == "__main__":
     unittest.main()
