@@ -144,6 +144,18 @@ class ComponentAdmissionTest(unittest.TestCase):
                     b"name: logging\ndescription: Structured logging primitive.\n"
                 ).decode("ascii"),
             },
+            (
+                "/repos/example/mono/contents/pkgs/logging/LICENSE"
+                f"?ref={commit_sha}"
+            ): _blob("BSD 3-Clause License\n"),
+            (
+                "/repos/example/mono/contents/pkgs/logging/lib/logging.dart"
+                f"?ref={commit_sha}"
+            ): _blob("void log(String message) {}\n"),
+            (
+                "/repos/example/mono/contents/pkgs/logging/test/logging_test.dart"
+                f"?ref={commit_sha}"
+            ): _blob("void main() {}\n"),
         }
         resolver = ComponentCandidateResolver(
             FakeApi(responses),  # type: ignore[arg-type]
@@ -166,6 +178,13 @@ class ComponentAdmissionTest(unittest.TestCase):
         self.assertTrue(result.extra["tests_present"])
         self.assertTrue(result.extra["component_local_license"])
         self.assertTrue(str(result.license_file_url).endswith("pkgs/logging/LICENSE"))
+        snapshot = result.extra["component_snapshot_files"]
+        self.assertEqual(len(snapshot), 4)
+        self.assertEqual(
+            {item["relative_path"] for item in snapshot},
+            {"LICENSE", "pubspec.yaml", "lib/logging.dart", "test/logging_test.dart"},
+        )
+        self.assertGreater(result.extra["component_snapshot_total_bytes"], 0)
 
     def test_security_scan_ignores_sibling_component_but_scans_selected_scope(self) -> None:
         commit_sha = "d" * 40

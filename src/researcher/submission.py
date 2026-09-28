@@ -211,6 +211,28 @@ def _submission_package(
     branch = f"researcher/intake/{submission_id}"
     target, dossier_target, license_target = _submission_paths(manifest)
     candidate = dossier.candidate
+    raw_snapshot = candidate.extra.get("component_snapshot_files", [])
+    snapshot_files: list[dict[str, str]] = []
+    if raw_snapshot:
+        if not isinstance(raw_snapshot, list):
+            raise RuntimeError("Candidate component snapshot metadata is invalid")
+        root = f"intake/{manifest['id']}/{manifest['version']}/payload/"
+        for item in raw_snapshot:
+            if not isinstance(item, dict):
+                raise RuntimeError("Candidate component snapshot entry is invalid")
+            relative = str(item.get("relative_path") or "")
+            if (
+                not relative
+                or relative.startswith(("/", "."))
+                or "\\" in relative
+                or "/../" in f"/{relative}"
+            ):
+                raise RuntimeError("Candidate component snapshot path is unsafe")
+            snapshot_files.append({
+                "path": root + relative,
+                "content_base64": str(item.get("content_base64") or ""),
+                "sha256": str(item.get("sha256") or ""),
+            })
     return {
         "schema_version": 1,
         "submission_id": submission_id,
@@ -227,6 +249,7 @@ def _submission_package(
             "commit": candidate.commit_sha,
             "path": _license_source_path(candidate),
         },
+        "snapshot_files": snapshot_files,
     }
 
 

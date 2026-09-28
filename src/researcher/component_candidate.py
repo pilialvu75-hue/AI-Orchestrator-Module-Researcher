@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import re
 import tomllib
@@ -40,6 +42,9 @@ _LICENSE_FILES = {
     "license.txt",
 }
 _TEST_DIRS = {"test", "tests", "spec", "specs"}
+_MAX_SNAPSHOT_FILES = 256
+_MAX_SNAPSHOT_FILE_BYTES = 512 * 1024
+_MAX_SNAPSHOT_TOTAL_BYTES = 4 * 1024 * 1024
 
 
 def normalize_component_path(value: str | None) -> str | None:
@@ -263,6 +268,44 @@ class ComponentCandidateResolver:
                 description = manifest_description
             break
 
+        snapshot_files: list[dict[str, Any]] = []
+        total_bytes = 0
+        blob_entries = [
+            item for item in entries
+            if str(item.get("type") or "") == "blob" and item.get("path")
+        ]
+        if len(blob_entries) > _MAX_SNAPSHOT_FILES:
+            raise RuntimeError("component snapshot exceeds file-count limit")
+        ref = urllib.parse.quote(candidate.commit_sha, safe="")
+        for item in blob_entries:
+            source_path = str(item["path"])
+            encoded_path = urllib.parse.quote(source_path, safe="/")
+            response = self._get(
+                f"/repos/{repository_path}/contents/{encoded_path}?ref={ref}"
+            )
+            payload = response.data if isinstance(response.data, dict) else {}
+            if str(payload.get("encoding") or "").lower() != "base64":
+                raise RuntimeError("component snapshot contains non-materializable blob")
+            raw_encoded = str(payload.get("content") or "").replace("\n", "")
+            try:
+                blob_content = base64.b64decode(raw_encoded, validate=True)
+            except Exception as exc:
+                raise RuntimeError("component snapshot contains invalid blob content") from exc
+            if len(blob_content) > _MAX_SNAPSHOT_FILE_BYTES:
+                raise RuntimeError("component snapshot file exceeds size limit")
+            total_bytes += len(blob_content)
+            if total_bytes > _MAX_SNAPSHOT_TOTAL_BYTES:
+                raise RuntimeError("component snapshot exceeds total size limit")
+            relative_path = source_path[len(component_path):].lstrip("/")
+            if not relative_path:
+                raise RuntimeError("component snapshot resolved a non-file root entry")
+            snapshot_files.append({
+                "relative_path": relative_path,
+                "content_base64": base64.b64encode(blob_content).decode("ascii"),
+                "sha256": hashlib.sha256(blob_content).hexdigest(),
+                "source_path": source_path,
+            })
+
         return {
             "name": name,
             "description": description,
@@ -279,6 +322,8 @@ class ComponentCandidateResolver:
             ),
             "component_entry_count": len(entries),
             "component_local_license": bool(local_licenses),
+            "snapshot_files": snapshot_files,
+            "snapshot_total_bytes": total_bytes,
         }
 
     def resolve(
@@ -310,6 +355,8 @@ class ComponentCandidateResolver:
                 "readme_present": bool(signals["readme_present"]),
                 "component_entry_count": int(signals["component_entry_count"]),
                 "component_local_license": bool(signals["component_local_license"]),
+                "component_snapshot_files": list(signals["snapshot_files"]),
+                "component_snapshot_total_bytes": int(signals["snapshot_total_bytes"]),
             }
         )
         return replace(
