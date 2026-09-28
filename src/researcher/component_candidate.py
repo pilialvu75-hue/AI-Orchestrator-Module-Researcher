@@ -288,12 +288,12 @@ class ComponentCandidateResolver:
                 raise RuntimeError("component snapshot contains non-materializable blob")
             raw_encoded = str(payload.get("content") or "").replace("\n", "")
             try:
-                content = base64.b64decode(raw_encoded, validate=True)
+                blob_content = base64.b64decode(raw_encoded, validate=True)
             except Exception as exc:
                 raise RuntimeError("component snapshot contains invalid blob content") from exc
-            if len(content) > _MAX_SNAPSHOT_FILE_BYTES:
+            if len(blob_content) > _MAX_SNAPSHOT_FILE_BYTES:
                 raise RuntimeError("component snapshot file exceeds size limit")
-            total_bytes += len(content)
+            total_bytes += len(blob_content)
             if total_bytes > _MAX_SNAPSHOT_TOTAL_BYTES:
                 raise RuntimeError("component snapshot exceeds total size limit")
             relative_path = source_path[len(component_path):].lstrip("/")
@@ -301,8 +301,8 @@ class ComponentCandidateResolver:
                 raise RuntimeError("component snapshot resolved a non-file root entry")
             snapshot_files.append({
                 "relative_path": relative_path,
-                "content_base64": base64.b64encode(content).decode("ascii"),
-                "sha256": hashlib.sha256(content).hexdigest(),
+                "content_base64": base64.b64encode(blob_content).decode("ascii"),
+                "sha256": hashlib.sha256(blob_content).hexdigest(),
                 "source_path": source_path,
             })
 
