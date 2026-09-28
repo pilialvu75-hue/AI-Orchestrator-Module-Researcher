@@ -39,6 +39,21 @@ class Source:
 
 
 class FirstPartyMiningTest(unittest.TestCase):
+
+    def test_missing_private_token_keeps_first_party_lane_idle(self) -> None:
+        app = SimpleNamespace(
+            config=SimpleNamespace(first_party_source_github_token=None),
+            engine=SimpleNamespace(need_source=object()),
+        )
+
+        result = run_one_first_party_candidate(app)
+
+        self.assertEqual("IDLE", result["state"])
+        self.assertEqual(
+            "first_party_source_credential_unavailable",
+            result["reason"],
+        )
+
     def test_sweep_selects_one_active_allowlisted_component(self) -> None:
         app = SimpleNamespace(engine=SimpleNamespace(need_source=Source()))
         with patch(
