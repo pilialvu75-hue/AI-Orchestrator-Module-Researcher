@@ -54,6 +54,32 @@ class FirstPartyMiningTest(unittest.TestCase):
             result["reason"],
         )
 
+    def test_existing_candidate_does_not_block_next_catalog_item(self) -> None:
+        source = Source()
+        app = SimpleNamespace(
+            config=SimpleNamespace(first_party_source_github_token="source-token"),
+            engine=SimpleNamespace(need_source=source),
+        )
+        source.load_needs = lambda: (
+            [
+                SimpleNamespace(capability_id="inactive.capability", status="needed"),
+                SimpleNamespace(capability_id="ai.local_inference", status="needed"),
+            ],
+            {},
+        )
+        with patch(
+            "researcher.first_party_mining.resolve_and_admit_component_candidate"
+        ) as admit:
+            admit.side_effect = [
+                {"state": "EXISTING"},
+                {"state": "ADMISSION_COMPLETE"},
+            ]
+            result = run_one_first_party_candidate(app)
+
+        self.assertEqual("COMPLETE", result["state"])
+        self.assertEqual("ADMISSION_COMPLETE", result["candidate"]["state"])
+        self.assertEqual(2, admit.call_count)
+
     def test_sweep_selects_one_active_allowlisted_component(self) -> None:
         app = SimpleNamespace(
             config=SimpleNamespace(first_party_source_github_token="source-token"),
