@@ -41,7 +41,7 @@ current_state:
     rule: "Candidate/reference/evidence enters Library intake only."
   first_party_legacy_mining:
     status: planned
-    source_manifest: "Module Library .airlab/first-party-sources.yaml"
+    source_manifest: "Module Library .airlab/first-party-sources.json"
     access_policy: "explicit allowlist, read-only, no source execution during discovery"
   direct_cantiere_code_dispatch:
     status: forbidden
