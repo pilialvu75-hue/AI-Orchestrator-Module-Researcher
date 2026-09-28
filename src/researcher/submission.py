@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import re
 import urllib.parse
@@ -161,6 +162,42 @@ def _submission_paths(manifest: dict[str, Any]) -> tuple[str, str, str]:
         f"{root}/provenance/researcher-dossier.json",
         f"{root}/provenance/LICENSE",
     )
+
+
+def _snapshot_files(package: dict[str, Any]) -> dict[str, bytes]:
+    raw = package.get("snapshot_files")
+    if raw is None:
+        return {}
+    if not isinstance(raw, list):
+        raise RuntimeError("Durable snapshot file list is invalid")
+    manifest = package.get("manifest")
+    if not isinstance(manifest, dict):
+        raise RuntimeError("Durable snapshot manifest is invalid")
+    root = f"intake/{manifest['id']}/{manifest['version']}/payload/"
+    files: dict[str, bytes] = {}
+    for item in raw:
+        if not isinstance(item, dict):
+            raise RuntimeError("Durable snapshot entry is invalid")
+        path = str(item.get("path") or "")
+        encoded = str(item.get("content_base64") or "")
+        expected = str(item.get("sha256") or "").lower()
+        if (
+            not path.startswith(root)
+            or "/../" in path
+            or "\\" in path
+            or not re.fullmatch(r"[0-9a-f]{64}", expected)
+        ):
+            raise RuntimeError("Durable snapshot provenance is invalid")
+        try:
+            content = base64.b64decode(encoded, validate=True)
+        except Exception as exc:
+            raise RuntimeError("Durable snapshot content is invalid") from exc
+        if hashlib.sha256(content).hexdigest() != expected:
+            raise RuntimeError("Durable snapshot hash mismatch")
+        if path in files:
+            raise RuntimeError("Durable snapshot path is duplicated")
+        files[path] = content
+    return files
 
 
 def _submission_package(
@@ -407,6 +444,7 @@ class GitHubIntakePrSubmissionClient:
             str(package["target_path"]),
             str(package["dossier_path"]),
             str(package["license_path"]),
+            *_snapshot_files(package).keys(),
         }
         changed = {
             str(item.get("filename"))
@@ -471,6 +509,13 @@ class GitHubIntakePrSubmissionClient:
             branch,
             str(package["submission_id"]),
         )
+        for snapshot_path, snapshot_bytes in _snapshot_files(package).items():
+            self._ensure_file(
+                snapshot_path,
+                snapshot_bytes,
+                branch,
+                str(package["submission_id"]),
+            )
         self._assert_branch_scope(package, require_complete=True)
 
         if existing_pr is None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import tempfile
 import unittest
 import urllib.parse
@@ -18,7 +19,7 @@ from researcher.github_api import GitHubApiError, GitHubResponse
 from researcher.models import Dossier, utc_now
 from researcher.scoring import CandidateScorer
 from researcher.state import SQLiteStateStore
-from researcher.submission import GitHubIntakePrSubmissionClient
+from researcher.submission import GitHubIntakePrSubmissionClient, _snapshot_files
 
 from helpers import candidate, contract, need
 
@@ -273,6 +274,47 @@ class IntakeRestartTests(unittest.TestCase):
                     changed,
                     branch=str(row["branch"]),
                 )
+
+
+    def test_snapshot_files_are_hash_verified_and_intake_scoped(self) -> None:
+        content = b"immutable first-party component\n"
+        package = {
+            "manifest": {"id": "ai.local.firstparty.core", "version": "0.1.0"},
+            "snapshot_files": [{
+                "path": "intake/ai.local.firstparty.core/0.1.0/payload/lib/component.dart",
+                "content_base64": base64.b64encode(content).decode("ascii"),
+                "sha256": hashlib.sha256(content).hexdigest(),
+            }],
+        }
+        self.assertEqual(
+            _snapshot_files(package),
+            {"intake/ai.local.firstparty.core/0.1.0/payload/lib/component.dart": content},
+        )
+
+    def test_snapshot_files_reject_path_escape_and_hash_drift(self) -> None:
+        content = b"immutable first-party component\n"
+        digest = hashlib.sha256(content).hexdigest()
+        escaped = {
+            "manifest": {"id": "ai.local.firstparty.core", "version": "0.1.0"},
+            "snapshot_files": [{
+                "path": "intake/ai.local.firstparty.core/0.1.0/payload/../manifest.json",
+                "content_base64": base64.b64encode(content).decode("ascii"),
+                "sha256": digest,
+            }],
+        }
+        with self.assertRaisesRegex(RuntimeError, "provenance"):
+            _snapshot_files(escaped)
+
+        drifted = {
+            "manifest": {"id": "ai.local.firstparty.core", "version": "0.1.0"},
+            "snapshot_files": [{
+                "path": "intake/ai.local.firstparty.core/0.1.0/payload/lib/component.dart",
+                "content_base64": base64.b64encode(content).decode("ascii"),
+                "sha256": "0" * 64,
+            }],
+        }
+        with self.assertRaisesRegex(RuntimeError, "hash mismatch"):
+            _snapshot_files(drifted)
 
 
 if __name__ == "__main__":
