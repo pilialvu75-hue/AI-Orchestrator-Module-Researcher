@@ -46,6 +46,8 @@ def run_one_first_party_candidate(app: App) -> dict[str, Any]:
                 str(commit_sha),
                 component_path=component_path,
             )
+            if result.get("state") == "EXISTING":
+                continue
             return {
                 "state": "COMPLETE",
                 "catalog": metadata,
