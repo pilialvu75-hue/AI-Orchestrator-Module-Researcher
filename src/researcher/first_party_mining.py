@@ -9,6 +9,12 @@ if TYPE_CHECKING:
 
 
 def run_one_first_party_candidate(app: App) -> dict[str, Any]:
+    if not app.config.first_party_source_github_token:
+        return {
+            "state": "IDLE",
+            "reason": "first_party_source_credential_unavailable",
+        }
+
     loader = getattr(app.engine.need_source, "load_first_party_sources", None)
     if not callable(loader):
         return {"state": "IDLE", "reason": "first_party_catalog_unavailable"}

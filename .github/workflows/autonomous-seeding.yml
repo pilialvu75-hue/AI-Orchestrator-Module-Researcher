@@ -31,14 +31,6 @@ jobs:
             echo "Missing RESEARCHER_LIBRARY_TOKEN repository secret." >&2
             exit 1
           fi
-      - name: Verify dedicated first-party read credential
-        env:
-          FIRST_PARTY_SOURCE_GITHUB_TOKEN: ${{ secrets.RESEARCHER_FIRST_PARTY_SOURCE_TOKEN }}
-        run: |
-          if [[ -z "${FIRST_PARTY_SOURCE_GITHUB_TOKEN}" ]]; then
-            echo "Missing RESEARCHER_FIRST_PARTY_SOURCE_TOKEN repository secret." >&2
-            exit 1
-          fi
       - name: Install Researcher
         run: python -m pip install --disable-pip-version-check .
       - name: Restore durable Researcher state
