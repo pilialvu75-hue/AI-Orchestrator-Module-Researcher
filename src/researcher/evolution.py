@@ -57,3 +57,18 @@ class EvolutionWorker:
             expected_state="VALIDATING",
             new_state="ACCEPTED" if accepted else "REJECTED",
         )
+
+    def complete_candidate(self, candidate: Any) -> bool:
+        """Finalize only an adapter-validated candidate bound to this proposal.
+
+        Import is local to keep the state machine independent from adapter
+        construction while still enforcing the concrete validated output type.
+        """
+        from .evolution_adapter import ValidatedCandidateModule
+
+        if not isinstance(candidate, ValidatedCandidateModule):
+            raise TypeError("ValidatedCandidateModule is required")
+        return self.complete_validation(
+            candidate.proposal_id,
+            accepted=candidate.evidence.accepted,
+        )
