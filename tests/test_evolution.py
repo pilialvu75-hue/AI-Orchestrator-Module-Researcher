@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from researcher.evolution import EvolutionWorker
+from researcher.evolution_adapter import EvolutionAdapter
 from researcher.state import SQLiteStateStore
 
 
@@ -77,3 +78,72 @@ def test_recover_queued_improvement_proposals_restores_library_gate(tmp_path) ->
     assert [item["proposal_id"] for item in pending] == ["legacy-1", "legacy-2"]
     assert all(item["state"] == "PROPOSED" for item in pending)
     assert state.recover_queued_improvement_proposals(limit=8) == []
+
+
+def _full_gate_results(*, security: bool = True) -> dict[str, bool]:
+    return {
+        "implementation_tests_pass": True,
+        "security_gates_pass": security,
+        "regression_tests_pass": True,
+        "library_contract_pass": True,
+    }
+
+
+def _record_full_gate_proposal(state: SQLiteStateStore, proposal_id: str) -> None:
+    assert state.record_improvement_proposal(
+        proposal_id=proposal_id,
+        capability_id="ai.acceleration_backend",
+        novelty=("practice:ci_present",),
+        acceptance_gates=(
+            "implementation_tests_pass",
+            "security_gates_pass",
+            "regression_tests_pass",
+            "library_contract_pass",
+        ),
+    )
+
+
+def test_validated_candidate_completes_as_accepted(tmp_path) -> None:
+    state = SQLiteStateStore(tmp_path / "researcher.db")
+    _record_full_gate_proposal(state, "candidate-pass")
+    worker = EvolutionWorker(state)
+    work = worker.claim_next()
+    assert work is not None
+    assert worker.begin_validation(work.proposal_id)
+
+    candidate = EvolutionAdapter().validate_result(
+        work,
+        candidate_ref="artifact://candidate/candidate-pass",
+        gate_results=_full_gate_results(),
+    )
+    assert worker.complete_candidate(candidate)
+    assert not worker.complete_candidate(candidate)
+
+
+def test_validated_candidate_with_failed_gate_completes_as_rejected(tmp_path) -> None:
+    state = SQLiteStateStore(tmp_path / "researcher.db")
+    _record_full_gate_proposal(state, "candidate-fail")
+    worker = EvolutionWorker(state)
+    work = worker.claim_next()
+    assert work is not None
+    assert worker.begin_validation(work.proposal_id)
+
+    candidate = EvolutionAdapter().validate_result(
+        work,
+        candidate_ref="artifact://candidate/candidate-fail",
+        gate_results=_full_gate_results(security=False),
+    )
+    assert not candidate.evidence.accepted
+    assert worker.complete_candidate(candidate)
+    assert not worker.complete_candidate(candidate)
+
+
+def test_complete_candidate_rejects_unvalidated_payload(tmp_path) -> None:
+    state = SQLiteStateStore(tmp_path / "researcher.db")
+    worker = EvolutionWorker(state)
+    try:
+        worker.complete_candidate({"proposal_id": "forged"})
+    except TypeError as error:
+        assert "ValidatedCandidateModule is required" in str(error)
+    else:
+        raise AssertionError("unvalidated payload must fail closed")
