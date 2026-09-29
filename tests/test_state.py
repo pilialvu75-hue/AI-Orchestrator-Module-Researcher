@@ -175,6 +175,11 @@ class StateTests(unittest.TestCase):
             self.assertEqual(len(requests), 1)
             self.assertEqual(requests[0]["state"], "PROPOSED")
             self.assertEqual(
+                requests[0]["objective"],
+                "Evaluate and implement only the useful capability delta; preserve "
+                "existing behavior unless tests justify a change.",
+            )
+            self.assertEqual(
                 requests[0]["mutation_policy"],
                 "isolated_candidate_no_library_mutation",
             )
