@@ -850,6 +850,10 @@ class SQLiteStateStore:
                 "request_type": "library_module_improvement",
                 "proposal_id": str(row["proposal_id"]),
                 "capability_id": str(row["capability_id"]),
+                "objective": (
+                    "Evaluate and implement only the useful capability delta; preserve "
+                    "existing behavior unless tests justify a change."
+                ),
                 "knowledge_delta": tuple(json.loads(str(row["novelty_json"]))),
                 "acceptance_gates": tuple(
                     json.loads(str(row["acceptance_gates_json"]))
