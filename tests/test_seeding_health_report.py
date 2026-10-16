@@ -143,5 +143,62 @@ class SeedingHealthTests(unittest.TestCase):
         self.assertEqual(actual["outcome"], "BLOCKED")
 
 
+    def test_zero_hit_is_not_confused_with_rate_limit(self) -> None:
+        actual = summarize(
+            {}, {"results": [{
+                "state": "COMPLETED", "discovered": 0,
+                "discovery_diagnostics": {
+                    "status": "NO_SEARCH_HITS", "queries_attempted": 6,
+                    "search_hits": 0, "rate_limited_targets": 0,
+                },
+            }]},
+        )
+        self.assertEqual(actual["outcome"], "ZERO_DISCOVERY")
+        self.assertEqual(actual["search_queries_attempted"], 6)
+        self.assertEqual(actual["search_hits"], 0)
+        self.assertEqual(actual["search_status_counts"], {"NO_SEARCH_HITS": 1})
+
+    def test_rate_limited_zero_yield_is_blocked_even_if_cycle_completed(self) -> None:
+        actual = summarize(
+            {}, {"results": [{
+                "state": "COMPLETED", "discovered": 0,
+                "discovery_diagnostics": {
+                    "status": "SEARCH_RATE_LIMITED", "queries_attempted": 0,
+                    "search_hits": 0, "rate_limited_targets": 2,
+                },
+            }]},
+        )
+        self.assertEqual(actual["outcome"], "BLOCKED")
+        self.assertEqual(actual["search_rate_limited_targets"], 2)
+
+    def test_all_known_candidates_have_distinct_outcome(self) -> None:
+        actual = summarize(
+            {}, {"results": [{
+                "state": "COMPLETED", "discovered": 3, "new_analyzed": 0,
+                "known_candidates_skipped": 3,
+                "discovery_diagnostics": {
+                    "status": "CANDIDATES_FOUND", "queries_attempted": 3,
+                    "search_hits": 8, "rate_limited_targets": 0,
+                },
+            }]},
+        )
+        self.assertEqual(actual["outcome"], "ONLY_KNOWN_CANDIDATES")
+        self.assertEqual(actual["known_candidates_skipped"], 3)
+        self.assertEqual(actual["search_hits"], 8)
+
+    def test_invalid_search_diagnostics_fails_closed(self) -> None:
+        with self.assertRaises(ValueError):
+            summarize({}, {"results": [{
+                "discovery_diagnostics": {
+                    "status": "SEARCH_RATE_LIMITED",
+                    "rate_limited_targets": -1,
+                },
+            }]})
+        with self.assertRaises(ValueError):
+            summarize({}, {"results": [{
+                "discovery_diagnostics": {"status": "arbitrary"},
+            }]})
+
+
 if __name__ == "__main__":
     unittest.main()
