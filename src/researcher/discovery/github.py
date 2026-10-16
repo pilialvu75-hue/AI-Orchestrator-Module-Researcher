@@ -219,16 +219,23 @@ class GitHubDiscoveryProvider:
         return selected_sha, selected_commit, selected_tree, release_metadata
 
     def discover(self, need: Need, limit: int = 8) -> list[Candidate]:
-        decision = self.rate_limits.decision()
+        decision = self.rate_limits.decision(resource="search")
         if not decision.allowed:
             self.rate_limits.record_backoff(
                 decision.retry_after_seconds,
-                "github_rate_limit",
+                "github_search_rate_limit",
             )
             return []
         items: list[Any] = []
         seen_repositories: set[str] = set()
         for raw_query in self._queries(need):
+            # GitHub may exhaust the search bucket during this query sweep.
+            decision = self.rate_limits.decision(resource="search")
+            if not decision.allowed:
+                self.rate_limits.record_backoff(
+                    decision.retry_after_seconds, "github_search_rate_limit"
+                )
+                break
             query = urllib.parse.quote(raw_query, safe="")
             response = self.api.get(
                 f"/search/repositories?q={query}&sort=updated&order=desc&per_page={min(limit, 20)}"
