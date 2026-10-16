@@ -370,6 +370,18 @@ class GitHubDiscoveryTests(unittest.TestCase):
         generic = GitHubDiscoveryProvider._queries(need("network.http"))
         self.assertFalse(generic[0].startswith("llama cpp"))
 
+    def test_search_defaults_to_github_best_match_ranking(self) -> None:
+        # "sort=updated" was returning recently edited but irrelevant READMEs,
+        # pushing actual runtime/storage packages out of the bounded top hits.
+        _, api = self._discover("a" * 40)
+        searches = [
+            path for path in api.calls if path.startswith("/search/repositories?")
+        ]
+        self.assertTrue(searches)
+        self.assertTrue(all("sort=" not in path for path in searches))
+        self.assertTrue(all("order=" not in path for path in searches))
+        self.assertTrue(all("per_page=1" in path for path in searches))
+
     def test_precise_query_cannot_starve_capability_fallback(self) -> None:
         class FallbackApi(FakeGitHubApi):
             def get(self, path: str) -> GitHubResponse:
