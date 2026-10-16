@@ -69,5 +69,60 @@ class TargetAwareDiscoveryTests(unittest.TestCase):
         self.assertEqual([call.targets for call in base.calls], [("android",)])
 
 
+
+class TargetSearchDiagnosticsTests(unittest.TestCase):
+    def test_aggregates_rate_limited_targets_without_leaking_queries(self) -> None:
+        class BlockedDiscovery:
+            name = "blocked"
+
+            def __init__(self) -> None:
+                self.last_discovery_diagnostics: dict[str, str | int] = {}
+
+            def discover(self, requested: Need, limit: int = 8) -> list[Candidate]:
+                self.last_discovery_diagnostics = {
+                    "status": "SEARCH_RATE_LIMITED",
+                    "queries_attempted": 0,
+                    "search_hits": 0,
+                    "unique_repository_hits": 0,
+                    "candidates_returned": 0,
+                }
+                return []
+
+        provider = TargetAwareDiscoveryProvider(BlockedDiscovery())  # type: ignore[arg-type]
+        requested = need()
+        self.assertEqual(
+            provider.discover_for_targets(requested, ("android", "desktop")), []
+        )
+        report = provider.last_discovery_diagnostics
+        self.assertEqual(report["status"], "SEARCH_RATE_LIMITED")
+        self.assertEqual(report["targets_requested"], 2)
+        self.assertEqual(report["rate_limited_targets"], 2)
+        self.assertEqual(report["queries_attempted"], 0)
+
+    def test_aggregates_empty_hits_separately(self) -> None:
+        class EmptyDiscovery:
+            name = "empty"
+
+            def __init__(self) -> None:
+                self.last_discovery_diagnostics: dict[str, str | int] = {}
+
+            def discover(self, requested: Need, limit: int = 8) -> list[Candidate]:
+                self.last_discovery_diagnostics = {
+                    "status": "NO_SEARCH_HITS",
+                    "queries_attempted": 2,
+                    "search_hits": 0,
+                    "unique_repository_hits": 0,
+                    "candidates_returned": 0,
+                }
+                return []
+
+        provider = TargetAwareDiscoveryProvider(EmptyDiscovery())  # type: ignore[arg-type]
+        self.assertEqual(provider.discover_for_targets(need(), ("android", "desktop")), [])
+        report = provider.last_discovery_diagnostics
+        self.assertEqual(report["status"], "NO_SEARCH_HITS")
+        self.assertEqual(report["queries_attempted"], 4)
+        self.assertEqual(report["rate_limited_targets"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
