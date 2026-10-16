@@ -34,6 +34,30 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
             value += len(items)
         return value
 
+    def discovery_total(key: str) -> int:
+        count = 0
+        for row in results:
+            evidence = row.get("discovery_diagnostics", {})
+            if not isinstance(evidence, dict):
+                raise ValueError("Invalid discovery diagnostics")
+            count += _count(evidence.get(key, 0))
+        return count
+
+    discovery_statuses: dict[str, int] = {}
+    for row in results:
+        evidence = row.get("discovery_diagnostics", {})
+        if not isinstance(evidence, dict):
+            raise ValueError("Invalid discovery diagnostics")
+        status = evidence.get("status")
+        if status is not None:
+            if status not in {
+                "SEARCH_RATE_LIMITED", "NO_SEARCH_HITS",
+                "SEARCH_HITS_UNRESOLVED", "CANDIDATES_FOUND",
+                "NO_REQUIRED_TARGETS", "NOT_RUN",
+            }:
+                raise ValueError("Unknown discovery status")
+            discovery_statuses[status] = discovery_statuses.get(status, 0) + 1
+
     first_party = sweep.get("first_party", {})
     if not isinstance(first_party, dict):
         raise ValueError("Invalid first_party sweep result")
@@ -61,12 +85,19 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
     prepared = sweep_prepared + first_party_submitted + first_party_dry_run_prepared
     recovered = array_total("recovered_submissions")
     failures = sum(row.get("state") in {"ERROR", "BLOCKED"} for row in results)
-    if failures or first_party_state in {"ERROR", "BLOCKED"}:
+    known_skipped = total("known_candidates_skipped")
+    search_rate_limited = discovery_total("rate_limited_targets")
+    if (
+        failures or first_party_state in {"ERROR", "BLOCKED"}
+        or (search_rate_limited and not prepared and not discovered)
+    ):
         outcome = "BLOCKED"
     elif sweep_prepared or first_party_submitted:
         outcome = "CANDIDATES_PREPARED"
     elif first_party_dry_run_prepared:
         outcome = "CANDIDATES_DRY_RUN_PREPARED"
+    elif discovered and known_skipped == discovered and not analyzed:
+        outcome = "ONLY_KNOWN_CANDIDATES"
     elif discovered or first_party_state == "COMPLETE":
         outcome = "DISCOVERED_NO_SUBMISSIONS"
     else:
@@ -78,6 +109,11 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         "cycles": len(results),
         "discovered": discovered,
         "new_analyzed": analyzed,
+        "known_candidates_skipped": known_skipped,
+        "search_queries_attempted": discovery_total("queries_attempted"),
+        "search_hits": discovery_total("search_hits"),
+        "search_rate_limited_targets": search_rate_limited,
+        "search_status_counts": dict(sorted(discovery_statuses.items())),
         "shortlisted": total("shortlisted"),
         "prepared_submissions": prepared,
         "sweep_prepared_submissions": sweep_prepared,
@@ -115,6 +151,10 @@ def main() -> None:
             f"| Cycles | {summary['cycles']} |",
             f"| Discovered | {summary['discovered']} |",
             f"| Analyzed | {summary['new_analyzed']} |",
+            f"| Already known skipped | {summary['known_candidates_skipped']} |",
+            f"| GitHub search queries | {summary['search_queries_attempted']} |",
+            f"| GitHub search hits | {summary['search_hits']} |",
+            f"| Rate-limited target searches | {summary['search_rate_limited_targets']} |",
             f"| Shortlisted | {summary['shortlisted']} |",
             f"| Submissions prepared (all paths) | {summary['prepared_submissions']} |",
             f"| First-party submitted | {summary['first_party_submitted']} |",
@@ -122,6 +162,7 @@ def main() -> None:
             f"| Backfill proposals | {summary['backfill_proposed']} |",
             "",
             f"First-party source status: `{summary['first_party_state']}`",
+            f"Discovery states: `{json.dumps(summary['search_status_counts'], sort_keys=True)}`",
             "",
             "Certified modules: **not determined by Researcher** (requires Library evidence).",
             "",
