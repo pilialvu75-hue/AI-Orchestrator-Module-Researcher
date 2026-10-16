@@ -37,16 +37,37 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
     first_party = sweep.get("first_party", {})
     if not isinstance(first_party, dict):
         raise ValueError("Invalid first_party sweep result")
+    first_party_state = str(first_party.get("state", "UNKNOWN"))
+    first_party_submitted = 0
+    first_party_dry_run_prepared = 0
+    if first_party_state == "COMPLETE":
+        candidate = first_party.get("candidate")
+        if not isinstance(candidate, dict):
+            raise ValueError("Completed first-party work requires a candidate object")
+        submitted = candidate.get("submitted", False)
+        dry_run_prepared = candidate.get("dry_run_prepared", False)
+        if (
+            not isinstance(submitted, bool)
+            or not isinstance(dry_run_prepared, bool)
+            or (submitted and dry_run_prepared)
+        ):
+            raise ValueError("Invalid first-party delivery flags")
+        first_party_submitted = int(submitted)
+        first_party_dry_run_prepared = int(dry_run_prepared)
+
     discovered = total("discovered")
     analyzed = total("new_analyzed")
-    prepared = array_total("prepared_submissions")
+    sweep_prepared = array_total("prepared_submissions")
+    prepared = sweep_prepared + first_party_submitted + first_party_dry_run_prepared
     recovered = array_total("recovered_submissions")
     failures = sum(row.get("state") in {"ERROR", "BLOCKED"} for row in results)
-    if failures:
+    if failures or first_party_state in {"ERROR", "BLOCKED"}:
         outcome = "BLOCKED"
-    elif prepared:
+    elif sweep_prepared or first_party_submitted:
         outcome = "CANDIDATES_PREPARED"
-    elif discovered:
+    elif first_party_dry_run_prepared:
+        outcome = "CANDIDATES_DRY_RUN_PREPARED"
+    elif discovered or first_party_state == "COMPLETE":
         outcome = "DISCOVERED_NO_SUBMISSIONS"
     else:
         outcome = "ZERO_DISCOVERY"
@@ -59,9 +80,12 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         "new_analyzed": analyzed,
         "shortlisted": total("shortlisted"),
         "prepared_submissions": prepared,
+        "sweep_prepared_submissions": sweep_prepared,
+        "first_party_submitted": first_party_submitted,
+        "first_party_dry_run_prepared": first_party_dry_run_prepared,
         "recovered_submissions": recovered,
         "backfill_proposed": _count(backfill.get("proposed", 0)),
-        "first_party_state": str(first_party.get("state", "UNKNOWN")),
+        "first_party_state": first_party_state,
         "first_party_reason": str(first_party.get("reason", "")),
         "library_certified_modules": None,
         "certification_verified": False,
@@ -92,7 +116,9 @@ def main() -> None:
             f"| Discovered | {summary['discovered']} |",
             f"| Analyzed | {summary['new_analyzed']} |",
             f"| Shortlisted | {summary['shortlisted']} |",
-            f"| Submissions prepared | {summary['prepared_submissions']} |",
+            f"| Submissions prepared (all paths) | {summary['prepared_submissions']} |",
+            f"| First-party submitted | {summary['first_party_submitted']} |",
+            f"| First-party dry-run prepared | {summary['first_party_dry_run_prepared']} |",
             f"| Backfill proposals | {summary['backfill_proposed']} |",
             "",
             f"First-party source status: `{summary['first_party_state']}`",
