@@ -354,7 +354,7 @@ class GitHubDiscoveryTests(unittest.TestCase):
                     self.calls.append(path)
                     # The first, overly specific query contains enough results
                     # to fill the cap. We must still execute capability fallback.
-                    precise = "target-specific" in urllib.parse.unquote(path).lower()
+                    precise = "speech-to-text" in urllib.parse.unquote(path).lower()
                     names = (
                         ["owner/repo", "owner/irrelevant"]
                         if precise else ["owner/broad"]
