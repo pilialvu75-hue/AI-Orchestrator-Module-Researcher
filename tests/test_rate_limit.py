@@ -36,5 +36,40 @@ class RateLimitTests(unittest.TestCase):
             self.assertGreaterEqual(scheduler.delay_seconds(), 100)
 
 
+    def test_expired_reset_reopens_discovery_after_restored_zero(self) -> None:
+        # A cached SQLite state must not persist a rate-limit block forever.
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            manager = RateLimitManager(state)
+            manager.observe_headers(
+                {
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(int(time.time()) - 60),
+                }
+            )
+            manager.record_backoff(3600, "github_rate_limit")
+            decision = manager.decision()
+            self.assertTrue(decision.allowed)
+            self.assertEqual(decision.retry_after_seconds, 0)
+            self.assertIsNone(state.get_json("backoff"))
+            # Until a response refreshes the cached headers, the attempt is
+            # allowed; this does not claim the quota actually renewed.
+            self.assertTrue(manager.decision().allowed)
+
+    def test_future_reset_still_blocks_discovery(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            manager = RateLimitManager(state)
+            manager.observe_headers(
+                {
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": str(int(time.time()) + 300),
+                }
+            )
+            decision = manager.decision()
+            self.assertFalse(decision.allowed)
+            self.assertGreaterEqual(decision.retry_after_seconds, 60)
+
+
 if __name__ == "__main__":
     unittest.main()
