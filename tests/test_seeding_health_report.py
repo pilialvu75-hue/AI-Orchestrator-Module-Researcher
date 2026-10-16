@@ -56,5 +56,92 @@ class SeedingHealthTests(unittest.TestCase):
             summarize({}, {"results": "none"})
 
 
+    def test_first_party_submitted_counts_as_productive(self) -> None:
+        actual = summarize(
+            {"proposed": 0},
+            {
+                "first_party": {
+                    "state": "COMPLETE",
+                    "candidate": {"submitted": True, "dry_run_prepared": False},
+                },
+                "results": [{"state": "COMPLETED", "discovered": 0}],
+            },
+        )
+        self.assertEqual(actual["outcome"], "CANDIDATES_PREPARED")
+        self.assertEqual(actual["prepared_submissions"], 1)
+        self.assertEqual(actual["sweep_prepared_submissions"], 0)
+        self.assertEqual(actual["first_party_submitted"], 1)
+        self.assertEqual(actual["first_party_dry_run_prepared"], 0)
+        self.assertFalse(actual["certification_verified"])
+
+    def test_first_party_dry_run_is_not_a_real_delivery(self) -> None:
+        actual = summarize(
+            {},
+            {
+                "first_party": {
+                    "state": "COMPLETE",
+                    "candidate": {"submitted": False, "dry_run_prepared": True},
+                },
+                "results": [{"state": "COMPLETED", "discovered": 0}],
+            },
+        )
+        self.assertEqual(actual["outcome"], "CANDIDATES_DRY_RUN_PREPARED")
+        self.assertEqual(actual["prepared_submissions"], 1)
+        self.assertEqual(actual["first_party_submitted"], 0)
+        self.assertEqual(actual["first_party_dry_run_prepared"], 1)
+
+    def test_first_party_admission_without_delivery_is_not_zero_discovery(self) -> None:
+        actual = summarize(
+            {},
+            {
+                "first_party": {
+                    "state": "COMPLETE",
+                    "candidate": {"submitted": False, "dry_run_prepared": False},
+                },
+                "results": [{"state": "COMPLETED", "discovered": 0}],
+            },
+        )
+        self.assertEqual(actual["outcome"], "DISCOVERED_NO_SUBMISSIONS")
+        self.assertEqual(actual["prepared_submissions"], 0)
+
+    def test_invalid_first_party_delivery_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            summarize({}, {"first_party": {"state": "COMPLETE"}, "results": []})
+        with self.assertRaises(ValueError):
+            summarize(
+                {},
+                {
+                    "first_party": {
+                        "state": "COMPLETE",
+                        "candidate": {"submitted": "true"},
+                    },
+                    "results": [],
+                },
+            )
+        with self.assertRaises(ValueError):
+            summarize(
+                {},
+                {
+                    "first_party": {
+                        "state": "COMPLETE",
+                        "candidate": {"submitted": True, "dry_run_prepared": True},
+                    },
+                    "results": [],
+                },
+            )
+
+    def test_first_party_blocked_preempts_other_results(self) -> None:
+        actual = summarize(
+            {},
+            {
+                "first_party": {"state": "BLOCKED"},
+                "results": [
+                    {"state": "COMPLETED", "prepared_submissions": [{"id": "one"}]},
+                ],
+            },
+        )
+        self.assertEqual(actual["outcome"], "BLOCKED")
+
+
 if __name__ == "__main__":
     unittest.main()
