@@ -282,7 +282,7 @@ class GitHubDiscoveryProvider:
                 break
             query = urllib.parse.quote(raw_query, safe="")
             response = self.api.get(
-                f"/search/repositories?q={query}&sort=updated&order=desc&per_page={min(limit, 20)}"
+                f"/search/repositories?q={query}&per_page={min(limit, 20)}"
             )
             self._observe(response)
             diagnostics["queries_attempted"] = int(diagnostics["queries_attempted"]) + 1
