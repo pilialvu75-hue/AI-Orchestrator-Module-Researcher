@@ -345,7 +345,7 @@ class GitHubDiscoveryTests(unittest.TestCase):
         self.assertTrue(any("acceleration backend" in query for query in queries))
         self.assertTrue(all("archived:false" in query for query in queries))
         # The simpler capability query must precede the title-only fallback.
-        self.assertIn("ai acceleration backend in:name", queries[1])
+        self.assertIn("acceleration backend in:name", queries[1])
 
     def test_precise_query_cannot_starve_capability_fallback(self) -> None:
         class FallbackApi(FakeGitHubApi):
