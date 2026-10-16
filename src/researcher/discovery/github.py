@@ -76,11 +76,14 @@ class GitHubDiscoveryProvider:
         ]
         capability_terms = " ".join(capability_words)
         hint = _CAPABILITY_SEARCH_HINTS.get(need.capability_id, "")
+        combined = f"{title_terms} {capability_terms}".strip()
+        # Always give the generic capability query the second slot when a
+        # technical hint is available: the first search is capped at half the
+        # candidate budget and the second must not be another long query.
         raw = (
-            hint,
-            f"{title_terms} {capability_terms}".strip(),
-            capability_terms.strip(),
-            title_terms.strip(),
+            (hint, capability_terms.strip(), combined, title_terms.strip())
+            if hint
+            else (combined, capability_terms.strip(), title_terms.strip())
         )
         seen: set[str] = set()
         queries: list[str] = []
