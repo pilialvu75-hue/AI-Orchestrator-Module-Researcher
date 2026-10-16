@@ -30,6 +30,20 @@ _LICENSE_FILES = {
 }
 _TEST_DIRS = {"test", "tests", "spec", "specs"}
 
+# Library taxonomy labels are not always upstream repository terminology.
+# Keep one deterministic technical hint for selected high-priority capabilities;
+# the generic capability/title queries remain available as fallbacks.
+_CAPABILITY_SEARCH_HINTS = {
+    "ai.acceleration_backend": "llama cpp vulkan",
+    "ai.local_inference": "llama cpp android",
+    "release.packaging": "github actions android release",
+    "release.update_manager": "flutter app update download",
+    "storage.local_db": "flutter sqlite database",
+    "storage.secrets": "flutter secure storage",
+    "voice.stt": "flutter speech to text",
+    "voice.tts": "flutter text to speech",
+}
+
 
 class GitHubDiscoveryProvider:
     name = "github"
@@ -61,7 +75,9 @@ class GitHubDiscoveryProvider:
             if len(word) >= 3
         ]
         capability_terms = " ".join(capability_words)
+        hint = _CAPABILITY_SEARCH_HINTS.get(need.capability_id, "")
         raw = (
+            hint,
             f"{title_terms} {capability_terms}".strip(),
             capability_terms.strip(),
             title_terms.strip(),
