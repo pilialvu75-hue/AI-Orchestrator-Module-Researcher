@@ -1,0 +1,38 @@
+name: Researcher Live Discovery Probe
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/discovery-probe.yml"
+      - "tools/discovery_probe.py"
+      - "src/researcher/discovery/**"
+      - "src/researcher/rate_limit.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-probe:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+      - name: Live discovery (read-only, no Library credential)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python tools/discovery_probe.py --output "${RUNNER_TEMP}/discovery-proof.json"
+      - name: Archive candidate metadata and diagnostic counters
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: researcher-live-discovery-proof-${{ github.run_id }}
+          path: ${{ runner.temp }}/discovery-proof.json
+          if-no-files-found: warn
+          retention-days: 7
