@@ -45,6 +45,12 @@ class RateLimitManager:
         if reset is None:
             return RateLimitDecision(False, 3600)
         now = int(datetime.now(UTC).timestamp())
+        # The SQLite state survives GitHub Actions runs, but the GitHub rate
+        # window does not. A persisted zero must never disable discovery after
+        # its reset time has passed: the next request refreshes the headers.
+        if int(reset) <= now:
+            self.state.set_json("backoff", None)
+            return RateLimitDecision(True, 0)
         return RateLimitDecision(False, max(60, int(reset) - now + 5))
 
     def record_backoff(self, seconds: int, reason: str) -> None:
