@@ -343,6 +343,49 @@ class GitHubDiscoveryTests(unittest.TestCase):
         self.assertIn("acceleration backend", queries[0])
         self.assertTrue(any("acceleration backend" in query for query in queries))
         self.assertTrue(all("archived:false" in query for query in queries))
+        # The simpler capability query must precede the title-only fallback.
+        self.assertIn("ai acceleration backend in:name", queries[1])
+
+    def test_precise_query_cannot_starve_capability_fallback(self) -> None:
+        class FallbackApi(FakeGitHubApi):
+            def get(self, path: str) -> GitHubResponse:
+                if path.startswith("/search/repositories?"):
+                    self.calls.append(path)
+                    # First precise query already has enough matches to
+                    # exhaust the requested cap without reserving slots.
+                     query = __import__("urllib.parse", fromlist=["unquote"]).unquote(path)
+                    repo = (
+                        "owner/repo"
+                        if "target-specific" in query.lower()
+                        else "owner/broad"
+                    )
+                    return GitHubResponse(
+                        {"items": [{"full_name": repo}]},
+                        {"X-RateLimit-Resource": "search",
+                         "X-RateLimit-Remaining": "20",
+                         "X-RateLimit-Reset": "9999999999"},
+                    )
+                if path.startswith("/repos/owner/broad"):
+                    original = super().get(path.replace("owner/broad", "owner/repo"))
+                    if path == "/repos/owner/broad" and isinstance(original.data, dict):
+                        meta = dict(original.data)
+                        meta["full_name"] = "owner/broad"
+                        meta["name"] = "broad"
+                        return GitHubResponse(meta, original.headers)
+                    return original
+                return super().get(path)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            api = FallbackApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
+            found = provider.discover(need("ai.acceleration_backend"), limit=2)
+            self.assertEqual(
+                {candidate.repository for candidate in found},
+                {"owner/repo", "owner/broad"},
+            )
+            self.assertGreaterEqual(provider.last_discovery_diagnostics["queries_attempted"], 2)
+            self.assertEqual(provider.last_discovery_diagnostics["candidates_returned"], 2)
 
 
 class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
