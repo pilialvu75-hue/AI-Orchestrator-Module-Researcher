@@ -340,12 +340,34 @@ class GitHubDiscoveryTests(unittest.TestCase):
     def test_query_fallback_relaxes_internal_capability_taxonomy(self) -> None:
         requested = need("ai.acceleration_backend")
         queries = GitHubDiscoveryProvider._queries(requested)
-        self.assertGreaterEqual(len(queries), 2)
-        self.assertIn("acceleration backend", queries[0])
-        self.assertTrue(any("acceleration backend" in query for query in queries))
+        self.assertGreaterEqual(len(queries), 3)
+        self.assertTrue(queries[0].startswith("llama cpp vulkan "))
+        self.assertTrue(any("acceleration backend" in query for query in queries[1:]))
         self.assertTrue(all("archived:false" in query for query in queries))
-        # The simpler capability query must precede the title-only fallback.
-        self.assertIn("acceleration backend in:name", queries[1])
+        # A concrete upstream vocabulary must not remove taxonomy fallbacks.
+        self.assertTrue(any(
+            query.startswith("acceleration backend in:name") for query in queries[1:]
+        ))
+
+    def test_technical_hints_apply_only_to_known_capabilities(self) -> None:
+        examples = {
+            "ai.local_inference": "llama cpp android",
+            "storage.secrets": "flutter secure storage",
+            "release.packaging": "github actions android release",
+            "voice.stt": "flutter speech to text",
+        }
+        for capability, hint in examples.items():
+            with self.subTest(capability=capability):
+                queries = GitHubDiscoveryProvider._queries(need(capability))
+                self.assertTrue(queries[0].startswith(hint + " "))
+                self.assertTrue(all("archived:false" in query for query in queries))
+                self.assertTrue(any(
+                    " ".join(capability.replace(".", " ").replace("_", " ").split()[1:])
+                    in query
+                    for query in queries[1:]
+                ))
+        generic = GitHubDiscoveryProvider._queries(need("network.http"))
+        self.assertFalse(generic[0].startswith("llama cpp"))
 
     def test_precise_query_cannot_starve_capability_fallback(self) -> None:
         class FallbackApi(FakeGitHubApi):
@@ -380,7 +402,7 @@ class GitHubDiscoveryTests(unittest.TestCase):
             state = SQLiteStateStore(Path(tmp) / "state.db")
             api = FallbackApi("a" * 40)
             provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
-            found = provider.discover(need("ai.acceleration_backend"), limit=2)
+            found = provider.discover(need("network.http"), limit=2)
             self.assertEqual(
                 {candidate.repository for candidate in found},
                 {"owner/repo", "owner/broad"},
