@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import tempfile
+import urllib.parse
 import unittest
 from pathlib import Path
 from typing import Any
@@ -351,26 +352,26 @@ class GitHubDiscoveryTests(unittest.TestCase):
             def get(self, path: str) -> GitHubResponse:
                 if path.startswith("/search/repositories?"):
                     self.calls.append(path)
-                    # First precise query already has enough matches to
-                    # exhaust the requested cap without reserving slots.
-                     query = __import__("urllib.parse", fromlist=["unquote"]).unquote(path)
-                    repo = (
-                        "owner/repo"
-                        if "target-specific" in query.lower()
-                        else "owner/broad"
+                    # The first, overly specific query contains enough results
+                    # to fill the cap. We must still execute capability fallback.
+                    precise = "target-specific" in urllib.parse.unquote(path).lower()
+                    names = (
+                        ["owner/repo", "owner/irrelevant"]
+                        if precise else ["owner/broad"]
                     )
                     return GitHubResponse(
-                        {"items": [{"full_name": repo}]},
+                        {"items": [{"full_name": name} for name in names]},
                         {"X-RateLimit-Resource": "search",
                          "X-RateLimit-Remaining": "20",
                          "X-RateLimit-Reset": "9999999999"},
                     )
-                if path.startswith("/repos/owner/broad"):
-                    original = super().get(path.replace("owner/broad", "owner/repo"))
-                    if path == "/repos/owner/broad" and isinstance(original.data, dict):
+                if path.startswith(("/repos/owner/broad", "/repos/owner/irrelevant")):
+                    name = path.split("/")[3]
+                    original = super().get(path.replace(f"/{name}", "/repo", 1))
+                    if path == f"/repos/owner/{name}" and isinstance(original.data, dict):
                         meta = dict(original.data)
-                        meta["full_name"] = "owner/broad"
-                        meta["name"] = "broad"
+                        meta["full_name"] = f"owner/{name}"
+                        meta["name"] = name
                         return GitHubResponse(meta, original.headers)
                     return original
                 return super().get(path)
@@ -384,7 +385,7 @@ class GitHubDiscoveryTests(unittest.TestCase):
                 {candidate.repository for candidate in found},
                 {"owner/repo", "owner/broad"},
             )
-            self.assertGreaterEqual(provider.last_discovery_diagnostics["queries_attempted"], 2)
+            self.assertEqual(provider.last_discovery_diagnostics["queries_attempted"], 2)
             self.assertEqual(provider.last_discovery_diagnostics["candidates_returned"], 2)
 
 
