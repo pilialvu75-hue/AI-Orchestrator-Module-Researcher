@@ -344,5 +344,66 @@ class GitHubDiscoveryTests(unittest.TestCase):
         self.assertTrue(any("acceleration backend" in query for query in queries))
         self.assertTrue(all("archived:false" in query for query in queries))
 
+
+class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
+    def test_search_quota_block_is_visible_without_api_requests(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            rate = RateLimitManager(state)
+            rate.observe_headers({
+                "X-RateLimit-Resource": "search",
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": "9999999999",
+            })
+            api = FakeGitHubApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, rate)  # type: ignore[arg-type]
+            self.assertEqual(provider.discover(need("network.http")), [])
+            self.assertEqual(api.calls, [])
+            self.assertEqual(
+                provider.last_discovery_diagnostics["status"], "SEARCH_RATE_LIMITED"
+            )
+            self.assertEqual(
+                provider.last_discovery_diagnostics["queries_attempted"], 0
+            )
+
+    def test_empty_search_is_distinct_from_quota_block(self) -> None:
+        class EmptySearchApi(FakeGitHubApi):
+            def get(self, path: str) -> GitHubResponse:
+                if path.startswith("/search/repositories?"):
+                    self.calls.append(path)
+                    return GitHubResponse(
+                        {"items": []},
+                        {"X-RateLimit-Resource": "search",
+                         "X-RateLimit-Remaining": "10",
+                         "X-RateLimit-Reset": "9999999999"},
+                    )
+                return super().get(path)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            api = EmptySearchApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
+            self.assertEqual(provider.discover(need("network.http")), [])
+            diagnostics = provider.last_discovery_diagnostics
+            self.assertEqual(diagnostics["status"], "NO_SEARCH_HITS")
+            self.assertGreater(int(diagnostics["queries_attempted"]), 0)
+            self.assertEqual(diagnostics["search_hits"], 0)
+            self.assertEqual(diagnostics["candidates_returned"], 0)
+
+    def test_found_candidates_are_counted_without_raw_urls(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            api = FakeGitHubApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, RateLimitManager(state))  # type: ignore[arg-type]
+            self.assertEqual(len(provider.discover(need("network.http"), limit=1)), 1)
+            diagnostics = provider.last_discovery_diagnostics
+            self.assertEqual(diagnostics["status"], "CANDIDATES_FOUND")
+            self.assertEqual(diagnostics["candidates_returned"], 1)
+            self.assertEqual(diagnostics["unique_repository_hits"], 1)
+            self.assertEqual(diagnostics["search_hits"], 1)
+            self.assertNotIn("repository", diagnostics)
+            self.assertNotIn("query", diagnostics)
+
+
 if __name__ == "__main__":
     unittest.main()
