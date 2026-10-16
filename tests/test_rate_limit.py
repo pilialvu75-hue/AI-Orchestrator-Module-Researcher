@@ -71,5 +71,76 @@ class RateLimitTests(unittest.TestCase):
             self.assertGreaterEqual(decision.retry_after_seconds, 60)
 
 
+    def test_search_and_core_buckets_are_independent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            manager = RateLimitManager(state)
+            reset = str(int(time.time()) + 300)
+            manager.observe_headers(
+                {"X-RateLimit-Resource": "core", "X-RateLimit-Remaining": "0",
+                 "X-RateLimit-Reset": reset}
+            )
+            manager.observe_headers(
+                {"X-RateLimit-Resource": "search", "X-RateLimit-Remaining": "5",
+                 "X-RateLimit-Reset": reset}
+            )
+            self.assertFalse(manager.decision(resource="core").allowed)
+            self.assertTrue(manager.decision(resource="search").allowed)
+            self.assertEqual(state.get_json("rate_limit")["remaining"], 0)
+            manager.observe_headers(
+                {"X-RateLimit-Resource": "search", "X-RateLimit-Remaining": "0",
+                 "X-RateLimit-Reset": reset}
+            )
+            self.assertFalse(manager.decision(resource="search").allowed)
+            manager.observe_headers(
+                {"X-RateLimit-Resource": "core", "X-RateLimit-Remaining": "4",
+                 "X-RateLimit-Reset": reset}
+            )
+            self.assertTrue(manager.decision(resource="core").allowed)
+            self.assertFalse(manager.decision(resource="search").allowed)
+
+    def test_search_quota_reset_is_independent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            manager = RateLimitManager(state)
+            manager.observe_headers(
+                {"x-ratelimit-resource": "search", "x-ratelimit-remaining": "0",
+                 "x-ratelimit-reset": str(int(time.time()) - 1)}
+            )
+            manager.observe_headers(
+                {"X-RateLimit-Resource": "core", "X-RateLimit-Remaining": "0",
+                 "X-RateLimit-Reset": str(int(time.time()) + 200)}
+            )
+            self.assertTrue(manager.decision(resource="search").allowed)
+            self.assertFalse(manager.decision(resource="core").allowed)
+
+    def test_core_decision_preserves_search_backoff(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            manager = RateLimitManager(state)
+            manager.record_backoff(120, "github_search_rate_limit")
+            self.assertTrue(manager.decision(resource="core").allowed)
+            self.assertEqual(
+                state.get_json("backoff")["reason"], "github_search_rate_limit"
+            )
+            manager.observe_headers(
+                {"X-RateLimit-Resource": "search", "X-RateLimit-Remaining": "1",
+                 "X-RateLimit-Reset": str(int(time.time()) + 200)}
+            )
+            self.assertTrue(manager.decision(resource="search").allowed)
+            self.assertIsNone(state.get_json("backoff"))
+
+    def test_legacy_quota_remains_core_only(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            state.set_json(
+                "rate_limit",
+                {"remaining": 0, "reset_epoch": int(time.time()) + 300},
+            )
+            manager = RateLimitManager(state)
+            self.assertFalse(manager.decision(resource="core").allowed)
+            self.assertTrue(manager.decision(resource="search").allowed)
+
+
 if __name__ == "__main__":
     unittest.main()
