@@ -38,6 +38,14 @@ class GitHubDiscoveryProvider:
         self.api = api
         self.rate_limits = rate_limits
         self.dart_releases = DartStableReleaseResolver(api, self._observe)
+        # Aggregated non-sensitive counters for the most recent discovery call.
+        self.last_discovery_diagnostics: dict[str, str | int] = {
+            "status": "NOT_RUN",
+            "queries_attempted": 0,
+            "search_hits": 0,
+            "unique_repository_hits": 0,
+            "candidates_returned": 0,
+        }
 
     @staticmethod
     def _queries(need: Need) -> tuple[str, ...]:
@@ -219,12 +227,21 @@ class GitHubDiscoveryProvider:
         return selected_sha, selected_commit, selected_tree, release_metadata
 
     def discover(self, need: Need, limit: int = 8) -> list[Candidate]:
+        diagnostics: dict[str, str | int] = {
+            "status": "RUNNING",
+            "queries_attempted": 0,
+            "search_hits": 0,
+            "unique_repository_hits": 0,
+            "candidates_returned": 0,
+        }
+        self.last_discovery_diagnostics = diagnostics
         decision = self.rate_limits.decision(resource="search")
         if not decision.allowed:
             self.rate_limits.record_backoff(
                 decision.retry_after_seconds,
                 "github_search_rate_limit",
             )
+            diagnostics["status"] = "SEARCH_RATE_LIMITED"
             return []
         items: list[Any] = []
         seen_repositories: set[str] = set()
@@ -235,14 +252,19 @@ class GitHubDiscoveryProvider:
                 self.rate_limits.record_backoff(
                     decision.retry_after_seconds, "github_search_rate_limit"
                 )
+                diagnostics["status"] = "SEARCH_RATE_LIMITED"
                 break
             query = urllib.parse.quote(raw_query, safe="")
             response = self.api.get(
                 f"/search/repositories?q={query}&sort=updated&order=desc&per_page={min(limit, 20)}"
             )
             self._observe(response)
+            diagnostics["queries_attempted"] = int(diagnostics["queries_attempted"]) + 1
             data = response.data
             raw_items = data.get("items", []) if isinstance(data, dict) else []
+            if not isinstance(raw_items, list):
+                raw_items = []
+            diagnostics["search_hits"] = int(diagnostics["search_hits"]) + len(raw_items)
             for raw in raw_items:
                 if not isinstance(raw, dict):
                     continue
@@ -255,6 +277,7 @@ class GitHubDiscoveryProvider:
                     break
             if len(items) >= limit:
                 break
+        diagnostics["unique_repository_hits"] = len(items)
         candidates: list[Candidate] = []
         for raw in items:
             if not isinstance(raw, dict):
@@ -388,4 +411,12 @@ class GitHubDiscoveryProvider:
                     },
                 )
             )
+        diagnostics["candidates_returned"] = len(candidates)
+        if diagnostics["status"] == "RUNNING":
+            if candidates:
+                diagnostics["status"] = "CANDIDATES_FOUND"
+            elif diagnostics["search_hits"]:
+                diagnostics["status"] = "SEARCH_HITS_UNRESOLVED"
+            else:
+                diagnostics["status"] = "NO_SEARCH_HITS"
         return candidates
