@@ -342,6 +342,7 @@ class GitHubDiscoveryTests(unittest.TestCase):
         queries = GitHubDiscoveryProvider._queries(requested)
         self.assertGreaterEqual(len(queries), 3)
         self.assertTrue(queries[0].startswith("llama cpp vulkan "))
+        self.assertTrue(queries[1].startswith("acceleration backend in:name"))
         self.assertTrue(any("acceleration backend" in query for query in queries[1:]))
         self.assertTrue(all("archived:false" in query for query in queries))
         # A concrete upstream vocabulary must not remove taxonomy fallbacks.
