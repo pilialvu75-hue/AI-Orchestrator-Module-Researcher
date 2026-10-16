@@ -63,8 +63,8 @@ class GitHubDiscoveryProvider:
         capability_terms = " ".join(capability_words)
         raw = (
             f"{title_terms} {capability_terms}".strip(),
-            title_terms.strip(),
             capability_terms.strip(),
+            title_terms.strip(),
         )
         seen: set[str] = set()
         queries: list[str] = []
@@ -245,7 +245,14 @@ class GitHubDiscoveryProvider:
             return []
         items: list[Any] = []
         seen_repositories: set[str] = set()
-        for raw_query in self._queries(need):
+        queries = self._queries(need)
+        for query_index, raw_query in enumerate(queries):
+            # Reserve half the candidate slots for a taxonomy-based fallback.
+            # Otherwise the first long query can fill the cap with incidental
+            # README matches and the simpler capability query never executes.
+            cap_after_query = limit
+            if query_index == 0 and len(queries) > 1 and limit > 1:
+                cap_after_query = max(1, limit // 2)
             # GitHub may exhaust the search bucket during this query sweep.
             decision = self.rate_limits.decision(resource="search")
             if not decision.allowed:
@@ -273,7 +280,7 @@ class GitHubDiscoveryProvider:
                     continue
                 seen_repositories.add(full_name)
                 items.append(raw)
-                if len(items) >= limit:
+                if len(items) >= cap_after_query:
                     break
             if len(items) >= limit:
                 break
