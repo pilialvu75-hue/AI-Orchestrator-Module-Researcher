@@ -471,7 +471,36 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
             self.assertTrue(api.calls)
             self.assertTrue(all(path.startswith("/search/") for path in api.calls))
             self.assertEqual(
-                provider.last_discovery_diagnostics["status"], "SEARCH_RATE_LIMITED"
+                provider.last_discovery_diagnostics["status"], "CORE_RATE_LIMITED"
+            )
+
+    def test_core_quota_exhausted_after_repository_metadata(self) -> None:
+        class OneCoreCallApi(FakeGitHubApi):
+            def get(self, path: str) -> GitHubResponse:
+                response = super().get(path)
+                if path.startswith("/search/"):
+                    return GitHubResponse(response.data, {
+                        "X-RateLimit-Resource": "search",
+                        "X-RateLimit-Remaining": "100",
+                        "X-RateLimit-Reset": "9999999999",
+                    })
+                if path == "/repos/owner/repo":
+                    return GitHubResponse(response.data, {
+                        "X-RateLimit-Resource": "core",
+                        "X-RateLimit-Remaining": "0",
+                        "X-RateLimit-Reset": "9999999999",
+                    })
+                return response
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rate = RateLimitManager(SQLiteStateStore(Path(tmp) / "state.db"))
+            api = OneCoreCallApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, rate)  # type: ignore[arg-type]
+            self.assertEqual(provider.discover(need("network.http"), limit=1), [])
+            self.assertIn("/repos/owner/repo", api.calls)
+            self.assertFalse(any("/commits/" in path for path in api.calls))
+            self.assertEqual(
+                provider.last_discovery_diagnostics["status"], "CORE_RATE_LIMITED"
             )
 
     def test_empty_search_is_distinct_from_quota_block(self) -> None:
