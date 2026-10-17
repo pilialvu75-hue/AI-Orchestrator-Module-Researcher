@@ -439,7 +439,7 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
             self.assertEqual(provider.discover(need("network.http")), [])
             self.assertEqual(api.calls, [])
             self.assertEqual(
-                provider.last_discovery_diagnostics["status"], "SEARCH_RATE_LIMITED"
+                provider.last_discovery_diagnostics["status"], "CORE_RATE_LIMITED"
             )
             self.assertEqual(
                 provider.last_discovery_diagnostics["queries_attempted"], 0
