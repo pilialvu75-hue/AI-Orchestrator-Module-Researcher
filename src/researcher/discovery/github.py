@@ -316,7 +316,7 @@ class GitHubDiscoveryProvider:
                 self.rate_limits.record_backoff(
                     core_decision.retry_after_seconds, "github_core_rate_limit"
                 )
-                diagnostics["status"] = "SEARCH_RATE_LIMITED"
+                diagnostics["status"] = "CORE_RATE_LIMITED"
                 break
             repo = self.api.get(f"/repos/{full_name}")
             self._observe(repo)
