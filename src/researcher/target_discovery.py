@@ -49,6 +49,7 @@ class TargetAwareDiscoveryProvider:
             "unique_repository_hits": 0,
             "candidates_returned": 0,
             "rate_limited_targets": 0,
+            "core_rate_limited_targets": 0,
         }
 
     @staticmethod
@@ -102,6 +103,7 @@ class TargetAwareDiscoveryProvider:
             "unique_repository_hits": 0,
             "candidates_returned": 0,
             "rate_limited_targets": 0,
+            "core_rate_limited_targets": 0,
         }
         self.last_discovery_diagnostics = diagnostics
         if not requested:
@@ -137,6 +139,10 @@ class TargetAwareDiscoveryProvider:
                     diagnostics["rate_limited_targets"] = (
                         int(diagnostics["rate_limited_targets"]) + 1
                     )
+                elif evidence.get("status") == "CORE_RATE_LIMITED":
+                    diagnostics["core_rate_limited_targets"] = (
+                        int(diagnostics["core_rate_limited_targets"]) + 1
+                    )
             for candidate in target_candidates:
                 key = self._candidate_key(candidate)
                 annotated = self._annotate(candidate, (target,))
@@ -164,6 +170,8 @@ class TargetAwareDiscoveryProvider:
         diagnostics["candidates_returned"] = len(output)
         if output:
             diagnostics["status"] = "CANDIDATES_FOUND"
+        elif diagnostics["core_rate_limited_targets"]:
+            diagnostics["status"] = "CORE_RATE_LIMITED"
         elif diagnostics["rate_limited_targets"]:
             diagnostics["status"] = "SEARCH_RATE_LIMITED"
         elif diagnostics["search_hits"]:
