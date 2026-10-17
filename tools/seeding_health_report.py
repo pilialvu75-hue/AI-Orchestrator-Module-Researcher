@@ -51,7 +51,7 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         status = evidence.get("status")
         if status is not None:
             if status not in {
-                "SEARCH_RATE_LIMITED", "NO_SEARCH_HITS",
+                "SEARCH_RATE_LIMITED", "CORE_RATE_LIMITED", "NO_SEARCH_HITS",
                 "SEARCH_HITS_UNRESOLVED", "CANDIDATES_FOUND",
                 "NO_REQUIRED_TARGETS", "NOT_RUN",
             }:
@@ -96,9 +96,10 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
     failures = sum(row.get("state") in {"ERROR", "BLOCKED"} for row in results)
     known_skipped = total("known_candidates_skipped")
     search_rate_limited = discovery_total("rate_limited_targets")
+    core_rate_limited = discovery_statuses.get("CORE_RATE_LIMITED", 0)
     if (
         failures or first_party_state in {"ERROR", "BLOCKED"}
-        or (search_rate_limited and not prepared and not discovered)
+        or ((search_rate_limited or core_rate_limited) and not prepared and not discovered)
     ):
         outcome = "BLOCKED"
     elif sweep_prepared or first_party_submitted or first_party_resumed:
@@ -122,6 +123,7 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         "search_queries_attempted": discovery_total("queries_attempted"),
         "search_hits": discovery_total("search_hits"),
         "search_rate_limited_targets": search_rate_limited,
+        "core_rate_limited_cycles": core_rate_limited,
         "search_status_counts": dict(sorted(discovery_statuses.items())),
         "shortlisted": total("shortlisted"),
         "prepared_submissions": prepared,
