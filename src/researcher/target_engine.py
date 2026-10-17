@@ -233,6 +233,7 @@ class TargetAwareResearchEngine(ResearchEngine):
                         "status", "targets_requested", "queries_attempted",
                         "search_hits", "unique_repository_hits",
                         "candidates_returned", "rate_limited_targets",
+                        "core_rate_limited_targets",
                     }
                     and isinstance(value, (str, int))
                     and not isinstance(value, bool)
