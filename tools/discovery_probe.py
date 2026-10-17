@@ -120,6 +120,8 @@ def main() -> None:
         encoding="utf-8",
     )
     print(json.dumps(report, sort_keys=True))
+    if any(row["status"] == "GITHUB_API_ERROR" for row in rows):
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
