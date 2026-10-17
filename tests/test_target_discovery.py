@@ -99,6 +99,28 @@ class TargetSearchDiagnosticsTests(unittest.TestCase):
         self.assertEqual(report["rate_limited_targets"], 2)
         self.assertEqual(report["queries_attempted"], 0)
 
+    def test_core_exhaustion_is_not_mislabeled_as_search_exhaustion(self) -> None:
+        class CoreBlockedDiscovery:
+            name = "core-blocked"
+
+            def __init__(self) -> None:
+                self.last_discovery_diagnostics: dict[str, str | int] = {}
+
+            def discover(self, requested: Need, limit: int = 8) -> list[Candidate]:
+                self.last_discovery_diagnostics = {
+                    "status": "CORE_RATE_LIMITED",
+                    "queries_attempted": 1,
+                    "search_hits": 1,
+                }
+                return []
+
+        provider = TargetAwareDiscoveryProvider(CoreBlockedDiscovery())  # type: ignore[arg-type]
+        self.assertEqual(provider.discover_for_targets(need(), ("android", "desktop")), [])
+        report = provider.last_discovery_diagnostics
+        self.assertEqual(report["status"], "CORE_RATE_LIMITED")
+        self.assertEqual(report["core_rate_limited_targets"], 2)
+        self.assertEqual(report["rate_limited_targets"], 0)
+
     def test_aggregates_empty_hits_separately(self) -> None:
         class EmptyDiscovery:
             name = "empty"
