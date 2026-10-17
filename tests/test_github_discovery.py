@@ -446,6 +446,17 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
             )
 
     def test_exhausted_core_quota_prevents_repository_resolution(self) -> None:
+        class SearchBucketApi(FakeGitHubApi):
+            def get(self, path: str) -> GitHubResponse:
+                response = super().get(path)
+                if path.startswith("/search/"):
+                    return GitHubResponse(response.data, {
+                        "X-RateLimit-Resource": "search",
+                        "X-RateLimit-Remaining": "100",
+                        "X-RateLimit-Reset": "9999999999",
+                    })
+                return response
+
         with tempfile.TemporaryDirectory() as tmp:
             state = SQLiteStateStore(Path(tmp) / "state.db")
             rate = RateLimitManager(state)
@@ -454,7 +465,7 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
                 "X-RateLimit-Remaining": "0",
                 "X-RateLimit-Reset": "9999999999",
             })
-            api = FakeGitHubApi("a" * 40)
+            api = SearchBucketApi("a" * 40)
             provider = GitHubDiscoveryProvider(api, rate)  # type: ignore[arg-type]
             self.assertEqual(provider.discover(need("network.http"), limit=1), [])
             self.assertTrue(api.calls)
