@@ -445,6 +445,24 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
                 provider.last_discovery_diagnostics["queries_attempted"], 0
             )
 
+    def test_exhausted_core_quota_prevents_repository_resolution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            rate = RateLimitManager(state)
+            rate.observe_headers({
+                "X-RateLimit-Resource": "core",
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": "9999999999",
+            })
+            api = FakeGitHubApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, rate)  # type: ignore[arg-type]
+            self.assertEqual(provider.discover(need("network.http"), limit=1), [])
+            self.assertTrue(api.calls)
+            self.assertTrue(all(path.startswith("/search/") for path in api.calls))
+            self.assertEqual(
+                provider.last_discovery_diagnostics["status"], "SEARCH_RATE_LIMITED"
+            )
+
     def test_empty_search_is_distinct_from_quota_block(self) -> None:
         class EmptySearchApi(FakeGitHubApi):
             def get(self, path: str) -> GitHubResponse:
