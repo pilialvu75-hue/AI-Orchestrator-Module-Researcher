@@ -311,6 +311,13 @@ class GitHubDiscoveryProvider:
             full_name = str(raw.get("full_name", ""))
             if not full_name or "/" not in full_name:
                 continue
+            core_decision = self.rate_limits.decision(resource="core")
+            if not core_decision.allowed:
+                self.rate_limits.record_backoff(
+                    core_decision.retry_after_seconds, "github_core_rate_limit"
+                )
+                diagnostics["status"] = "SEARCH_RATE_LIMITED"
+                break
             repo = self.api.get(f"/repos/{full_name}")
             self._observe(repo)
             meta = repo.data if isinstance(repo.data, dict) else {}
