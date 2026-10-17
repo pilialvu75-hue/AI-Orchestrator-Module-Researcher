@@ -84,6 +84,15 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
     sweep_prepared = array_total("prepared_submissions")
     prepared = sweep_prepared + first_party_submitted + first_party_dry_run_prepared
     recovered = array_total("recovered_submissions")
+    first_party_resumed = 0
+    if first_party_state == "COMPLETE":
+        resumed = first_party["candidate"].get("resumed_submissions", [])
+        if not isinstance(resumed, list):
+            raise ValueError("First-party resumed_submissions must be a list")
+        first_party_resumed = len(resumed)
+    # Engine sweep rows already include recovered deliveries in prepared_submissions.
+    # Only first-party resumed deliveries require an additional contribution.
+    prepared += first_party_resumed
     failures = sum(row.get("state") in {"ERROR", "BLOCKED"} for row in results)
     known_skipped = total("known_candidates_skipped")
     search_rate_limited = discovery_total("rate_limited_targets")
@@ -92,7 +101,7 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         or (search_rate_limited and not prepared and not discovered)
     ):
         outcome = "BLOCKED"
-    elif sweep_prepared or first_party_submitted:
+    elif sweep_prepared or first_party_submitted or first_party_resumed:
         outcome = "CANDIDATES_PREPARED"
     elif first_party_dry_run_prepared:
         outcome = "CANDIDATES_DRY_RUN_PREPARED"
@@ -119,7 +128,8 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         "sweep_prepared_submissions": sweep_prepared,
         "first_party_submitted": first_party_submitted,
         "first_party_dry_run_prepared": first_party_dry_run_prepared,
-        "recovered_submissions": recovered,
+        "recovered_submissions": recovered + first_party_resumed,
+        "first_party_resumed_submissions": first_party_resumed,
         "backfill_proposed": _count(backfill.get("proposed", 0)),
         "first_party_state": first_party_state,
         "first_party_reason": str(first_party.get("reason", "")),
