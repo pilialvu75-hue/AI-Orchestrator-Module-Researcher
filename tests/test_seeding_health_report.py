@@ -130,6 +130,28 @@ class SeedingHealthTests(unittest.TestCase):
                 },
             )
 
+    def test_resume_only_sweep_counts_existing_prepared_deliveries_once(self) -> None:
+        actual = summarize({}, {"results": [{
+            "state": "COMPLETED", "discovered": 0,
+            "recovered_submissions": [{"id": "resumed"}],
+            "prepared_submissions": [{"id": "resumed"}],
+        }]})
+        self.assertEqual(actual["outcome"], "CANDIDATES_PREPARED")
+        self.assertEqual(actual["prepared_submissions"], 1)
+        self.assertEqual(actual["recovered_submissions"], 1)
+
+    def test_first_party_resumed_delivery_counts_as_productive(self) -> None:
+        actual = summarize({}, {
+            "first_party": {"state": "COMPLETE", "candidate": {
+                "submitted": False, "dry_run_prepared": False,
+                "resumed_submissions": [{"id": "resumed"}],
+            }},
+            "results": [{"state": "COMPLETED", "discovered": 0}],
+        })
+        self.assertEqual(actual["outcome"], "CANDIDATES_PREPARED")
+        self.assertEqual(actual["prepared_submissions"], 1)
+        self.assertEqual(actual["first_party_resumed_submissions"], 1)
+
     def test_first_party_blocked_preempts_other_results(self) -> None:
         actual = summarize(
             {},
