@@ -42,6 +42,18 @@ class SeedingHealthTests(unittest.TestCase):
         self.assertEqual(actual["prepared_submissions"], 1)
         self.assertFalse(actual["certification_verified"])
 
+    def test_core_limited_targets_do_not_inflate_cycle_count(self) -> None:
+        actual = summarize({}, {"results": [{
+            "state": "COMPLETED",
+            "discovery_diagnostics": {
+                "status": "CORE_RATE_LIMITED",
+                "core_rate_limited_targets": 2,
+            },
+        }]})
+        self.assertEqual(actual["core_rate_limited_targets"], 2)
+        self.assertEqual(actual["core_rate_limited_cycles"], 1)
+        self.assertEqual(actual["outcome"], "BLOCKED")
+
     def test_blocked_cycle_does_not_count_as_productive(self) -> None:
         actual = summarize(
             {},
