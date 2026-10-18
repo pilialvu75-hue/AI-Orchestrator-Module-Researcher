@@ -474,7 +474,7 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
                 provider.last_discovery_diagnostics["status"], "CORE_RATE_LIMITED"
             )
 
-    def test_search_quota_exhausted_after_initial_repository_search(self) -> None:
+    def test_search_quota_exhausted_does_not_prevent_valid_candidate_resolution(self) -> None:
         class LastSearchCallApi(FakeGitHubApi):
             def get(self, path: str) -> GitHubResponse:
                 response = super().get(path)
@@ -495,7 +495,7 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
                 sum(path.startswith("/search/") for path in api.calls), 1
             )
             self.assertEqual(
-                provider.last_discovery_diagnostics["status"], "SEARCH_RATE_LIMITED"
+                provider.last_discovery_diagnostics["status"], "CANDIDATES_FOUND"
             )
 
     def test_core_quota_exhausted_after_repository_metadata(self) -> None:
