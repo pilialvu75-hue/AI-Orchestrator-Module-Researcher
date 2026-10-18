@@ -7,7 +7,11 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from researcher.discovery.github import GitHubDiscoveryProvider, _QuotaCheckedApi, _SearchQuotaExhausted
+from researcher.discovery.github import (
+    GitHubDiscoveryProvider,
+    _QuotaCheckedApi,
+    _SearchQuotaExhausted,
+)
 from researcher.github_api import GitHubResponse
 from researcher.rate_limit import RateLimitManager
 from researcher.state import SQLiteStateStore
