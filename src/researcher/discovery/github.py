@@ -70,7 +70,24 @@ class _QuotaCheckedApi:
             if resource == "search":
                 raise _SearchQuotaExhausted()
             raise _CoreQuotaExhausted()
-        return self._api.get(path)
+        try:
+            return self._api.get(path)
+        except GitHubApiError as exc:
+            headers = {key.lower(): value for key, value in exc.headers.items()}
+            if exc.status in {403, 429} and (
+                headers.get("x-ratelimit-remaining") == "0"
+            ):
+                quota_headers = dict(exc.headers)
+                quota_headers["X-RateLimit-Resource"] = resource
+                self._rate_limits.observe_headers(quota_headers)
+                retry = self._rate_limits.decision(resource=resource).retry_after_seconds
+                self._rate_limits.record_backoff(
+                    retry or 60, f"github_{resource}_rate_limit"
+                )
+                if resource == "search":
+                    raise _SearchQuotaExhausted() from exc
+                raise _CoreQuotaExhausted() from exc
+            raise
 
 
 class GitHubDiscoveryProvider:
