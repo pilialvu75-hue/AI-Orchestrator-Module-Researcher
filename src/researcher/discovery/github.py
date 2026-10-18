@@ -479,6 +479,7 @@ class GitHubDiscoveryProvider:
                     )
                 )
             except _CoreQuotaExhausted:
+                diagnostics["core_quota_exhausted"] = 1
                 diagnostics["status"] = "CORE_RATE_LIMITED"
                 break
             except _SearchQuotaExhausted:
