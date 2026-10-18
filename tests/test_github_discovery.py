@@ -474,6 +474,30 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
                 provider.last_discovery_diagnostics["status"], "CORE_RATE_LIMITED"
             )
 
+    def test_search_quota_exhausted_after_initial_repository_search(self) -> None:
+        class LastSearchCallApi(FakeGitHubApi):
+            def get(self, path: str) -> GitHubResponse:
+                response = super().get(path)
+                if path.startswith("/search/"):
+                    return GitHubResponse(response.data, {
+                        "X-RateLimit-Resource": "search",
+                        "X-RateLimit-Remaining": "0",
+                        "X-RateLimit-Reset": "9999999999",
+                    })
+                return response
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rate = RateLimitManager(SQLiteStateStore(Path(tmp) / "state.db"))
+            api = LastSearchCallApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, rate)  # type: ignore[arg-type]
+            provider.discover(need("network.http"), limit=1)
+            self.assertEqual(
+                sum(path.startswith("/search/") for path in api.calls), 1
+            )
+            self.assertEqual(
+                provider.last_discovery_diagnostics["status"], "SEARCH_RATE_LIMITED"
+            )
+
     def test_core_quota_exhausted_after_repository_metadata(self) -> None:
         class OneCoreCallApi(FakeGitHubApi):
             def get(self, path: str) -> GitHubResponse:
