@@ -97,8 +97,10 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
     known_skipped = total("known_candidates_skipped")
     search_rate_limited = discovery_total("rate_limited_targets")
     core_rate_limited = discovery_total("core_rate_limited_targets")
-    if not core_rate_limited:
-        core_rate_limited = discovery_statuses.get("CORE_RATE_LIMITED", 0)
+    core_limited_cycles = sum(
+        row.get("discovery_diagnostics", {}).get("status") == "CORE_RATE_LIMITED"
+        for row in results
+    )
     if (
         failures or first_party_state in {"ERROR", "BLOCKED"}
         or ((search_rate_limited or core_rate_limited) and not prepared and not discovered)
@@ -125,7 +127,8 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         "search_queries_attempted": discovery_total("queries_attempted"),
         "search_hits": discovery_total("search_hits"),
         "search_rate_limited_targets": search_rate_limited,
-        "core_rate_limited_cycles": core_rate_limited,
+        "core_rate_limited_targets": core_rate_limited,
+        "core_rate_limited_cycles": core_limited_cycles,
         "search_status_counts": dict(sorted(discovery_statuses.items())),
         "shortlisted": total("shortlisted"),
         "prepared_submissions": prepared,
