@@ -479,6 +479,32 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
                 provider.last_discovery_diagnostics["status"], "CORE_RATE_LIMITED"
             )
 
+    def test_search_http_403_quota_exhaustion_returns_diagnostics(self) -> None:
+        class SearchExhaustedApi(FakeGitHubApi):
+            def get(self, path: str) -> GitHubResponse:
+                if path.startswith("/search/"):
+                    self.calls.append(path)
+                    raise GitHubApiError(403, "rate limit exceeded", {
+                        "X-RateLimit-Resource": "search",
+                        "X-RateLimit-Remaining": "0",
+                        "X-RateLimit-Reset": "9999999999",
+                    })
+                return super().get(path)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rate = RateLimitManager(SQLiteStateStore(Path(tmp) / "state.db"))
+            api = SearchExhaustedApi("a" * 40)
+            provider = GitHubDiscoveryProvider(api, rate)  # type: ignore[arg-type]
+            self.assertEqual(provider.discover(need("network.http")), [])
+            self.assertEqual(
+                provider.last_discovery_diagnostics["status"], "SEARCH_RATE_LIMITED"
+            )
+            self.assertEqual(
+                provider.last_discovery_diagnostics["search_quota_exhausted"], 1
+            )
+            self.assertFalse(rate.decision(resource="search").allowed)
+            self.assertEqual(len(api.calls), 1)
+
     def test_failed_core_request_persists_quota_and_blocks_followup(self) -> None:
         class ExhaustedApi(FakeGitHubApi):
             def get(self, path: str) -> GitHubResponse:
