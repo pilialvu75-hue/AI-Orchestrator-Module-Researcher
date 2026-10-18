@@ -79,7 +79,12 @@ def probe_need(
         )
         return {
             "capability_id": need.capability_id,
-            "status": "CANDIDATES_OBSERVED" if candidates else "NO_CANDIDATES",
+            "status": (
+                "CANDIDATES_OBSERVED" if candidates else
+                "QUOTA_BLOCKED" if diagnostics.get("status") in {
+                    "SEARCH_RATE_LIMITED", "CORE_RATE_LIMITED"
+                } else "NO_CANDIDATES"
+            ),
             "diagnostics": diagnostics,
             "candidates": [report_candidate(item) for item in candidates],
         }
@@ -120,7 +125,7 @@ def main() -> None:
         encoding="utf-8",
     )
     print(json.dumps(report, sort_keys=True))
-    if any(row["status"] == "GITHUB_API_ERROR" for row in rows):
+    if any(row["status"] in {"GITHUB_API_ERROR", "QUOTA_BLOCKED"} for row in rows):
         raise SystemExit(1)
 
 
