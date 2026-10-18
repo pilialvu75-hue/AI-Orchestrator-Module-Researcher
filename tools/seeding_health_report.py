@@ -98,7 +98,10 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
     search_rate_limited = discovery_total("rate_limited_targets")
     core_rate_limited = discovery_total("core_rate_limited_targets")
     core_limited_cycles = sum(
-        row.get("discovery_diagnostics", {}).get("status") == "CORE_RATE_LIMITED"
+        (
+            row.get("discovery_diagnostics", {}).get("core_rate_limited_targets", 0) > 0
+            or row.get("discovery_diagnostics", {}).get("status") == "CORE_RATE_LIMITED"
+        )
         for row in results
     )
     if (
