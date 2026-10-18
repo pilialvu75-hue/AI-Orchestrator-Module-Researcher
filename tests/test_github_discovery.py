@@ -10,9 +10,10 @@ from typing import Any
 from researcher.discovery.github import (
     GitHubDiscoveryProvider,
     _QuotaCheckedApi,
+    _CoreQuotaExhausted,
     _SearchQuotaExhausted,
 )
-from researcher.github_api import GitHubResponse
+from researcher.github_api import GitHubApiError, GitHubResponse
 from researcher.rate_limit import RateLimitManager
 from researcher.state import SQLiteStateStore
 
