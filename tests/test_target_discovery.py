@@ -121,6 +121,30 @@ class TargetSearchDiagnosticsTests(unittest.TestCase):
         self.assertEqual(report["core_rate_limited_targets"], 2)
         self.assertEqual(report["rate_limited_targets"], 0)
 
+    def test_both_exhausted_buckets_are_counted_for_each_target(self) -> None:
+        class BothBlockedDiscovery:
+            name = "both-blocked"
+
+            def __init__(self) -> None:
+                self.last_discovery_diagnostics: dict[str, str | int] = {}
+
+            def discover(self, requested: Need, limit: int = 8) -> list[Candidate]:
+                self.last_discovery_diagnostics = {
+                    "status": "CORE_RATE_LIMITED",
+                    "search_quota_exhausted": 1,
+                    "core_quota_exhausted": 1,
+                    "queries_attempted": 1,
+                    "search_hits": 1,
+                }
+                return []
+
+        provider = TargetAwareDiscoveryProvider(BothBlockedDiscovery())  # type: ignore[arg-type]
+        self.assertEqual(provider.discover_for_targets(need(), ("android", "desktop")), [])
+        report = provider.last_discovery_diagnostics
+        self.assertEqual(report["status"], "CORE_RATE_LIMITED")
+        self.assertEqual(report["rate_limited_targets"], 2)
+        self.assertEqual(report["core_rate_limited_targets"], 2)
+
     def test_aggregates_empty_hits_separately(self) -> None:
         class EmptyDiscovery:
             name = "empty"
