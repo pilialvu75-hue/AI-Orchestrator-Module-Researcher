@@ -478,6 +478,27 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
                 provider.last_discovery_diagnostics["status"], "CORE_RATE_LIMITED"
             )
 
+    def test_failed_core_request_persists_quota_and_blocks_followup(self) -> None:
+        class ExhaustedApi(FakeGitHubApi):
+            def get(self, path: str) -> GitHubResponse:
+                self.calls.append(path)
+                raise GitHubApiError(403, "rate limit exceeded", {
+                    "X-RateLimit-Resource": "core",
+                    "X-RateLimit-Remaining": "0",
+                    "X-RateLimit-Reset": "9999999999",
+                })
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rate = RateLimitManager(SQLiteStateStore(Path(tmp) / "state.db"))
+            api = ExhaustedApi("a" * 40)
+            guarded = _QuotaCheckedApi(api, rate)  # type: ignore[arg-type]
+            with self.assertRaises(_CoreQuotaExhausted):
+                guarded.get("/repos/owner/repo")
+            self.assertFalse(rate.decision(resource="core").allowed)
+            with self.assertRaises(_CoreQuotaExhausted):
+                guarded.get("/repos/owner/other")
+            self.assertEqual(api.calls, ["/repos/owner/repo"])
+
     def test_nested_commit_search_is_blocked_by_exhausted_search_bucket(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             rate = RateLimitManager(SQLiteStateStore(Path(tmp) / "state.db"))
