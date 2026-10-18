@@ -80,10 +80,9 @@ def probe_need(
         return {
             "capability_id": need.capability_id,
             "status": (
-                "CANDIDATES_OBSERVED" if candidates else
                 "QUOTA_BLOCKED" if diagnostics.get("status") in {
                     "SEARCH_RATE_LIMITED", "CORE_RATE_LIMITED"
-                } else "NO_CANDIDATES"
+                } else "CANDIDATES_OBSERVED" if candidates else "NO_CANDIDATES"
             ),
             "diagnostics": diagnostics,
             "candidates": [report_candidate(item) for item in candidates],
