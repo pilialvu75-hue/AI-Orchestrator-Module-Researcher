@@ -280,6 +280,8 @@ class GitHubDiscoveryProvider:
             "search_hits": 0,
             "unique_repository_hits": 0,
             "candidates_returned": 0,
+            "search_quota_exhausted": 0,
+            "core_quota_exhausted": 0,
         }
         self.last_discovery_diagnostics = diagnostics
         decision = self.rate_limits.decision(resource="search")
@@ -288,6 +290,7 @@ class GitHubDiscoveryProvider:
                 decision.retry_after_seconds,
                 "github_search_rate_limit",
             )
+            diagnostics["search_quota_exhausted"] = 1
             diagnostics["status"] = "SEARCH_RATE_LIMITED"
             return []
         items: list[Any] = []
@@ -306,6 +309,7 @@ class GitHubDiscoveryProvider:
                 self.rate_limits.record_backoff(
                     decision.retry_after_seconds, "github_search_rate_limit"
                 )
+                diagnostics["search_quota_exhausted"] = 1
                 diagnostics["status"] = "SEARCH_RATE_LIMITED"
                 break
             query = urllib.parse.quote(raw_query, safe="")
@@ -344,6 +348,7 @@ class GitHubDiscoveryProvider:
                 self.rate_limits.record_backoff(
                     core_decision.retry_after_seconds, "github_core_rate_limit"
                 )
+                diagnostics["core_quota_exhausted"] = 1
                 diagnostics["status"] = "CORE_RATE_LIMITED"
                 break
             try:
@@ -477,6 +482,7 @@ class GitHubDiscoveryProvider:
                 diagnostics["status"] = "CORE_RATE_LIMITED"
                 break
             except _SearchQuotaExhausted:
+                diagnostics["search_quota_exhausted"] = 1
                 diagnostics["status"] = "SEARCH_RATE_LIMITED"
                 continue
         diagnostics["candidates_returned"] = len(candidates)
