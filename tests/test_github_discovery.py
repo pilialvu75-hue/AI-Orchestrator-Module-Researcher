@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from researcher.discovery.github import GitHubDiscoveryProvider
+from researcher.discovery.github import GitHubDiscoveryProvider, _QuotaCheckedApi, _SearchQuotaExhausted
 from researcher.github_api import GitHubResponse
 from researcher.rate_limit import RateLimitManager
 from researcher.state import SQLiteStateStore
@@ -473,6 +473,20 @@ class GitHubDiscoveryDiagnosticsTests(unittest.TestCase):
             self.assertEqual(
                 provider.last_discovery_diagnostics["status"], "CORE_RATE_LIMITED"
             )
+
+    def test_nested_commit_search_is_blocked_by_exhausted_search_bucket(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            rate = RateLimitManager(SQLiteStateStore(Path(tmp) / "state.db"))
+            rate.observe_headers({
+                "X-RateLimit-Resource": "search",
+                "X-RateLimit-Remaining": "0",
+                "X-RateLimit-Reset": "9999999999",
+            })
+            api = FakeGitHubApi("a" * 40)
+            guarded = _QuotaCheckedApi(api, rate)  # type: ignore[arg-type]
+            with self.assertRaises(_SearchQuotaExhausted):
+                guarded.get("/search/commits?q=repo%3Aowner%2Frepo")
+            self.assertEqual(api.calls, [])
 
     def test_search_quota_exhausted_does_not_prevent_valid_candidate_resolution(self) -> None:
         class LastSearchCallApi(FakeGitHubApi):
