@@ -49,6 +49,10 @@ class _CoreQuotaExhausted(RuntimeError):
     pass
 
 
+class _SearchQuotaExhausted(RuntimeError):
+    pass
+
+
 class _QuotaCheckedApi:
     """Guard every core API call, including nested Dart release lookups."""
 
@@ -57,13 +61,15 @@ class _QuotaCheckedApi:
         self._rate_limits = rate_limits
 
     def get(self, path: str) -> GitHubResponse:
-        if not path.startswith("/search/"):
-            decision = self._rate_limits.decision(resource="core")
-            if not decision.allowed:
-                self._rate_limits.record_backoff(
-                    decision.retry_after_seconds, "github_core_rate_limit"
-                )
-                raise _CoreQuotaExhausted()
+        resource = "search" if path.startswith("/search/") else "core"
+        decision = self._rate_limits.decision(resource=resource)
+        if not decision.allowed:
+            self._rate_limits.record_backoff(
+                decision.retry_after_seconds, f"github_{resource}_rate_limit"
+            )
+            if resource == "search":
+                raise _SearchQuotaExhausted()
+            raise _CoreQuotaExhausted()
         return self._api.get(path)
 
 
@@ -469,6 +475,9 @@ class GitHubDiscoveryProvider:
                 )
             except _CoreQuotaExhausted:
                 diagnostics["status"] = "CORE_RATE_LIMITED"
+                break
+            except _SearchQuotaExhausted:
+                diagnostics["status"] = "SEARCH_RATE_LIMITED"
                 break
         diagnostics["candidates_returned"] = len(candidates)
         if diagnostics["status"] == "RUNNING":
