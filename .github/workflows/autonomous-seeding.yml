@@ -63,6 +63,19 @@ jobs:
           researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json"
           researcher handoffs > "${RUNNER_TEMP}/researcher-handoffs.json"
           python tools/seeding_health_report.py --backfill "${RUNNER_TEMP}/researcher-backfill-result.json" --sweep "${RUNNER_TEMP}/researcher-cycle-result.json" --output "${RUNNER_TEMP}/researcher-run-health.json"
+          # Make zero-yield production runs visible in Actions logs as well as artifacts.
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          report = Path(os.environ["RUNNER_TEMP"]) / "researcher-run-health.json"
+          health = json.loads(report.read_text(encoding="utf-8"))
+          if health["outcome"] == "ZERO_DISCOVERY":
+              print("::warning title=Researcher zero discovery::Seeding completed without discovering any candidates; inspect run-health.json and discovery diagnostics.")
+          elif health["outcome"] == "BLOCKED":
+              print("::warning title=Researcher seeding blocked::Discovery or delivery was blocked; inspect run-health.json.")
+          PY
           # Summarize actionable evolution work without claiming it. Claims are
           # owned exclusively by Module Evolution Worker so seeding cannot strand
           # PROPOSED work in QUEUED.
