@@ -224,12 +224,30 @@ class TargetAwareResearchEngine(ResearchEngine):
                 return result
 
             candidates = self._discover_for_gaps(need, coverage_after_recovery)
+            raw_diagnostics = getattr(self.discovery, "last_discovery_diagnostics", {})
+            discovery_diagnostics = (
+                {
+                    key: value
+                    for key, value in raw_diagnostics.items()
+                    if key in {
+                        "status", "targets_requested", "queries_attempted",
+                        "search_hits", "unique_repository_hits",
+                        "candidates_returned", "rate_limited_targets",
+                        "core_rate_limited_targets",
+                    }
+                    and isinstance(value, (str, int))
+                    and not isinstance(value, bool)
+                }
+                if isinstance(raw_diagnostics, dict) else {}
+            )
+            known_candidates_skipped = 0
             dossiers: list[Dossier] = []
             for candidate in candidates:
                 from .dedup import candidate_fingerprint
 
                 fingerprint = candidate_fingerprint(need.capability_id, candidate)
                 if self.state.is_known_candidate(fingerprint):
+                    known_candidates_skipped += 1
                     continue
 
                 preliminary = self._dossier(need, candidate, contract, "SCREENED")
@@ -415,6 +433,8 @@ class TargetAwareResearchEngine(ResearchEngine):
                 "capability_id": need.capability_id,
                 "discovered": len(candidates),
                 "new_analyzed": len(dossiers),
+                "known_candidates_skipped": known_candidates_skipped,
+                "discovery_diagnostics": discovery_diagnostics,
                 "shortlisted": len(shortlisted),
                 "security_review": len(security_review),
                 "security_review_reasons": dict(sorted(review_reason_counts.items())),

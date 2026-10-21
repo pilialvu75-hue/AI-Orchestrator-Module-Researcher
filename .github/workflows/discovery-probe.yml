@@ -1,0 +1,88 @@
+name: Researcher Live Discovery Probe
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/discovery-probe.yml"
+      - "tools/discovery_probe.py"
+      - "src/researcher/discovery/**"
+      - "src/researcher/rate_limit.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-probe:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+      - name: Live discovery (read-only, no Library credential)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python tools/discovery_probe.py --output "${RUNNER_TEMP}/discovery-proof.json"
+      - name: Pinned source preflight (no Library access)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DATA_DIR: ${{ runner.temp }}/researcher-preflight
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+          DIAGNOSTICS_ENABLED: "false"
+        run: |
+          researcher preflight-pinned \
+            --repository juliansteenbakker/flutter_secure_storage \
+            --commit e8eeb449cd512b26153f0a3376dfe374dd39a999 \
+            > "${RUNNER_TEMP}/pinned-preflight-raw.json"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          raw = json.loads((Path(os.environ["RUNNER_TEMP"]) / "pinned-preflight-raw.json").read_text())
+          candidate = raw.get("candidate", {})
+          security = raw.get("security", {})
+          vulnerability = raw.get("vulnerability", {})
+          report = {
+              "schema": "ai-orchestrator.researcher-source-preflight-proof.v1",
+              "state": raw.get("state", "UNKNOWN"),
+              "source": {
+                  "repository": candidate.get("repository"),
+                  "commit_sha": candidate.get("commit_sha"),
+                  "license": candidate.get("license"),
+                  "source_version": candidate.get("source_version"),
+              },
+              "security_preflight_clear": raw.get("security_preflight_clear", False),
+              "security_verdict": security.get("verdict"),
+              "vulnerability_verdict": vulnerability.get("vulnerability_report", {}).get("verdict"),
+              "vulnerability_admission_eligible": vulnerability.get("admission_eligible", False),
+              "sbom_unresolved_count": len(vulnerability.get("sbom", {}).get("unresolved", [])),
+              "library_accessed": raw.get("library_accessed", True),
+              "library_write_attempted": raw.get("library_write_attempted", True),
+              "source_code_executed": raw.get("executed_untrusted_code", True),
+              "certification_asserted": raw.get("certification_asserted", True),
+          }
+          path = Path(os.environ["RUNNER_TEMP"]) / "pinned-preflight-proof.json"
+          path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+          print(json.dumps(report, sort_keys=True))
+          if (report["state"] != "CLEAR" or not report["security_preflight_clear"]
+                  or report["library_accessed"] or report["library_write_attempted"]
+                  or report["source_code_executed"] or report["certification_asserted"]):
+              raise SystemExit("Pinned preflight did not satisfy read-only CLEAR invariants")
+          PY
+      - name: Archive candidate metadata and diagnostic counters
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: researcher-live-discovery-proof-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/discovery-proof.json
+            ${{ runner.temp }}/pinned-preflight-proof.json
+          if-no-files-found: warn
+          retention-days: 7

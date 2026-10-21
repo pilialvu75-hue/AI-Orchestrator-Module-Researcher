@@ -30,14 +30,81 @@ _LICENSE_FILES = {
 }
 _TEST_DIRS = {"test", "tests", "spec", "specs"}
 
+# Library taxonomy labels are not always upstream repository terminology.
+# Keep one deterministic technical hint for selected high-priority capabilities;
+# the generic capability/title queries remain available as fallbacks.
+_CAPABILITY_SEARCH_HINTS = {
+    "ai.acceleration_backend": "llama cpp vulkan",
+    "ai.local_inference": "llama cpp android",
+    "release.packaging": "github actions android release",
+    "release.update_manager": "flutter app update download",
+    "storage.local_db": "flutter sqlite database",
+    "storage.secrets": "flutter secure storage",
+    "voice.stt": "flutter speech to text",
+    "voice.tts": "flutter text to speech",
+}
+
+
+class _CoreQuotaExhausted(RuntimeError):
+    pass
+
+
+class _SearchQuotaExhausted(RuntimeError):
+    pass
+
+
+class _QuotaCheckedApi:
+    """Guard every core API call, including nested Dart release lookups."""
+
+    def __init__(self, api: GitHubApi, rate_limits: RateLimitManager) -> None:
+        self._api = api
+        self._rate_limits = rate_limits
+
+    def get(self, path: str) -> GitHubResponse:
+        resource = "search" if path.startswith("/search/") else "core"
+        decision = self._rate_limits.decision(resource=resource)
+        if not decision.allowed:
+            self._rate_limits.record_backoff(
+                decision.retry_after_seconds, f"github_{resource}_rate_limit"
+            )
+            if resource == "search":
+                raise _SearchQuotaExhausted()
+            raise _CoreQuotaExhausted()
+        try:
+            return self._api.get(path)
+        except GitHubApiError as exc:
+            headers = {key.lower(): value for key, value in exc.headers.items()}
+            if exc.status in {403, 429} and (
+                headers.get("x-ratelimit-remaining") == "0"
+            ):
+                quota_headers = dict(exc.headers)
+                quota_headers["X-RateLimit-Resource"] = resource
+                self._rate_limits.observe_headers(quota_headers)
+                retry = self._rate_limits.decision(resource=resource).retry_after_seconds
+                self._rate_limits.record_backoff(
+                    retry or 60, f"github_{resource}_rate_limit"
+                )
+                if resource == "search":
+                    raise _SearchQuotaExhausted() from exc
+                raise _CoreQuotaExhausted() from exc
+            raise
+
 
 class GitHubDiscoveryProvider:
     name = "github"
 
     def __init__(self, api: GitHubApi, rate_limits: RateLimitManager) -> None:
-        self.api = api
+        self.api = _QuotaCheckedApi(api, rate_limits)
         self.rate_limits = rate_limits
-        self.dart_releases = DartStableReleaseResolver(api, self._observe)
+        self.dart_releases = DartStableReleaseResolver(self.api, self._observe)  # type: ignore[arg-type]
+        # Aggregated non-sensitive counters for the most recent discovery call.
+        self.last_discovery_diagnostics: dict[str, str | int] = {
+            "status": "NOT_RUN",
+            "queries_attempted": 0,
+            "search_hits": 0,
+            "unique_repository_hits": 0,
+            "candidates_returned": 0,
+        }
 
     @staticmethod
     def _queries(need: Need) -> tuple[str, ...]:
@@ -53,10 +120,15 @@ class GitHubDiscoveryProvider:
             if len(word) >= 3
         ]
         capability_terms = " ".join(capability_words)
+        hint = _CAPABILITY_SEARCH_HINTS.get(need.capability_id, "")
+        combined = f"{title_terms} {capability_terms}".strip()
+        # Always give the generic capability query the second slot when a
+        # technical hint is available: the first search is capped at half the
+        # candidate budget and the second must not be another long query.
         raw = (
-            f"{title_terms} {capability_terms}".strip(),
-            title_terms.strip(),
-            capability_terms.strip(),
+            (hint, capability_terms.strip(), combined, title_terms.strip())
+            if hint
+            else (combined, capability_terms.strip(), title_terms.strip())
         )
         seen: set[str] = set()
         queries: list[str] = []
@@ -219,23 +291,60 @@ class GitHubDiscoveryProvider:
         return selected_sha, selected_commit, selected_tree, release_metadata
 
     def discover(self, need: Need, limit: int = 8) -> list[Candidate]:
-        decision = self.rate_limits.decision()
+        diagnostics: dict[str, str | int] = {
+            "status": "RUNNING",
+            "queries_attempted": 0,
+            "search_hits": 0,
+            "unique_repository_hits": 0,
+            "candidates_returned": 0,
+            "search_quota_exhausted": 0,
+            "core_quota_exhausted": 0,
+        }
+        self.last_discovery_diagnostics = diagnostics
+        decision = self.rate_limits.decision(resource="search")
         if not decision.allowed:
             self.rate_limits.record_backoff(
                 decision.retry_after_seconds,
-                "github_rate_limit",
+                "github_search_rate_limit",
             )
+            diagnostics["search_quota_exhausted"] = 1
+            diagnostics["status"] = "SEARCH_RATE_LIMITED"
             return []
         items: list[Any] = []
         seen_repositories: set[str] = set()
-        for raw_query in self._queries(need):
+        queries = self._queries(need)
+        for query_index, raw_query in enumerate(queries):
+            # Reserve half the candidate slots for a taxonomy-based fallback.
+            # Otherwise the first long query can fill the cap with incidental
+            # README matches and the simpler capability query never executes.
+            cap_after_query = limit
+            if query_index == 0 and len(queries) > 1 and limit > 1:
+                cap_after_query = max(1, limit // 2)
+            # GitHub may exhaust the search bucket during this query sweep.
+            decision = self.rate_limits.decision(resource="search")
+            if not decision.allowed:
+                self.rate_limits.record_backoff(
+                    decision.retry_after_seconds, "github_search_rate_limit"
+                )
+                diagnostics["search_quota_exhausted"] = 1
+                diagnostics["status"] = "SEARCH_RATE_LIMITED"
+                break
             query = urllib.parse.quote(raw_query, safe="")
-            response = self.api.get(
-                f"/search/repositories?q={query}&sort=updated&order=desc&per_page={min(limit, 20)}"
-            )
+            try:
+                response = self.api.get(
+                    f"/search/repositories?q={query}&per_page={min(limit, 20)}"
+                )
+            except _SearchQuotaExhausted:
+                diagnostics["search_quota_exhausted"] = 1
+                diagnostics["status"] = "SEARCH_RATE_LIMITED"
+                break
             self._observe(response)
+            diagnostics["queries_attempted"] = int(diagnostics["queries_attempted"]) + 1
             data = response.data
             raw_items = data.get("items", []) if isinstance(data, dict) else []
+            if not isinstance(raw_items, list):
+                raw_items = []
+            diagnostics["search_hits"] = int(diagnostics["search_hits"]) + len(raw_items)
             for raw in raw_items:
                 if not isinstance(raw, dict):
                     continue
@@ -244,10 +353,11 @@ class GitHubDiscoveryProvider:
                     continue
                 seen_repositories.add(full_name)
                 items.append(raw)
-                if len(items) >= limit:
+                if len(items) >= cap_after_query:
                     break
             if len(items) >= limit:
                 break
+        diagnostics["unique_repository_hits"] = len(items)
         candidates: list[Candidate] = []
         for raw in items:
             if not isinstance(raw, dict):
@@ -255,130 +365,155 @@ class GitHubDiscoveryProvider:
             full_name = str(raw.get("full_name", ""))
             if not full_name or "/" not in full_name:
                 continue
-            repo = self.api.get(f"/repos/{full_name}")
-            self._observe(repo)
-            meta = repo.data if isinstance(repo.data, dict) else {}
-            branch = str(meta.get("default_branch") or "main")
-            commit = self.api.get(
-                f"/repos/{full_name}/commits/{urllib.parse.quote(branch, safe='')}"
-            )
-            self._observe(commit)
-            branch_commit = commit.data if isinstance(commit.data, dict) else {}
-            branch_sha = str(branch_commit.get("sha", ""))
-            if len(branch_sha) < 12:
-                continue
-
-            repo_name = str(meta.get("name") or full_name.split("/", 1)[1])
-            sha, _, tree_evidence, release_metadata = self._resolve_source(
-                full_name,
-                repo_name,
-                branch_sha,
-                branch_commit,
-            )
-            release_tag = self._release_tag_for_commit(full_name, sha)
-
-            license_spdx: str | None = None
-            license_source = "repository_metadata"
-            license_meta = meta.get("license")
-            if isinstance(license_meta, dict):
-                key = license_meta.get("spdx_id")
-                license_spdx = None if key is None else str(key)
-
-            # GitHub's repository metadata often omits license detection even when
-            # a LICENSE/COPYING file is present. Ask the dedicated license endpoint
-            # for authoritative GitHub-side detection; never execute upstream code.
-            if license_spdx in {None, "NOASSERTION"}:
-                try:
-                    detected = self.api.get(f"/repos/{full_name}/license")
-                    self._observe(detected)
-                    detected_data = detected.data if isinstance(detected.data, dict) else {}
-                    detected_license = detected_data.get("license")
-                    if isinstance(detected_license, dict):
-                        detected_key = detected_license.get("spdx_id")
-                        if detected_key not in {None, "NOASSERTION"}:
-                            license_spdx = str(detected_key)
-                            license_source = "github_license_endpoint"
-                    detected_path = detected_data.get("path")
-                    if (
-                        tree_evidence.get("license_file_url") is None
-                        and isinstance(detected_path, str)
-                        and detected_path.strip()
-                    ):
-                        encoded_license_path = urllib.parse.quote(
-                            detected_path.strip(), safe="/"
-                        )
-                        tree_evidence["license_file_url"] = (
-                            f"https://github.com/{full_name}/blob/{sha}/"
-                            f"{encoded_license_path}"
-                        )
-                except GitHubApiError as exc:
-                    if exc.status not in {403, 404, 422}:
-                        raise
-
-            owner_raw = meta.get("owner")
-            owner = (
-                str(owner_raw.get("login"))
-                if isinstance(owner_raw, dict) and owner_raw.get("login")
-                else full_name.split("/", 1)[0]
-            )
-            raw_topics = meta.get("topics")
-            topics: list[Any] = raw_topics if isinstance(raw_topics, list) else []
-            candidates.append(
-                Candidate(
-                    provider=self.name,
-                    repository=full_name,
-                    upstream_url=str(meta.get("html_url") or f"https://github.com/{full_name}"),
-                    owner=owner,
-                    name=repo_name,
-                    commit_sha=sha,
-                    release_tag=release_tag,
-                    default_branch=branch,
-                    acquired_at=utc_now(),
-                    license_spdx=license_spdx,
-                    license_file_url=(
-                        None
-                        if tree_evidence.get("license_file_url") is None
-                        else str(tree_evidence["license_file_url"])
-                    ),
-                    stars=int(meta.get("stargazers_count") or 0),
-                    forks=int(meta.get("forks_count") or 0),
-                    open_issues=int(meta.get("open_issues_count") or 0),
-                    pushed_at=(
-                        None if meta.get("pushed_at") is None else str(meta["pushed_at"])
-                    ),
-                    archived=bool(meta.get("archived", False)),
-                    language=None if meta.get("language") is None else str(meta["language"]),
-                    topics=tuple(str(topic) for topic in topics),
-                    description=(
-                        None
-                        if meta.get("description") is None
-                        else str(meta["description"])
-                    ),
-                    homepage=None if meta.get("homepage") is None else str(meta["homepage"]),
-                    size_kb=None if meta.get("size") is None else int(meta["size"]),
-                    has_issues=bool(meta.get("has_issues", True)),
-                    has_wiki=bool(meta.get("has_wiki", False)),
-                    extra={
-                        "fork": bool(meta.get("fork", False)),
-                        "disabled": bool(meta.get("disabled", False)),
-                        "visibility": meta.get("visibility"),
-                        "tests_present": bool(tree_evidence.get("tests_present")),
-                        "ci_present": bool(tree_evidence.get("ci_present")),
-                        "readme_present": bool(tree_evidence.get("readme_present")),
-                        "dependency_manifests": list(
-                            tree_evidence.get("dependency_manifests", [])
-                        ),
-                        "tree_truncated": tree_evidence.get("tree_truncated"),
-                        "security_policy_present": bool(
-                            tree_evidence.get("security_policy_present")
-                        ),
-                        "dependabot_present": bool(tree_evidence.get("dependabot_present")),
-                        "codeql_present": bool(tree_evidence.get("codeql_present")),
-                        "provenance_tree_sha": tree_evidence.get("provenance_tree_sha"),
-                        "release_tag_verified": release_tag is not None,
-                        "license_detection_source": license_source,
-                        **release_metadata,
-                    },
+            core_decision = self.rate_limits.decision(resource="core")
+            if not core_decision.allowed:
+                self.rate_limits.record_backoff(
+                    core_decision.retry_after_seconds, "github_core_rate_limit"
                 )
-            )
+                diagnostics["core_quota_exhausted"] = 1
+                diagnostics["status"] = "CORE_RATE_LIMITED"
+                break
+            try:
+                repo = self.api.get(f"/repos/{full_name}")
+                self._observe(repo)
+                meta = repo.data if isinstance(repo.data, dict) else {}
+                branch = str(meta.get("default_branch") or "main")
+                commit = self.api.get(
+                    f"/repos/{full_name}/commits/{urllib.parse.quote(branch, safe='')}"
+                )
+                self._observe(commit)
+                branch_commit = commit.data if isinstance(commit.data, dict) else {}
+                branch_sha = str(branch_commit.get("sha", ""))
+                if len(branch_sha) < 12:
+                    continue
+    
+                repo_name = str(meta.get("name") or full_name.split("/", 1)[1])
+                sha, _, tree_evidence, release_metadata = self._resolve_source(
+                    full_name,
+                    repo_name,
+                    branch_sha,
+                    branch_commit,
+                )
+                release_tag = self._release_tag_for_commit(full_name, sha)
+    
+                license_spdx: str | None = None
+                license_source = "repository_metadata"
+                license_meta = meta.get("license")
+                if isinstance(license_meta, dict):
+                    key = license_meta.get("spdx_id")
+                    license_spdx = None if key is None else str(key)
+    
+                # GitHub's repository metadata often omits license detection even when
+                # a LICENSE/COPYING file is present. Ask the dedicated license endpoint
+                # for authoritative GitHub-side detection; never execute upstream code.
+                if license_spdx in {None, "NOASSERTION"}:
+                    try:
+                        detected = self.api.get(f"/repos/{full_name}/license")
+                        self._observe(detected)
+                        detected_data = detected.data if isinstance(detected.data, dict) else {}
+                        detected_license = detected_data.get("license")
+                        if isinstance(detected_license, dict):
+                            detected_key = detected_license.get("spdx_id")
+                            if detected_key not in {None, "NOASSERTION"}:
+                                license_spdx = str(detected_key)
+                                license_source = "github_license_endpoint"
+                        detected_path = detected_data.get("path")
+                        if (
+                            tree_evidence.get("license_file_url") is None
+                            and isinstance(detected_path, str)
+                            and detected_path.strip()
+                        ):
+                            encoded_license_path = urllib.parse.quote(
+                                detected_path.strip(), safe="/"
+                            )
+                            tree_evidence["license_file_url"] = (
+                                f"https://github.com/{full_name}/blob/{sha}/"
+                                f"{encoded_license_path}"
+                            )
+                    except GitHubApiError as exc:
+                        if exc.status not in {403, 404, 422}:
+                            raise
+    
+                owner_raw = meta.get("owner")
+                owner = (
+                    str(owner_raw.get("login"))
+                    if isinstance(owner_raw, dict) and owner_raw.get("login")
+                    else full_name.split("/", 1)[0]
+                )
+                raw_topics = meta.get("topics")
+                topics: list[Any] = raw_topics if isinstance(raw_topics, list) else []
+                candidates.append(
+                    Candidate(
+                        provider=self.name,
+                        repository=full_name,
+                        upstream_url=str(meta.get("html_url") or f"https://github.com/{full_name}"),
+                        owner=owner,
+                        name=repo_name,
+                        commit_sha=sha,
+                        release_tag=release_tag,
+                        default_branch=branch,
+                        acquired_at=utc_now(),
+                        license_spdx=license_spdx,
+                        license_file_url=(
+                            None
+                            if tree_evidence.get("license_file_url") is None
+                            else str(tree_evidence["license_file_url"])
+                        ),
+                        stars=int(meta.get("stargazers_count") or 0),
+                        forks=int(meta.get("forks_count") or 0),
+                        open_issues=int(meta.get("open_issues_count") or 0),
+                        pushed_at=(
+                            None if meta.get("pushed_at") is None else str(meta["pushed_at"])
+                        ),
+                        archived=bool(meta.get("archived", False)),
+                        language=None if meta.get("language") is None else str(meta["language"]),
+                        topics=tuple(str(topic) for topic in topics),
+                        description=(
+                            None
+                            if meta.get("description") is None
+                            else str(meta["description"])
+                        ),
+                        homepage=None if meta.get("homepage") is None else str(meta["homepage"]),
+                        size_kb=None if meta.get("size") is None else int(meta["size"]),
+                        has_issues=bool(meta.get("has_issues", True)),
+                        has_wiki=bool(meta.get("has_wiki", False)),
+                        extra={
+                            "fork": bool(meta.get("fork", False)),
+                            "disabled": bool(meta.get("disabled", False)),
+                            "visibility": meta.get("visibility"),
+                            "tests_present": bool(tree_evidence.get("tests_present")),
+                            "ci_present": bool(tree_evidence.get("ci_present")),
+                            "readme_present": bool(tree_evidence.get("readme_present")),
+                            "dependency_manifests": list(
+                                tree_evidence.get("dependency_manifests", [])
+                            ),
+                            "tree_truncated": tree_evidence.get("tree_truncated"),
+                            "security_policy_present": bool(
+                                tree_evidence.get("security_policy_present")
+                            ),
+                            "dependabot_present": bool(tree_evidence.get("dependabot_present")),
+                            "codeql_present": bool(tree_evidence.get("codeql_present")),
+                            "provenance_tree_sha": tree_evidence.get("provenance_tree_sha"),
+                            "release_tag_verified": release_tag is not None,
+                            "license_detection_source": license_source,
+                            **release_metadata,
+                        },
+                    )
+                )
+            except _CoreQuotaExhausted:
+                diagnostics["core_quota_exhausted"] = 1
+                diagnostics["status"] = "CORE_RATE_LIMITED"
+                break
+            except _SearchQuotaExhausted:
+                diagnostics["search_quota_exhausted"] = 1
+                diagnostics["status"] = "SEARCH_RATE_LIMITED"
+                break
+        diagnostics["candidates_returned"] = len(candidates)
+        if diagnostics["status"] == "RUNNING":
+            if candidates:
+                diagnostics["status"] = "CANDIDATES_FOUND"
+            elif diagnostics["search_hits"]:
+                diagnostics["status"] = "SEARCH_HITS_UNRESOLVED"
+            else:
+                diagnostics["status"] = "NO_SEARCH_HITS"
         return candidates

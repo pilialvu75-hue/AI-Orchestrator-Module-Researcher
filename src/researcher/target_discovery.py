@@ -41,6 +41,16 @@ class TargetAwareDiscoveryProvider:
 
     def __init__(self, base: DiscoveryProvider) -> None:
         self.base = base
+        self.last_discovery_diagnostics: dict[str, str | int] = {
+            "status": "NOT_RUN",
+            "targets_requested": 0,
+            "queries_attempted": 0,
+            "search_hits": 0,
+            "unique_repository_hits": 0,
+            "candidates_returned": 0,
+            "rate_limited_targets": 0,
+            "core_rate_limited_targets": 0,
+        }
 
     @staticmethod
     def _candidate_key(candidate: Candidate) -> tuple[str, str, str]:
@@ -85,7 +95,19 @@ class TargetAwareDiscoveryProvider:
             for target in _normalized_targets(targets)
             if target in required
         )
+        diagnostics: dict[str, str | int] = {
+            "status": "RUNNING",
+            "targets_requested": len(requested),
+            "queries_attempted": 0,
+            "search_hits": 0,
+            "unique_repository_hits": 0,
+            "candidates_returned": 0,
+            "rate_limited_targets": 0,
+            "core_rate_limited_targets": 0,
+        }
+        self.last_discovery_diagnostics = diagnostics
         if not requested:
+            diagnostics["status"] = "NO_REQUIRED_TARGETS"
             return []
 
         # Search deeper than the desired depth because target-specific queries can
@@ -102,7 +124,32 @@ class TargetAwareDiscoveryProvider:
                 title=f"{need.title} {query_terms}",
                 targets=(target,),
             )
-            for candidate in self.base.discover(targeted_need, limit=per_target_limit):
+            target_candidates = self.base.discover(targeted_need, limit=per_target_limit)
+            evidence = getattr(self.base, "last_discovery_diagnostics", {})
+            if isinstance(evidence, dict):
+                for metric in (
+                    "queries_attempted",
+                    "search_hits",
+                    "unique_repository_hits",
+                ):
+                    value = evidence.get(metric, 0)
+                    if type(value) is int and value >= 0:
+                        diagnostics[metric] = int(diagnostics[metric]) + value
+                if (
+                    evidence.get("search_quota_exhausted", 0)
+                    or evidence.get("status") == "SEARCH_RATE_LIMITED"
+                ):
+                    diagnostics["rate_limited_targets"] = (
+                        int(diagnostics["rate_limited_targets"]) + 1
+                    )
+                if (
+                    evidence.get("core_quota_exhausted", 0)
+                    or evidence.get("status") == "CORE_RATE_LIMITED"
+                ):
+                    diagnostics["core_rate_limited_targets"] = (
+                        int(diagnostics["core_rate_limited_targets"]) + 1
+                    )
+            for candidate in target_candidates:
                 key = self._candidate_key(candidate)
                 annotated = self._annotate(candidate, (target,))
                 previous = merged.get(key)
@@ -125,4 +172,16 @@ class TargetAwareDiscoveryProvider:
                 candidate.repository.lower(),
             ),
         )
-        return ranked[:overall_limit]
+        output = ranked[:overall_limit]
+        diagnostics["candidates_returned"] = len(output)
+        if output:
+            diagnostics["status"] = "CANDIDATES_FOUND"
+        elif diagnostics["core_rate_limited_targets"]:
+            diagnostics["status"] = "CORE_RATE_LIMITED"
+        elif diagnostics["rate_limited_targets"]:
+            diagnostics["status"] = "SEARCH_RATE_LIMITED"
+        elif diagnostics["search_hits"]:
+            diagnostics["status"] = "SEARCH_HITS_UNRESOLVED"
+        else:
+            diagnostics["status"] = "NO_SEARCH_HITS"
+        return output
