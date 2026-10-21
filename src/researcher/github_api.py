@@ -109,7 +109,14 @@ class GitHubApi:
                     return GitHubResponse(data=data, headers=dict(response.headers.items()))
             except urllib.error.HTTPError as exc:
                 raw = exc.read().decode("utf-8", errors="replace")
-                retryable = exc.code in {429, 500, 502, 503, 504}
+                # An exhausted GitHub quota cannot recover through immediate retries.
+                # Surface the original response and headers to the quota manager.
+                headers = dict(exc.headers.items())
+                quota_exhausted = exc.code in {403, 429} and any(
+                    key.lower() == "x-ratelimit-remaining" and value.strip() == "0"
+                    for key, value in headers.items()
+                )
+                retryable = exc.code in {429, 500, 502, 503, 504} and not quota_exhausted
                 if retryable and attempt < retries:
                     time.sleep(min(2**attempt, 4) + secrets.randbelow(1000) / 1000)
                     continue
