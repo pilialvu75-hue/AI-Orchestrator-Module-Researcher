@@ -71,6 +71,10 @@ jobs:
           path = Path(os.environ["RUNNER_TEMP"]) / "pinned-preflight-proof.json"
           path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
           print(json.dumps(report, sort_keys=True))
+          if (report["state"] != "CLEAR" or not report["security_preflight_clear"]
+                  or report["library_accessed"] or report["library_write_attempted"]
+                  or report["source_code_executed"] or report["certification_asserted"]):
+              raise SystemExit("Pinned preflight did not satisfy read-only CLEAR invariants")
           PY
       - name: Archive candidate metadata and diagnostic counters
         if: always()
