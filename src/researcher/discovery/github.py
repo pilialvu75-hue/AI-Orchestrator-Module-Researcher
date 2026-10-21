@@ -507,7 +507,7 @@ class GitHubDiscoveryProvider:
             except _SearchQuotaExhausted:
                 diagnostics["search_quota_exhausted"] = 1
                 diagnostics["status"] = "SEARCH_RATE_LIMITED"
-                continue
+                break
         diagnostics["candidates_returned"] = len(candidates)
         if diagnostics["status"] == "RUNNING":
             if candidates:
