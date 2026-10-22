@@ -351,6 +351,8 @@ class TargetAwareResearchEngine(ResearchEngine):
                         "lifecycle": lifecycle,
                         "opportunity": opportunity,
                         "next_action": opportunity_next_action(opportunity),
+                        "source_id": source.source_id,
+                        "proposal_id": None if proposal is None else proposal.proposal_id,
                         "new_signals": len(novelty),
                         "rejection_reason": rejection_reason,
                     },
