@@ -159,6 +159,17 @@ def main() -> None:
     args = _parser().parse_args()
     config = Config.from_env()
 
+    if args.command == "export-improvement-proposals":
+        # A read-only handoff must not initialize network clients or workers.
+        config.data_dir.mkdir(parents=True, exist_ok=True)
+        state = SQLiteStateStore(config.data_dir / "researcher.db")
+        print(json.dumps(
+            state.export_improvement_proposals(limit=args.limit),
+            indent=2,
+            sort_keys=True,
+        ))
+        return
+
     if args.command == "preflight-pinned":
         config.data_dir.mkdir(parents=True, exist_ok=True)
         state = SQLiteStateStore(config.data_dir / "researcher.db")
@@ -208,13 +219,6 @@ def main() -> None:
         limit = max(1, min(int(args.limit), 1000))
         result = app.engine.backfill_research_knowledge(limit=limit)
         print(json.dumps(result, indent=2, sort_keys=True))
-        return
-    if args.command == "export-improvement-proposals":
-        print(json.dumps(
-            app.state.export_improvement_proposals(limit=args.limit),
-            indent=2,
-            sort_keys=True,
-        ))
         return
     if args.command == "handoffs":
         print(
