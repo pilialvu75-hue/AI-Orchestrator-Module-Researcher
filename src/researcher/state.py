@@ -710,6 +710,35 @@ class SQLiteStateStore:
             )
         return True
 
+    def export_improvement_proposals(self, *, limit: int = 100) -> dict[str, Any]:
+        """Read-only, deterministic handoff for Library planning; never approves work."""
+        if not 1 <= limit <= 1000:
+            raise ValueError("limit must be between 1 and 1000")
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT proposal_id, capability_id, novelty_json,
+                          acceptance_gates_json, created_at
+                   FROM improvement_proposals
+                   WHERE state='PROPOSED'
+                   ORDER BY created_at, proposal_id LIMIT ?""",
+                (limit,),
+            ).fetchall()
+        return {
+            "schema_version": 1,
+            "kind": "research_improvement_proposals",
+            "proposals": [
+                {
+                    "proposal_id": str(row["proposal_id"]),
+                    "capability_id": str(row["capability_id"]),
+                    "novelty": json.loads(str(row["novelty_json"])),
+                    "acceptance_gates": json.loads(str(row["acceptance_gates_json"])),
+                    "created_at": str(row["created_at"]),
+                    "status": "PROPOSED",
+                }
+                for row in rows
+            ],
+        }
+
     def transition_improvement_proposal(
         self,
         proposal_id: str,
