@@ -344,6 +344,10 @@ class TargetAwareResearchEngine(ResearchEngine):
                 opportunity = (
                     "DIRECT_REUSE_CANDIDATE"
                     if lifecycle == "SHORTLISTED" and source.direct_reuse
+                    else "REMEDIATION_CANDIDATE"
+                    if source.direct_reuse and lifecycle in (
+                        "SECURITY_REVIEW", "SECURITY_BLOCKED", "REJECTED"
+                    )
                     else "INDEPENDENT_IMPLEMENTATION_RESEARCH"
                     if source.research_use
                     else "EVIDENCE_ONLY"
