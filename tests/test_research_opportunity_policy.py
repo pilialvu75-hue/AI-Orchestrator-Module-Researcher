@@ -1,7 +1,7 @@
 import unittest
 from types import SimpleNamespace
 
-from researcher.knowledge import classify_research_opportunity
+from researcher.knowledge import classify_research_opportunity, opportunity_next_action
 
 
 class ResearchOpportunityPolicyTests(unittest.TestCase):
@@ -24,6 +24,17 @@ class ResearchOpportunityPolicyTests(unittest.TestCase):
             classify_research_opportunity("REJECTED", SimpleNamespace(direct_reuse=False, research_use=True)),
             "INDEPENDENT_IMPLEMENTATION_RESEARCH",
         )
+
+    def test_every_classification_has_safe_follow_up(self):
+        expected = {
+            "DIRECT_REUSE_CANDIDATE": "SUBMIT_FOR_LIBRARY_REVIEW",
+            "REMEDIATION_CANDIDATE": "PREPARE_REMEDIATION_PLAN",
+            "INDEPENDENT_IMPLEMENTATION_RESEARCH": "PROPOSE_INDEPENDENT_IMPLEMENTATION",
+            "EVIDENCE_ONLY": "PRESERVE_RESEARCH_EVIDENCE",
+        }
+        for classification, action in expected.items():
+            with self.subTest(classification=classification):
+                self.assertEqual(opportunity_next_action(classification), action)
 
     def test_unlicensed_source_stays_evidence_only(self):
         self.assertEqual(
