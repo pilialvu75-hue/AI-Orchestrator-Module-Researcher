@@ -338,6 +338,28 @@ class TargetAwareResearchEngine(ResearchEngine):
                         novelty=proposal.novelty,
                         acceptance_gates=proposal.acceptance_gates,
                     )
+                # Opportunity triage is deliberately less restrictive than code
+                # admission: rejected sources can still inspire independent work.
+                # This classification NEVER changes lifecycle or admission gates.
+                opportunity = (
+                    "DIRECT_REUSE_CANDIDATE"
+                    if lifecycle == "SHORTLISTED" and source.direct_reuse
+                    else "INDEPENDENT_IMPLEMENTATION_RESEARCH"
+                    if source.research_use
+                    else "EVIDENCE_ONLY"
+                )
+                self._emit(
+                    EventLevel.INFO,
+                    "research_opportunity_classified",
+                    {
+                        "capability_id": need.capability_id,
+                        "repository": candidate.repository,
+                        "lifecycle": lifecycle,
+                        "opportunity": opportunity,
+                        "new_signals": len(novelty),
+                        "rejection_reason": rejection_reason,
+                    },
+                )
                 supply_chain = security_report.supply_chain
                 self._emit(
                     EventLevel.INFO,
