@@ -115,6 +115,17 @@ def classify_research_opportunity(lifecycle: str, source: ResearchSource) -> str
     return "EVIDENCE_ONLY"
 
 
+def opportunity_next_action(opportunity: str) -> str:
+    """Suggest a safe follow-up; never authorize execution or certification."""
+    actions = {
+        "DIRECT_REUSE_CANDIDATE": "SUBMIT_FOR_LIBRARY_REVIEW",
+        "REMEDIATION_CANDIDATE": "PREPARE_REMEDIATION_PLAN",
+        "INDEPENDENT_IMPLEMENTATION_RESEARCH": "PROPOSE_INDEPENDENT_IMPLEMENTATION",
+        "EVIDENCE_ONLY": "PRESERVE_RESEARCH_EVIDENCE",
+    }
+    return actions[opportunity]
+
+
 def novelty_delta(previous_signals: set[str], source: ResearchSource) -> tuple[str, ...]:
     """Return only knowledge signals not already present in the capability memory."""
     return tuple(sorted(set(source.signals) - previous_signals))
