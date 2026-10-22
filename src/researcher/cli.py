@@ -55,6 +55,11 @@ def _parser() -> argparse.ArgumentParser:
     sweep = sub.add_parser("sweep", help="Run a bounded breadth-first research sweep")
     sweep.add_argument("--cycles", type=int, default=4)
     sub.add_parser("handoffs", help="Print pending implementation requests")
+    export = sub.add_parser(
+        "export-improvement-proposals",
+        help="Export read-only Researcher proposals for trusted Library intake",
+    )
+    export.add_argument("--limit", type=int, default=100)
     backfill = sub.add_parser(
         "backfill-knowledge",
         help="Migrate persisted dossiers into Research V2 knowledge",
@@ -203,6 +208,13 @@ def main() -> None:
         limit = max(1, min(int(args.limit), 1000))
         result = app.engine.backfill_research_knowledge(limit=limit)
         print(json.dumps(result, indent=2, sort_keys=True))
+        return
+    if args.command == "export-improvement-proposals":
+        print(json.dumps(
+            app.state.export_improvement_proposals(limit=args.limit),
+            indent=2,
+            sort_keys=True,
+        ))
         return
     if args.command == "handoffs":
         print(
