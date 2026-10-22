@@ -472,7 +472,20 @@ class TargetAwareResearchEngine(ResearchEngine):
                 {"at": utc_now(), "type": "SecurityScanDeferred", "message": safe_message},
             )
             self.state.set_json("engine_state", "BACKOFF")
-            result = {"state": "BACKOFF", "reason": "security_scan_deferred"}
+            result = {
+                "state": "BACKOFF",
+                "reason": "security_scan_deferred",
+                "mode": self.mode.value,
+                "capability_id": self.state.get_json("current_capability"),
+                "discovered": len(candidates) if "candidates" in locals() else 0,
+                "new_analyzed": len(dossiers) if "dossiers" in locals() else 0,
+                "known_candidates_skipped": (
+                    known_candidates_skipped if "known_candidates_skipped" in locals() else 0
+                ),
+                "discovery_diagnostics": (
+                    discovery_diagnostics if "discovery_diagnostics" in locals() else {}
+                ),
+            }
             self.state.set_json("last_cycle", {"at": utc_now(), **result})
             self._emit(EventLevel.WARNING, "cycle_deferred", {"reason": result["reason"]})
             return result
