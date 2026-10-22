@@ -179,7 +179,12 @@ def main() -> None:
     if args.command == "sweep":
         cycles = max(1, min(int(args.cycles), 24))
         first_party = run_one_first_party_candidate(app)
-        results = [app.engine.run_cycle() for _ in range(cycles)]
+        results = []
+        for _ in range(cycles):
+            cycle_result = app.engine.run_cycle()
+            results.append(cycle_result)
+            if cycle_result.get("state") == "BACKOFF":
+                break
         _sync_diagnostics(app)
         print(
             json.dumps(
