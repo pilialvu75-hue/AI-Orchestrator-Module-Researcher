@@ -4,6 +4,7 @@ from typing import Any
 
 from .engine import ResearchEngine, _PRIORITY
 from .models import Dossier, Need, ResearchMode, utc_now
+from .knowledge import research_source, build_improvement_proposal
 from .observability import EventLevel, sanitize_payload
 from .security_admission import FullTreeSecurityReport, SecurityScanDeferred
 from .security_gate import SecurityVerdict
@@ -313,6 +314,30 @@ class TargetAwareResearchEngine(ResearchEngine):
                     str(dossier_path),
                     rejection_reason,
                 )
+                # Retain non-code knowledge even when the source cannot be admitted.
+                # Research memory never grants permission to reuse upstream code.
+                source = research_source(need.capability_id, candidate)
+                novelty = self.state.record_research_source(
+                    source_id=source.source_id,
+                    capability_id=source.capability_id,
+                    repository=source.repository,
+                    commit_sha=source.commit_sha,
+                    direct_reuse=source.direct_reuse,
+                    research_use=source.research_use,
+                    signals=source.signals,
+                )
+                proposal = build_improvement_proposal(
+                    need.capability_id,
+                    self.state.capability_knowledge(need.capability_id),
+                    novelty,
+                )
+                if proposal is not None:
+                    self.state.record_improvement_proposal(
+                        proposal_id=proposal.proposal_id,
+                        capability_id=proposal.capability_id,
+                        novelty=proposal.novelty,
+                        acceptance_gates=proposal.acceptance_gates,
+                    )
                 supply_chain = security_report.supply_chain
                 self._emit(
                     EventLevel.INFO,
