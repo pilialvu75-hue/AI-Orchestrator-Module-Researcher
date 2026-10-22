@@ -4,7 +4,7 @@ from typing import Any
 
 from .engine import ResearchEngine, _PRIORITY
 from .models import Dossier, Need, ResearchMode, utc_now
-from .knowledge import research_source, build_improvement_proposal, classify_research_opportunity
+from .knowledge import research_source, build_improvement_proposal, classify_research_opportunity, opportunity_next_action
 from .observability import EventLevel, sanitize_payload
 from .security_admission import FullTreeSecurityReport, SecurityScanDeferred
 from .security_gate import SecurityVerdict
@@ -350,6 +350,7 @@ class TargetAwareResearchEngine(ResearchEngine):
                         "repository": candidate.repository,
                         "lifecycle": lifecycle,
                         "opportunity": opportunity,
+                        "next_action": opportunity_next_action(opportunity),
                         "new_signals": len(novelty),
                         "rejection_reason": rejection_reason,
                     },
