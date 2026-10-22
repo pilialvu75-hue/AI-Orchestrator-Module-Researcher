@@ -93,7 +93,7 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
     # Engine sweep rows already include recovered deliveries in prepared_submissions.
     # Only first-party resumed deliveries require an additional contribution.
     prepared += first_party_resumed
-    failures = sum(row.get("state") in {"ERROR", "BLOCKED"} for row in results)
+    failures = sum(row.get("state") in {"ERROR", "BLOCKED", "BACKOFF"} for row in results)
     known_skipped = total("known_candidates_skipped")
     search_rate_limited = discovery_total("rate_limited_targets")
     core_rate_limited = discovery_total("core_rate_limited_targets")
