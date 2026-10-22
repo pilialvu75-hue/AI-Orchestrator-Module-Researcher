@@ -74,6 +74,18 @@ class SeedingHealthTests(unittest.TestCase):
         )
         self.assertEqual(actual["outcome"], "BLOCKED")
 
+    def test_rejection_reasons_aggregated(self) -> None:
+        actual = summarize({}, {"results": [
+            {"state": "COMPLETED", "rejection_reasons": {"security_review:review": 4}},
+            {"state": "BACKOFF", "rejection_reasons": {"security_review:review": 2}},
+        ]})
+        self.assertEqual(actual["rejection_reasons"], {"security_review:review": 6})
+        self.assertEqual(actual["outcome"], "BLOCKED")
+
+    def test_invalid_rejection_reasons_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            summarize({}, {"results": [{"rejection_reasons": {"review": -1}}]})
+
     def test_rejects_invalid_evidence(self) -> None:
         with self.assertRaises(ValueError):
             summarize({}, {"results": [{"discovered": -1}]})

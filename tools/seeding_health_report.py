@@ -79,6 +79,16 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         first_party_submitted = int(submitted)
         first_party_dry_run_prepared = int(dry_run_prepared)
 
+    rejection_reasons: dict[str, int] = {}
+    for row in results:
+        reasons = row.get("rejection_reasons", {})
+        if not isinstance(reasons, dict):
+            raise ValueError("Invalid rejection reasons")
+        for reason, count in reasons.items():
+            if not isinstance(reason, str) or not reason:
+                raise ValueError("Invalid rejection reason")
+            rejection_reasons[reason] = rejection_reasons.get(reason, 0) + _count(count)
+
     discovered = total("discovered")
     analyzed = total("new_analyzed")
     sweep_prepared = array_total("prepared_submissions")
@@ -134,6 +144,7 @@ def summarize(backfill: dict[str, Any], sweep: dict[str, Any]) -> dict[str, Any]
         "core_rate_limited_cycles": core_limited_cycles,
         "search_status_counts": dict(sorted(discovery_statuses.items())),
         "shortlisted": total("shortlisted"),
+        "rejection_reasons": dict(sorted(rejection_reasons.items())),
         "prepared_submissions": prepared,
         "sweep_prepared_submissions": sweep_prepared,
         "first_party_submitted": first_party_submitted,
@@ -176,6 +187,7 @@ def main() -> None:
             f"| GitHub search hits | {summary['search_hits']} |",
             f"| Rate-limited target searches | {summary['search_rate_limited_targets']} |",
             f"| Shortlisted | {summary['shortlisted']} |",
+            f"| Rejection reasons | `{json.dumps(summary['rejection_reasons'], sort_keys=True)}` |",
             f"| Submissions prepared (all paths) | {summary['prepared_submissions']} |",
             f"| First-party submitted | {summary['first_party_submitted']} |",
             f"| First-party dry-run prepared | {summary['first_party_dry_run_prepared']} |",
