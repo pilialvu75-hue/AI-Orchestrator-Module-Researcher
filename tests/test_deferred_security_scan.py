@@ -55,5 +55,28 @@ class DeferredSecurityScanTests(unittest.TestCase):
             self.assertEqual(state.count_completed_submissions(requested.capability_id), 0)
 
 
+class SecurityReviewRetryTests(unittest.TestCase):
+    def test_only_stale_security_reviews_can_retry(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            for fingerprint, lifecycle in [
+                ("review", "SECURITY_REVIEW"),
+                ("blocked", "SECURITY_BLOCKED"),
+                ("submitted", "SUBMITTED"),
+            ]:
+                state.upsert_candidate(
+                    fingerprint, "test.capability", "example/repo",
+                    "a" * 40, lifecycle, 0.5, "dossier.json",
+                )
+            self.assertFalse(state.security_review_retry_due("review"))
+            with state._connect() as conn:
+                conn.execute(
+                    "UPDATE candidates SET updated_at='2020-01-01T00:00:00Z'"
+                )
+            self.assertTrue(state.security_review_retry_due("review"))
+            self.assertFalse(state.security_review_retry_due("blocked"))
+            self.assertFalse(state.security_review_retry_due("submitted"))
+
+
 if __name__ == "__main__":
     unittest.main()

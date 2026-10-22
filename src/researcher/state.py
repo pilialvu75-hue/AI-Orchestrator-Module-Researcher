@@ -325,6 +325,21 @@ class SQLiteStateStore:
             )
         return existing is None
 
+    def security_review_retry_due(self, fingerprint: str) -> bool:
+        """Retry only stale review decisions; never bypass the security gates.
+
+        SQLite evaluates the stored UTC timestamp so a repeated sweep cannot
+        immediately rescan the same candidate and exhaust GitHub API quota.
+        """
+        with self._connect() as conn:
+            row = conn.execute(
+                """SELECT 1 FROM candidates
+                   WHERE fingerprint=? AND lifecycle='SECURITY_REVIEW'
+                     AND datetime(updated_at) <= datetime('now', '-24 hours')""",
+                (fingerprint,),
+            ).fetchone()
+        return row is not None
+
     def is_known_candidate(self, fingerprint: str) -> bool:
         with self._connect() as conn:
             row = conn.execute(

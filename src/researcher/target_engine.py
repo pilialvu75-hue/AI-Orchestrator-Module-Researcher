@@ -247,8 +247,9 @@ class TargetAwareResearchEngine(ResearchEngine):
 
                 fingerprint = candidate_fingerprint(need.capability_id, candidate)
                 if self.state.is_known_candidate(fingerprint):
-                    known_candidates_skipped += 1
-                    continue
+                    if not self.state.security_review_retry_due(fingerprint):
+                        known_candidates_skipped += 1
+                        continue
 
                 preliminary = self._dossier(need, candidate, contract, "SCREENED")
                 pre_screen_qualified = self._pre_screen_qualified(
