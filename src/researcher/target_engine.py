@@ -4,7 +4,7 @@ from typing import Any
 
 from .engine import ResearchEngine, _PRIORITY
 from .models import Dossier, Need, ResearchMode, utc_now
-from .knowledge import research_source, build_improvement_proposal
+from .knowledge import research_source, build_improvement_proposal, classify_research_opportunity
 from .observability import EventLevel, sanitize_payload
 from .security_admission import FullTreeSecurityReport, SecurityScanDeferred
 from .security_gate import SecurityVerdict
@@ -341,17 +341,7 @@ class TargetAwareResearchEngine(ResearchEngine):
                 # Opportunity triage is deliberately less restrictive than code
                 # admission: rejected sources can still inspire independent work.
                 # This classification NEVER changes lifecycle or admission gates.
-                opportunity = (
-                    "DIRECT_REUSE_CANDIDATE"
-                    if lifecycle == "SHORTLISTED" and source.direct_reuse
-                    else "REMEDIATION_CANDIDATE"
-                    if source.direct_reuse and lifecycle in (
-                        "SECURITY_REVIEW", "SECURITY_BLOCKED", "REJECTED"
-                    )
-                    else "INDEPENDENT_IMPLEMENTATION_RESEARCH"
-                    if source.research_use
-                    else "EVIDENCE_ONLY"
-                )
+                opportunity = classify_research_opportunity(lifecycle, source)
                 self._emit(
                     EventLevel.INFO,
                     "research_opportunity_classified",
