@@ -4,7 +4,12 @@ from typing import Any
 
 from .engine import ResearchEngine, _PRIORITY
 from .models import Dossier, Need, ResearchMode, utc_now
-from .knowledge import research_source, build_improvement_proposal, classify_research_opportunity, opportunity_next_action
+from .knowledge import (
+    research_source,
+    build_improvement_proposal,
+    classify_research_opportunity,
+    opportunity_next_action,
+)
 from .observability import EventLevel, sanitize_payload
 from .security_admission import FullTreeSecurityReport, SecurityScanDeferred
 from .security_gate import SecurityVerdict
