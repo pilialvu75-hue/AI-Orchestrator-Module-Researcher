@@ -164,7 +164,7 @@ class EngineObservabilityTests(unittest.TestCase):
             )
             with state._connect() as conn:
                 conn.execute(
-                    "UPDATE candidates SET updated_at=datetime('now', '-25 hours') "
+                    "UPDATE candidates SET updated_at=datetime('now', '-16 minutes') "
                     "WHERE fingerprint=?", (fingerprint,),
                 )
             dossiers = DossierStore(data)
