@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from researcher.evolution import EvolutionWorkItem
+from researcher.evolution import EvolutionWorkItem, EvolutionWorker
 from researcher.evolution_adapter import EvolutionAdapter
 
 
@@ -65,6 +65,13 @@ class EvolutionAdapterTests(unittest.TestCase):
                 candidate_ref="artifact://candidate/proposal-1",
                 gate_results=gates,
             )
+
+    def test_builder_request_is_isolated_and_not_publishable(self) -> None:
+        request = EvolutionWorker.prepare_builder_request(None, _work())
+        self.assertEqual(request["execution_boundary"], "isolated_builder")
+        self.assertFalse(request["library_publish_allowed"])
+        self.assertEqual(request["proposal_id"], "proposal-1")
+        self.assertIn("candidate_ref", request["required_manifest_fields"])
 
     def test_builder_manifest_is_not_self_certifying(self) -> None:
         manifest = {
