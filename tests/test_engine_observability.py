@@ -151,6 +151,36 @@ class EngineObservabilityTests(unittest.TestCase):
             self.assertEqual(handoffs[0]["capability_id"], n.capability_id)
             self.assertTrue(handoffs[0]["knowledge_delta"])
 
+    def test_stale_security_review_is_reassessed(self) -> None:
+        n = need()
+        c = candidate("stale-review", "b" * 40)
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            state = SQLiteStateStore(data / "state.db")
+            fingerprint = candidate_fingerprint(n.capability_id, c)
+            state.upsert_candidate(
+                fingerprint, n.capability_id, c.repository, c.commit_sha,
+                "SECURITY_REVIEW", 0.1, str(data / "old.json"), "pending_review",
+            )
+            with state._connect() as conn:
+                conn.execute(
+                    "UPDATE candidates SET updated_at=datetime('now', '-25 hours') "
+                    "WHERE fingerprint=?", (fingerprint,),
+                )
+            dossiers = DossierStore(data)
+            engine = ResearchEngine(
+                FakeLibrary([n]), FakeLibrary([n]), FakeDiscovery([c]),
+                state, dossiers, CandidateScorer(), ComparisonEngine(),
+                DryRunSubmissionClient(dossiers), ResearchMode.SEEDING,
+                shortlist_threshold=0.40,
+                security_scanner=FakeSecurityScanner(),
+                vulnerability_scanner=FakeVulnerabilityScanner(),
+            )
+            engine.run_cycle()
+            rows = state.candidate_rows(n.capability_id)
+            self.assertEqual(len(rows), 1)
+            self.assertNotEqual(rows[0]["lifecycle"], "SECURITY_REVIEW")
+
     def test_rank_needs_gives_unscanned_capabilities_a_first_pass(self) -> None:
         first = need()
         second = replace(first, capability_id="network.http", title="HTTP")
