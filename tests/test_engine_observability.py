@@ -165,7 +165,7 @@ class EngineObservabilityTests(unittest.TestCase):
             self.assertFalse(state.rejected_candidate_retry_due(fingerprint))
             with state._connect() as conn:
                 conn.execute(
-                    "UPDATE candidates SET updated_at=datetime('now', '-25 hours') "
+                    "UPDATE candidates SET updated_at=datetime('now', '-16 minutes') "
                     "WHERE fingerprint=?", (fingerprint,),
                 )
             self.assertTrue(state.rejected_candidate_retry_due(fingerprint))
