@@ -66,6 +66,25 @@ class EvolutionAdapterTests(unittest.TestCase):
                 gate_results=gates,
             )
 
+    def test_builder_manifest_is_not_self_certifying(self) -> None:
+        manifest = {
+            "proposal_id": "proposal-1",
+            "capability_id": "ai.acceleration_backend",
+            "candidate_ref": "artifact://candidate/proposal-1",
+            "accepted": True,
+        }
+        result = EvolutionAdapter().validate_build_manifest(_work(), manifest)
+        self.assertFalse(result.evidence.accepted)
+        self.assertFalse(any(result.evidence.as_dict().values()))
+        with self.assertRaisesRegex(ValueError, "proposal_id"):
+            EvolutionAdapter().validate_build_manifest(
+                _work(), {**manifest, "proposal_id": "other"},
+            )
+        with self.assertRaisesRegex(ValueError, "candidate_ref"):
+            EvolutionAdapter().validate_build_manifest(
+                _work(), {**manifest, "candidate_ref": None},
+            )
+
     def test_adapter_rejects_unverified_gate_values(self) -> None:
         gates = _passing_gates()
         gates["security_gates_pass"] = "true"
