@@ -403,6 +403,41 @@ class SQLiteStateStore:
             ).fetchall()
         return [dict(row) for row in rows]
 
+    def candidate_recovery_queue(self, *, limit: int = 100) -> list[dict[str, Any]]:
+        """Read-only review queue for previously screened candidates.
+
+        A rejected candidate may provide research value, but it must never
+        bypass a fresh admission decision or be promoted by this report.
+        Security-blocked entries are deliberately excluded.
+        """
+        bounded = max(1, min(int(limit), 1000))
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT fingerprint, capability_id, repository, commit_sha,
+                       lifecycle, rejection_reason, score, dossier_path
+                FROM candidates
+                WHERE lifecycle IN ('REJECTED', 'SECURITY_REVIEW')
+                ORDER BY CASE lifecycle
+                    WHEN 'REJECTED' THEN 0 ELSE 1 END,
+                    updated_at ASC, fingerprint ASC
+                LIMIT ?
+                """,
+                (bounded,),
+            ).fetchall()
+        return [
+            {
+                **dict(row),
+                "recovery_action": (
+                    "review_scoring_and_policy_then_fresh_admission"
+                    if row["lifecycle"] == "REJECTED"
+                    else "repeat_security_review_with_current_evidence"
+                ),
+                "automatically_admitted": False,
+            }
+            for row in rows
+        ]
+
     def candidates_missing_research_knowledge(
         self, capability_id: str, *, limit: int = 100
     ) -> list[dict[str, Any]]:
