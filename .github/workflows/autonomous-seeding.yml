@@ -58,11 +58,21 @@ jobs:
           RESEARCHER_COMMIT: ${{ github.sha }}
           DATA_DIR: ${{ runner.temp }}/researcher-data
         run: |
+          set -Eeuo pipefail
+          trap 'echo "::error title=Researcher seeding failed::Command failed at line $LINENO (exit $?). Check the named command and diagnostics artifact."' ERR
+          echo "::group::Backfill researcher knowledge"
           researcher backfill-knowledge --limit 250 | tee "${RUNNER_TEMP}/researcher-backfill-result.json"
+          echo "::endgroup::"
+          echo "::group::Run researcher sweep"
           researcher sweep --cycles 4 | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
+          echo "::endgroup::"
+          echo "::group::Collect researcher diagnostics"
           researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json"
           researcher handoffs > "${RUNNER_TEMP}/researcher-handoffs.json"
+          echo "::endgroup::"
+          echo "::group::Validate seeding health"
           python tools/seeding_health_report.py --backfill "${RUNNER_TEMP}/researcher-backfill-result.json" --sweep "${RUNNER_TEMP}/researcher-cycle-result.json" --output "${RUNNER_TEMP}/researcher-run-health.json"
+          echo "::endgroup::"
           # Make zero-yield production runs visible in Actions logs as well as artifacts.
           python - <<'PY'
           import json
