@@ -76,7 +76,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Recover legacy direct-Cantiere QUEUED proposals back to PROPOSED",
     )
     recover.add_argument("--limit", type=int, default=100)
-    report = sub.add_parser("candidate-recovery", help="Show candidates eligible for manual reassessment")
+    report = sub.add_parser("candidate-recovery", help="Show recovery queue")
     report.add_argument("--limit", type=int, default=100)
     sub.add_parser("worker", help="Run persistent worker")
     sub.add_parser("dashboard", help="Run health/status HTTP server")
