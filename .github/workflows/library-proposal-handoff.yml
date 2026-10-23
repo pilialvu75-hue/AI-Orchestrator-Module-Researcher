@@ -45,9 +45,8 @@ jobs:
         run: |
           set -euo pipefail
           if [[ ! -f "${RUNNER_TEMP}/researcher-data/researcher.db" ]]; then
-            echo "::warning::No cached Researcher database; no proposals transferred"
-            echo "created=0" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::Researcher database unavailable; handoff cannot be verified"
+            exit 1
           fi
           python library/tools/research_proposal_transfer.py \
             --researcher researcher \
