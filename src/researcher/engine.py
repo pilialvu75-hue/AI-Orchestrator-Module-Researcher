@@ -513,7 +513,8 @@ class ResearchEngine:
             for candidate in candidates:
                 fingerprint = candidate_fingerprint(need.capability_id, candidate)
                 if (self.state.is_known_candidate(fingerprint)
-                        and not self.state.security_review_retry_due(fingerprint)):
+                        and not self.state.security_review_retry_due(fingerprint)
+                        and not self.state.rejected_candidate_retry_due(fingerprint)):
                     # V2 knowledge extraction was introduced after many candidates
                     # had already been persisted. Re-observe their metadata so the
                     # durable ResearchSource/ImprovementProposal layer can be
