@@ -61,6 +61,7 @@ def _parser() -> argparse.ArgumentParser:
         help="Export read-only Researcher proposals for trusted Library intake",
     )
     export.add_argument("--limit", type=int, default=100)
+    export.add_argument("--offset", type=int, default=0)
     backfill = sub.add_parser(
         "backfill-knowledge",
         help="Migrate persisted dossiers into Research V2 knowledge",
@@ -162,6 +163,8 @@ def main() -> None:
 
     if args.command == "export-improvement-proposals":
         # A read-only handoff must not initialize network clients or workers.
+        if args.offset < 0:
+            raise SystemExit("--offset must be nonnegative")
         if not 1 <= args.limit <= 1000:
             raise SystemExit("--limit must be between 1 and 1000")
         database = config.data_dir / "researcher.db"
@@ -174,8 +177,8 @@ def main() -> None:
                           acceptance_gates_json, created_at
                    FROM improvement_proposals
                    WHERE state='PROPOSED'
-                   ORDER BY created_at, proposal_id LIMIT ?""",
-                (args.limit,),
+                   ORDER BY created_at, proposal_id LIMIT ? OFFSET ?""",
+                (args.limit, args.offset),
             ).fetchall()
         payload = {
             "schema_version": 1,
