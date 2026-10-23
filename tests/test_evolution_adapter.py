@@ -66,6 +66,16 @@ class EvolutionAdapterTests(unittest.TestCase):
                 gate_results=gates,
             )
 
+    def test_adapter_rejects_unverified_gate_values(self) -> None:
+        gates = _passing_gates()
+        gates["security_gates_pass"] = "true"
+        with self.assertRaisesRegex(ValueError, "must be boolean"):
+            EvolutionAdapter().validate_result(
+                _work(),
+                candidate_ref="artifact://candidate/proposal-1",
+                gate_results=gates,
+            )
+
     def test_adapter_rejects_empty_candidate_reference(self) -> None:
         with self.assertRaisesRegex(ValueError, "candidate_ref is required"):
             EvolutionAdapter().validate_result(
