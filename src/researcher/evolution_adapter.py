@@ -55,7 +55,9 @@ class EvolutionAdapter:
     and the Researcher proposal state machine.
     """
 
-    def validate_build_manifest(self, work: EvolutionWorkItem, manifest: Mapping[str, Any]) -> ValidatedCandidateModule:
+    def validate_build_manifest(
+        self, work: EvolutionWorkItem, manifest: Mapping[str, Any]
+    ) -> ValidatedCandidateModule:
         """Receive an isolated builder artifact without accepting its own test claims."""
         if manifest.get("proposal_id") != work.proposal_id:
             raise ValueError("Builder proposal_id mismatch")
