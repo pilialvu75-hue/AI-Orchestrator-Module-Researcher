@@ -351,7 +351,7 @@ class SQLiteStateStore:
                 """SELECT 1 FROM candidates
                    WHERE fingerprint=? AND lifecycle='REJECTED'
                      AND rejection_reason='pre_screen:recommendation_threshold'
-                     AND datetime(updated_at) <= datetime('now', '-24 hours')""",
+                     AND datetime(updated_at) <= datetime('now', '-15 minutes')""",
                 (fingerprint,),
             ).fetchone()
         return row is not None
