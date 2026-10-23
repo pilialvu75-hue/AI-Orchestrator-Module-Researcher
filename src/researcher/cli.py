@@ -167,7 +167,7 @@ def main() -> None:
         database = config.data_dir / "researcher.db"
         if not database.is_file():
             raise SystemExit("Researcher state database not found")
-        with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as conn:
+        with sqlite3.connect(database.resolve().as_uri() + "?mode=ro&immutable=1", uri=True) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """SELECT proposal_id, capability_id, novelty_json,
