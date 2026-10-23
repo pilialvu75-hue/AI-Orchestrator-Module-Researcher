@@ -151,6 +151,30 @@ class EngineObservabilityTests(unittest.TestCase):
             self.assertEqual(handoffs[0]["capability_id"], n.capability_id)
             self.assertTrue(handoffs[0]["knowledge_delta"])
 
+    def test_rejected_score_candidate_retry_is_bounded(self) -> None:
+        n = need()
+        c = candidate("retry-score", "c" * 40)
+        with tempfile.TemporaryDirectory() as tmp:
+            state = SQLiteStateStore(Path(tmp) / "state.db")
+            fingerprint = candidate_fingerprint(n.capability_id, c)
+            state.upsert_candidate(
+                fingerprint, n.capability_id, c.repository, c.commit_sha,
+                "REJECTED", 0.1, "old.json",
+                "pre_screen:recommendation_threshold",
+            )
+            self.assertFalse(state.rejected_candidate_retry_due(fingerprint))
+            with state._connect() as conn:
+                conn.execute(
+                    "UPDATE candidates SET updated_at=datetime('now', '-25 hours') "
+                    "WHERE fingerprint=?", (fingerprint,),
+                )
+            self.assertTrue(state.rejected_candidate_retry_due(fingerprint))
+            state.upsert_candidate(
+                fingerprint, n.capability_id, c.repository, c.commit_sha,
+                "REJECTED", 0.1, "old.json", "pre_screen:license_unknown",
+            )
+            self.assertFalse(state.rejected_candidate_retry_due(fingerprint))
+
     def test_stale_security_review_is_reassessed(self) -> None:
         n = need()
         c = candidate("stale-review", "b" * 40)
