@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 import threading
 
@@ -161,13 +162,37 @@ def main() -> None:
 
     if args.command == "export-improvement-proposals":
         # A read-only handoff must not initialize network clients or workers.
-        config.data_dir.mkdir(parents=True, exist_ok=True)
-        state = SQLiteStateStore(config.data_dir / "researcher.db")
-        print(json.dumps(
-            state.export_improvement_proposals(limit=args.limit),
-            indent=2,
-            sort_keys=True,
-        ))
+        if not 1 <= args.limit <= 1000:
+            raise SystemExit("--limit must be between 1 and 1000")
+        database = config.data_dir / "researcher.db"
+        if not database.is_file():
+            raise SystemExit("Researcher state database not found")
+        with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """SELECT proposal_id, capability_id, novelty_json,
+                          acceptance_gates_json, created_at
+                   FROM improvement_proposals
+                   WHERE state='PROPOSED'
+                   ORDER BY created_at, proposal_id LIMIT ?""",
+                (args.limit,),
+            ).fetchall()
+        payload = {
+            "schema_version": 1,
+            "kind": "research_improvement_proposals",
+            "proposals": [
+                {
+                    "proposal_id": row["proposal_id"],
+                    "capability_id": row["capability_id"],
+                    "novelty": json.loads(row["novelty_json"]),
+                    "acceptance_gates": json.loads(row["acceptance_gates_json"]),
+                    "created_at": row["created_at"],
+                    "status": "PROPOSED",
+                }
+                for row in rows
+            ],
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
         return
 
     if args.command == "preflight-pinned":
