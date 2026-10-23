@@ -84,6 +84,12 @@ class EvolutionAdapter:
         if set(required) != expected:
             raise ValueError("Evolution work item acceptance gates diverge from contract")
 
+        # Refuse non-boolean evidence instead of silently treating it as a failed
+        # gate; the implementation runner must report explicit verified results.
+        invalid = [gate for gate in required if type(gate_results[gate]) is not bool]
+        if invalid:
+            raise ValueError("Acceptance gate evidence must be boolean: " + ", ".join(invalid))
+
         evidence = EvolutionGateEvidence(
             implementation_tests_pass=gate_results["implementation_tests_pass"] is True,
             security_gates_pass=gate_results["security_gates_pass"] is True,
