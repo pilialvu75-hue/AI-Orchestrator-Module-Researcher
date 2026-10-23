@@ -1,0 +1,100 @@
+name: Export Research Proposals to Library
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "47 */6 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: researcher-state-v2
+  cancel-in-progress: false
+
+jobs:
+  handoff:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Researcher
+        uses: actions/checkout@v4
+        with:
+          path: researcher
+          persist-credentials: false
+      - name: Checkout Library (trusted destination)
+        uses: actions/checkout@v4
+        with:
+          repository: pilialvu75-hue/AI-Orchestrator-Module-Library
+          ref: main
+          path: library
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Restore Researcher durable state
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/researcher-data
+          key: researcher-state-v2-handoff-${{ github.run_id }}
+          restore-keys: |
+            researcher-state-v2-
+      - name: Transfer bounded proposals into planning queue
+        id: transfer
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -f "${RUNNER_TEMP}/researcher-data/researcher.db" ]]; then
+            echo "::warning::No cached Researcher database; no proposals transferred"
+            echo "created=0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          python library/tools/research_proposal_transfer.py \
+            --researcher researcher \
+            --data-dir "${RUNNER_TEMP}/researcher-data" \
+            --root library \
+            --limit 100 | tee "${RUNNER_TEMP}/proposal-transfer.json"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          result = json.loads((Path(os.environ["RUNNER_TEMP"]) / "proposal-transfer.json").read_text())
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"created={result['created']}\n")
+              output.write(f"has_more={str(result['has_more']).lower()}\n")
+          PY
+      - name: Validate Library and create planning-only pull request
+        if: steps.transfer.outputs.created != '0'
+        env:
+          GH_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${GH_TOKEN}" ]]; then
+            echo "::error::Missing RESEARCHER_LIBRARY_TOKEN; cannot publish proposals"
+            exit 1
+          fi
+          cd library
+          python tools/validate_library.py
+          python -m unittest discover -s tests -p 'test_*.py'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "researcher/proposal-handoff-${GITHUB_RUN_ID}"
+          git add -- .airlab/research-improvements/pending
+          git commit -m "researcher: queue validated improvement proposals for triage"
+          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)" \
+            push https://github.com/pilialvu75-hue/AI-Orchestrator-Module-Library.git HEAD
+          gh pr create --repo pilialvu75-hue/AI-Orchestrator-Module-Library \
+            --head "researcher/proposal-handoff-${GITHUB_RUN_ID}" --base main \
+            --title "Researcher: queue proposals for triage" \
+            --body "Automated read-only Researcher export into the Library planning queue. No approval, certification, or execution is implied."
+      - name: Report handoff
+        if: always()
+        shell: bash
+        run: |
+          echo "## Researcher to Library planning handoff" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "${RUNNER_TEMP}/proposal-transfer.json" ]]; then
+            cat "${RUNNER_TEMP}/proposal-transfer.json" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "No proposal transfer report (missing state or earlier failure)." >> "$GITHUB_STEP_SUMMARY"
+          fi
