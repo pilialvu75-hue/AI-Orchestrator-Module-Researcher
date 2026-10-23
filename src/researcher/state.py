@@ -340,6 +340,22 @@ class SQLiteStateStore:
             ).fetchone()
         return row is not None
 
+    def rejected_candidate_retry_due(self, fingerprint: str) -> bool:
+        """Re-screen only score-threshold rejections after a bounded cooldown.
+
+        License, archived-source and unstable-ref rejections stay excluded.
+        Any successful re-screen must still pass all security admission gates.
+        """
+        with self._connect() as conn:
+            row = conn.execute(
+                """SELECT 1 FROM candidates
+                   WHERE fingerprint=? AND lifecycle='REJECTED'
+                     AND rejection_reason='pre_screen:recommendation_threshold'
+                     AND datetime(updated_at) <= datetime('now', '-24 hours')""",
+                (fingerprint,),
+            ).fetchone()
+        return row is not None
+
     def is_known_candidate(self, fingerprint: str) -> bool:
         with self._connect() as conn:
             row = conn.execute(
