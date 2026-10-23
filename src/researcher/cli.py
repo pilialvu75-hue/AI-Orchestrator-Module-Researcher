@@ -76,6 +76,8 @@ def _parser() -> argparse.ArgumentParser:
         help="Recover legacy direct-Cantiere QUEUED proposals back to PROPOSED",
     )
     recover.add_argument("--limit", type=int, default=100)
+    report = sub.add_parser("candidate-recovery", help="Show recovery queue")
+    report.add_argument("--limit", type=int, default=100)
     sub.add_parser("worker", help="Run persistent worker")
     sub.add_parser("dashboard", help="Run health/status HTTP server")
     sub.add_parser("status", help="Print durable state")
@@ -303,6 +305,11 @@ def main() -> None:
         )
         _sync_diagnostics(app)
         print(json.dumps(result, indent=2, sort_keys=True))
+        return
+    if args.command == "candidate-recovery":
+        if not 1 <= args.limit <= 1000:
+            raise SystemExit("limit must be between 1 and 1000")
+        print(json.dumps(app.state.candidate_recovery_queue(limit=args.limit), indent=2))
         return
     if args.command == "status":
         print(json.dumps(_status(app), indent=2, sort_keys=True))
