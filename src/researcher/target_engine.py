@@ -4,7 +4,12 @@ from typing import Any
 
 from .engine import ResearchEngine, _PRIORITY
 from .models import Dossier, Need, ResearchMode, utc_now
-from .knowledge import research_source, build_improvement_proposal
+from .knowledge import (
+    research_source,
+    build_improvement_proposal,
+    classify_research_opportunity,
+    opportunity_next_action,
+)
 from .observability import EventLevel, sanitize_payload
 from .security_admission import FullTreeSecurityReport, SecurityScanDeferred
 from .security_gate import SecurityVerdict
@@ -338,6 +343,25 @@ class TargetAwareResearchEngine(ResearchEngine):
                         novelty=proposal.novelty,
                         acceptance_gates=proposal.acceptance_gates,
                     )
+                # Opportunity triage is deliberately less restrictive than code
+                # admission: rejected sources can still inspire independent work.
+                # This classification NEVER changes lifecycle or admission gates.
+                opportunity = classify_research_opportunity(lifecycle, source)
+                self._emit(
+                    EventLevel.INFO,
+                    "research_opportunity_classified",
+                    {
+                        "capability_id": need.capability_id,
+                        "repository": candidate.repository,
+                        "lifecycle": lifecycle,
+                        "opportunity": opportunity,
+                        "next_action": opportunity_next_action(opportunity),
+                        "source_id": source.source_id,
+                        "proposal_id": None if proposal is None else proposal.proposal_id,
+                        "new_signals": len(novelty),
+                        "rejection_reason": rejection_reason,
+                    },
+                )
                 supply_chain = security_report.supply_chain
                 self._emit(
                     EventLevel.INFO,

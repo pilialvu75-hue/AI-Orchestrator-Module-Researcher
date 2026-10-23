@@ -98,6 +98,34 @@ def research_source(capability_id: str, candidate: Candidate) -> ResearchSource:
     )
 
 
+def classify_research_opportunity(lifecycle: str, source: ResearchSource) -> str:
+    """Classify follow-up work without relaxing admission or license gates.
+
+    A blocked/rejected source can be a remediation candidate, but it is
+    never an approved module merely because its license permits reuse.
+    """
+    if lifecycle == "SHORTLISTED" and source.direct_reuse:
+        return "DIRECT_REUSE_CANDIDATE"
+    if source.direct_reuse and lifecycle in (
+        "SECURITY_REVIEW", "SECURITY_BLOCKED", "REJECTED"
+    ):
+        return "REMEDIATION_CANDIDATE"
+    if source.research_use:
+        return "INDEPENDENT_IMPLEMENTATION_RESEARCH"
+    return "EVIDENCE_ONLY"
+
+
+def opportunity_next_action(opportunity: str) -> str:
+    """Suggest a safe follow-up; never authorize execution or certification."""
+    actions = {
+        "DIRECT_REUSE_CANDIDATE": "SUBMIT_FOR_LIBRARY_REVIEW",
+        "REMEDIATION_CANDIDATE": "PREPARE_REMEDIATION_PLAN",
+        "INDEPENDENT_IMPLEMENTATION_RESEARCH": "PROPOSE_INDEPENDENT_IMPLEMENTATION",
+        "EVIDENCE_ONLY": "PRESERVE_RESEARCH_EVIDENCE",
+    }
+    return actions[opportunity]
+
+
 def novelty_delta(previous_signals: set[str], source: ResearchSource) -> tuple[str, ...]:
     """Return only knowledge signals not already present in the capability memory."""
     return tuple(sorted(set(source.signals) - previous_signals))

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 import threading
 
@@ -55,6 +56,12 @@ def _parser() -> argparse.ArgumentParser:
     sweep = sub.add_parser("sweep", help="Run a bounded breadth-first research sweep")
     sweep.add_argument("--cycles", type=int, default=4)
     sub.add_parser("handoffs", help="Print pending implementation requests")
+    export = sub.add_parser(
+        "export-improvement-proposals",
+        help="Export read-only Researcher proposals for trusted Library intake",
+    )
+    export.add_argument("--limit", type=int, default=100)
+    export.add_argument("--offset", type=int, default=0)
     backfill = sub.add_parser(
         "backfill-knowledge",
         help="Migrate persisted dossiers into Research V2 knowledge",
@@ -153,6 +160,43 @@ def _status(app: App) -> dict[str, object]:
 def main() -> None:
     args = _parser().parse_args()
     config = Config.from_env()
+
+    if args.command == "export-improvement-proposals":
+        # A read-only handoff must not initialize network clients or workers.
+        if args.offset < 0:
+            raise SystemExit("--offset must be nonnegative")
+        if not 1 <= args.limit <= 1000:
+            raise SystemExit("--limit must be between 1 and 1000")
+        database = config.data_dir / "researcher.db"
+        if not database.is_file():
+            raise SystemExit("Researcher state database not found")
+        with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """SELECT proposal_id, capability_id, novelty_json,
+                          acceptance_gates_json, created_at
+                   FROM improvement_proposals
+                   WHERE state='PROPOSED'
+                   ORDER BY created_at, proposal_id LIMIT ? OFFSET ?""",
+                (args.limit, args.offset),
+            ).fetchall()
+        payload = {
+            "schema_version": 1,
+            "kind": "research_improvement_proposals",
+            "proposals": [
+                {
+                    "proposal_id": row["proposal_id"],
+                    "capability_id": row["capability_id"],
+                    "novelty": json.loads(row["novelty_json"]),
+                    "acceptance_gates": json.loads(row["acceptance_gates_json"]),
+                    "created_at": row["created_at"],
+                    "status": "PROPOSED",
+                }
+                for row in rows
+            ],
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return
 
     if args.command == "preflight-pinned":
         config.data_dir.mkdir(parents=True, exist_ok=True)
