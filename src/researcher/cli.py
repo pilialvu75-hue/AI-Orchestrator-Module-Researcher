@@ -11,7 +11,7 @@ from .capability_status import status_payload
 from .component_candidate import resolve_and_admit_component_candidate
 from .config import Config
 from .dashboard import serve
-from .evolution import EvolutionWorker
+from .evolution import EvolutionWorkItem, EvolutionWorker
 from .first_party_mining import run_one_first_party_candidate
 from .observability import EventLevel
 from .scheduler import Scheduler
@@ -67,6 +67,15 @@ def _parser() -> argparse.ArgumentParser:
         help="Migrate persisted dossiers into Research V2 knowledge",
     )
     backfill.add_argument("--limit", type=int, default=100)
+    build_request = sub.add_parser(
+        "builder-request", help="Prepare a non-publishing isolated builder work order"
+    )
+    build_request.add_argument("--proposal-id", required=True)
+    build_request.add_argument("--capability-id", required=True)
+    build_request.add_argument(
+        "--knowledge-delta", action="append", default=[],
+        help="Research observation (repeatable)",
+    )
     evolve = sub.add_parser("evolve", help="Claim bounded module evolution work")
     evolve.add_argument("--limit", type=int, default=1)
     requeue = sub.add_parser("requeue-evolution", help="Return a failed dispatch claim to PROPOSED")
@@ -162,6 +171,23 @@ def _status(app: App) -> dict[str, object]:
 def main() -> None:
     args = _parser().parse_args()
     config = Config.from_env()
+
+    if args.command == "builder-request":
+        gates = (
+            "implementation_tests_pass",
+            "security_gates_pass",
+            "regression_tests_pass",
+            "library_contract_pass",
+        )
+        work = EvolutionWorkItem(
+            proposal_id=args.proposal_id,
+            capability_id=args.capability_id,
+            knowledge_delta=tuple(args.knowledge_delta),
+            acceptance_gates=gates,
+        )
+        request = EvolutionWorker.prepare_builder_request(None, work)
+        print(json.dumps(request, indent=2, sort_keys=True))
+        return
 
     if args.command == "export-improvement-proposals":
         # A read-only handoff must not initialize network clients or workers.
