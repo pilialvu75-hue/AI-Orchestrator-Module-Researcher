@@ -66,8 +66,18 @@ class EvolutionAdapterTests(unittest.TestCase):
                 gate_results=gates,
             )
 
+    def test_builder_request_requires_identity(self) -> None:
+        work = _work()
+        missing = EvolutionWorkItem(
+            proposal_id="", capability_id=work.capability_id,
+            knowledge_delta=work.knowledge_delta,
+            acceptance_gates=work.acceptance_gates,
+        )
+        with self.assertRaisesRegex(ValueError, "required"):
+            EvolutionWorker.prepare_builder_request(missing)
+
     def test_builder_request_is_isolated_and_not_publishable(self) -> None:
-        request = EvolutionWorker.prepare_builder_request(None, _work())
+        request = EvolutionWorker.prepare_builder_request(_work())
         self.assertEqual(request["execution_boundary"], "isolated_builder")
         self.assertFalse(request["library_publish_allowed"])
         self.assertEqual(request["proposal_id"], "proposal-1")
