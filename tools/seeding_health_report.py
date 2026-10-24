@@ -199,8 +199,16 @@ def main() -> None:
             "Certified modules: **not determined by Researcher** (requires Library evidence).",
             "",
         ]
-        if summary["outcome"] == "ZERO_DISCOVERY":
-            lines.append("**Warning:** successful workflow execution produced zero new discoveries.")
+        if summary["prepared_submissions"] == 0:
+            lines.append(
+                "**Warning:** workflow execution produced zero prepared module submissions. "
+                "A green GitHub Actions run does not mean a productive Researcher run."
+            )
+        if summary["outcome"] == "BLOCKED":
+            lines.append(
+                "**Warning:** Researcher reported blocked or deferred work; "
+                "inspect the diagnostics artifact before treating this run as healthy."
+            )
         with Path(github_summary).open("a", encoding="utf-8") as handle:
             handle.write("\n".join(lines) + "\n")
     print(json.dumps(summary, sort_keys=True))
