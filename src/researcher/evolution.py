@@ -33,6 +33,20 @@ class EvolutionWorker:
     def __init__(self, state: SQLiteStateStore) -> None:
         self.state = state
 
+    def prepare_builder_request(self, work: EvolutionWorkItem) -> dict[str, Any]:
+        """Prepare an isolated build request, never a Library publication."""
+        if not work.proposal_id or not work.capability_id:
+            raise ValueError("Evolution proposal and capability are required")
+        request = work.as_dict()
+        request["execution_boundary"] = "isolated_builder"
+        request["library_publish_allowed"] = False
+        request["required_manifest_fields"] = [
+            "proposal_id",
+            "capability_id",
+            "candidate_ref",
+        ]
+        return request
+
     def claim_next(self) -> EvolutionWorkItem | None:
         request = self.state.claim_improvement_proposal()
         if request is None:
