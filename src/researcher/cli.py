@@ -185,7 +185,7 @@ def main() -> None:
             knowledge_delta=tuple(args.knowledge_delta),
             acceptance_gates=gates,
         )
-        request = EvolutionWorker.prepare_builder_request(None, work)
+        request = EvolutionWorker.prepare_builder_request(work)
         print(json.dumps(request, indent=2, sort_keys=True))
         return
 
