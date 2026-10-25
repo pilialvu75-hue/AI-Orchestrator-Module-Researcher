@@ -147,3 +147,26 @@ def test_complete_candidate_rejects_unvalidated_payload(tmp_path) -> None:
         assert "ValidatedCandidateModule is required" in str(error)
     else:
         raise AssertionError("unvalidated payload must fail closed")
+
+
+def test_complete_candidate_rejects_invalid_boundary_and_gate_types(tmp_path) -> None:
+    from researcher.evolution_adapter import EvolutionGateEvidence, ValidatedCandidateModule
+    import pytest
+
+    state = SQLiteStateStore(tmp_path / "researcher.db")
+    _record_full_gate_proposal(state, "guarded")
+    worker = EvolutionWorker(state)
+    work = worker.claim_next()
+    assert work is not None
+    assert worker.begin_validation("guarded")
+
+    for candidate in (
+        ValidatedCandidateModule("guarded", "ai.acceleration_backend", "", EvolutionGateEvidence(True, True, True, True)),
+        ValidatedCandidateModule("guarded", "ai.acceleration_backend", "artifact://test", EvolutionGateEvidence(True, True, True, True), mutation_policy="library_direct_write"),
+        ValidatedCandidateModule("guarded", "ai.acceleration_backend", "artifact://test", EvolutionGateEvidence(1, True, True, True)),
+    ):
+        with pytest.raises(ValueError):
+            worker.complete_candidate(candidate)
+
+    valid = EvolutionAdapter().validate_result(work, candidate_ref="artifact://test", gate_results=_full_gate_results())
+    assert worker.complete_candidate(valid)
