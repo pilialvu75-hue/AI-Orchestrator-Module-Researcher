@@ -150,8 +150,9 @@ def test_complete_candidate_rejects_unvalidated_payload(tmp_path) -> None:
 
 
 def test_complete_candidate_rejects_invalid_boundary_and_gate_types(tmp_path) -> None:
-    from researcher.evolution_adapter import EvolutionGateEvidence, ValidatedCandidateModule
     import pytest
+
+    from researcher.evolution_adapter import EvolutionGateEvidence, ValidatedCandidateModule
 
     state = SQLiteStateStore(tmp_path / "researcher.db")
     _record_full_gate_proposal(state, "guarded")
@@ -160,13 +161,24 @@ def test_complete_candidate_rejects_invalid_boundary_and_gate_types(tmp_path) ->
     assert work is not None
     assert worker.begin_validation("guarded")
 
-    for candidate in (
-        ValidatedCandidateModule("guarded", "ai.acceleration_backend", "", EvolutionGateEvidence(True, True, True, True)),
-        ValidatedCandidateModule("guarded", "ai.acceleration_backend", "artifact://test", EvolutionGateEvidence(True, True, True, True), mutation_policy="library_direct_write"),
-        ValidatedCandidateModule("guarded", "ai.acceleration_backend", "artifact://test", EvolutionGateEvidence(1, True, True, True)),
+    def make_candidate(ref="artifact://test", policy="isolated_candidate_no_library_mutation", first=True):
+        return ValidatedCandidateModule(
+            proposal_id="guarded",
+            capability_id="ai.acceleration_backend",
+            candidate_ref=ref,
+            evidence=EvolutionGateEvidence(first, True, True, True),
+            mutation_policy=policy,
+        )
+
+    for invalid in (
+        make_candidate(ref=""),
+        make_candidate(policy="library_direct_write"),
+        make_candidate(first=1),
     ):
         with pytest.raises(ValueError):
-            worker.complete_candidate(candidate)
+            worker.complete_candidate(invalid)
 
-    valid = EvolutionAdapter().validate_result(work, candidate_ref="artifact://test", gate_results=_full_gate_results())
+    valid = EvolutionAdapter().validate_result(
+        work, candidate_ref="artifact://test", gate_results=_full_gate_results()
+    )
     assert worker.complete_candidate(valid)
