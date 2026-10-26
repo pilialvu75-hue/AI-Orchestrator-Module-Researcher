@@ -161,7 +161,11 @@ def test_complete_candidate_rejects_invalid_boundary_and_gate_types(tmp_path) ->
     assert work is not None
     assert worker.begin_validation("guarded")
 
-    def make_candidate(ref="artifact://test", policy="isolated_candidate_no_library_mutation", first=True):
+    def make_candidate(
+        ref="artifact://test",
+        policy="isolated_candidate_no_library_mutation",
+        first=True,
+    ):
         return ValidatedCandidateModule(
             proposal_id="guarded",
             capability_id="ai.acceleration_backend",
