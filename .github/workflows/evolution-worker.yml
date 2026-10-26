@@ -122,6 +122,52 @@ jobs:
           print(f"Prepared {len(orders)} isolated builder orders; no execution.")
           PY
 
+      - name: Execute first supported isolated builder order
+        env:
+          DATA_DIR: ${{ runner.temp }}/researcher-data
+          RESEARCHER_MODE: IMPROVEMENT
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+          from researcher.first_party_builder import FirstPartyPilotBuilder, IMAGE
+
+          root = Path(os.environ["RUNNER_TEMP"])
+          orders = json.loads((root / "evolution-builder-orders.json").read_text())
+          supported = [
+              order for order in orders["orders"]
+              if order.get("capability_id") == "diagnostics.logging"
+          ]
+          if not supported:
+              result = {"state": "NO_SUPPORTED_ORDER", "execution_started": False}
+          else:
+              # Fetch the exact trusted image before executing the networkless sandbox.
+              subprocess.run(["docker", "pull", IMAGE], check=True, timeout=180)
+              result = FirstPartyPilotBuilder().build(
+                  supported[0],
+                  source_commit=os.environ["GITHUB_SHA"],
+                  output_dir=root / "evolution-candidates",
+              )
+              evidence = result["evidence"]
+              required = (
+                  "implementation_tests_pass",
+                  "security_gates_pass",
+                  "regression_tests_pass",
+              )
+              if not all(evidence[gate] for gate in required):
+                  raise SystemExit("Isolated candidate verification failed")
+              if result["accepted"] or evidence["library_contract_pass"]:
+                  raise SystemExit("Researcher must not certify Library integration")
+          (root / "evolution-builder-result.json").write_text(
+              json.dumps(result, indent=2, sort_keys=True), encoding="utf-8"
+          )
+          print(json.dumps(result, indent=2, sort_keys=True))
+          PY
+
       - name: Enforce Researcher-Library-Cantiere isolation
         run: |
           python - <<'PY'
@@ -151,5 +197,7 @@ jobs:
             ${{ runner.temp }}/evolution-recovery.json
             ${{ runner.temp }}/evolution-work.json
             ${{ runner.temp }}/evolution-builder-orders.json
+            ${{ runner.temp }}/evolution-builder-result.json
+            ${{ runner.temp }}/evolution-candidates/*.zip
           if-no-files-found: error
           retention-days: 14
