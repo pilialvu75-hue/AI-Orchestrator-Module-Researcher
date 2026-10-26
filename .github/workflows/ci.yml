@@ -32,3 +32,61 @@ jobs:
           python tools/guardrails.py
       - name: Unit and integration tests
         run: PYTHONPATH=src python -m unittest discover -s tests -v
+
+
+  pilot-builder:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Researcher
+        run: python -m pip install --disable-pip-version-check .
+      - name: Fetch audited pinned sandbox image
+        run: |
+          docker pull python@sha256:e8a38829209aea82774882e5157e1f7c3e8c8393ff53a697b3580896e57f345c
+      - name: Build executable but non-publishable pilot candidate
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from researcher.evolution import EvolutionWorkItem, EvolutionWorker
+          from researcher.first_party_builder import FirstPartyPilotBuilder, GATES
+
+          work = EvolutionWorkItem(
+              proposal_id="ci-pilot-diagnostics-logging",
+              capability_id="diagnostics.logging",
+              knowledge_delta=("practice:stable-json",),
+              acceptance_gates=GATES,
+          )
+          root = Path(os.environ["${{ runner.temp }}"])
+          result = FirstPartyPilotBuilder().build(
+              EvolutionWorker.prepare_builder_request(work),
+              source_commit=os.environ["GITHUB_SHA"],
+              output_dir=root / "researcher-builder-pilot",
+          )
+          (root / "researcher-builder-pilot-result.json").write_text(
+              json.dumps(result, indent=2, sort_keys=True), encoding="utf-8"
+          )
+          verified = result["evidence"]
+          if not all(verified[key] for key in (
+              "implementation_tests_pass", "security_gates_pass", "regression_tests_pass"
+          )):
+              raise SystemExit("First-party Docker builder pilot failed")
+          if verified["library_contract_pass"] or result["accepted"]:
+              raise SystemExit("A pilot must not self-certify Library admission")
+          print("First-party Docker candidate generated and tested; Library gate pending.")
+          PY
+      - name: Upload isolated pilot candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: researcher-pilot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/researcher-builder-pilot/*.zip
+            ${{ runner.temp }}/researcher-builder-pilot-result.json
+          if-no-files-found: warn
+          retention-days: 14
