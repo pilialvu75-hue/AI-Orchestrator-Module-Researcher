@@ -94,17 +94,26 @@ jobs:
               capability_id = proposal.get("capability_id")
               if not isinstance(proposal_id, str) or not isinstance(capability_id, str):
                   continue
+              delta = proposal.get("knowledge_delta", [])
+              if not isinstance(delta, list) or not all(isinstance(x, str) for x in delta):
+                  raise SystemExit("Invalid research knowledge delta")
+              command = [
+                  "researcher", "builder-request",
+                  "--proposal-id", proposal_id,
+                  "--capability-id", capability_id,
+              ]
+              for observation in delta:
+                  command.extend(["--knowledge-delta", observation])
               result = subprocess.run(
-                  [
-                      "researcher", "builder-request",
-                      "--proposal-id", proposal_id,
-                      "--capability-id", capability_id,
-                  ],
-                  check=True, capture_output=True, text=True,
+                  command, check=True, capture_output=True, text=True,
               )
               order = json.loads(result.stdout)
               if order["library_publish_allowed"] is not False:
                   raise SystemExit("Builder order unexpectedly permits publication")
+              if order["knowledge_delta"] != delta:
+                  raise SystemExit("Builder order lost research knowledge")
+              if set(order["acceptance_gates"]) != set(proposal["acceptance_gates"]):
+                  raise SystemExit("Builder acceptance gates diverge from proposal")
               orders.append(order)
           (root / "evolution-builder-orders.json").write_text(
               json.dumps({"orders": orders, "execution_started": False}, indent=2),
