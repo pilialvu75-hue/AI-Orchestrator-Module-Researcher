@@ -62,7 +62,7 @@ jobs:
               knowledge_delta=("practice:stable-json",),
               acceptance_gates=GATES,
           )
-          root = Path(os.environ["${{ runner.temp }}"])
+          root = Path(os.environ["RUNNER_TEMP"])
           result = FirstPartyPilotBuilder().build(
               EvolutionWorker.prepare_builder_request(work),
               source_commit=os.environ["GITHUB_SHA"],
