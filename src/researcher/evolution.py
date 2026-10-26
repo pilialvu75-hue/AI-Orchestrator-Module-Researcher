@@ -83,6 +83,21 @@ class EvolutionWorker:
 
         if not isinstance(candidate, ValidatedCandidateModule):
             raise TypeError("ValidatedCandidateModule is required")
+        if (
+            not candidate.proposal_id
+            or not candidate.capability_id
+            or not isinstance(candidate.candidate_ref, str)
+            or not candidate.candidate_ref.strip()
+            or candidate.mutation_policy != "isolated_candidate_no_library_mutation"
+        ):
+            raise ValueError("Candidate identity, reference, or mutation boundary invalid")
+        from .evolution_adapter import EvolutionGateEvidence
+
+        evidence = candidate.evidence
+        if not isinstance(evidence, EvolutionGateEvidence) or any(
+            type(value) is not bool for value in evidence.as_dict().values()
+        ):
+            raise ValueError("Candidate requires explicit boolean gate evidence")
         return self.complete_validation(
             candidate.proposal_id,
             accepted=candidate.evidence.accepted,
