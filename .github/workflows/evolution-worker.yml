@@ -136,7 +136,7 @@ jobs:
           from pathlib import Path
           from researcher.first_party_builder import FirstPartyPilotBuilder, IMAGE
 
-          root = Path(os.environ["${{ runner.temp }}"])
+          root = Path(os.environ["RUNNER_TEMP"])
           orders = json.loads((root / "evolution-builder-orders.json").read_text())
           supported = [
               order for order in orders["orders"]
