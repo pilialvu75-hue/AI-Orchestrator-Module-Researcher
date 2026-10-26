@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from researcher.evolution import EvolutionWorker
+from researcher.evolution import EvolutionWorkItem, EvolutionWorker
 from researcher.evolution_adapter import EvolutionAdapter
 from researcher.state import SQLiteStateStore
 
@@ -186,3 +186,28 @@ def test_complete_candidate_rejects_invalid_boundary_and_gate_types(tmp_path) ->
         work, candidate_ref="artifact://test", gate_results=_full_gate_results()
     )
     assert worker.complete_candidate(valid)
+
+def test_builder_manifest_rejects_library_publication_and_mutation() -> None:
+    import pytest
+
+    work = EvolutionWorkItem(
+        proposal_id="manifest-guard",
+        capability_id="diagnostics.logging",
+        knowledge_delta=(),
+        acceptance_gates=tuple(_full_gate_results()),
+    )
+    adapter = EvolutionAdapter()
+    base = {
+        "proposal_id": work.proposal_id,
+        "capability_id": work.capability_id,
+        "candidate_ref": "artifact://candidate",
+    }
+    for extra in (
+        {"library_publish_allowed": True},
+        {"mutation_policy": "library_direct_write"},
+    ):
+        with pytest.raises(ValueError):
+            adapter.validate_build_manifest(work, {**base, **extra})
+
+    candidate = adapter.validate_build_manifest(work, base)
+    assert not candidate.evidence.accepted
