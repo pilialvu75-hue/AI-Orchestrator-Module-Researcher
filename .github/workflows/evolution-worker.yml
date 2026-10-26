@@ -73,6 +73,46 @@ jobs:
           print(json.dumps(payload, indent=2, sort_keys=True))
           PY
 
+      - name: Prepare isolated builder work orders
+        env:
+          DATA_DIR: ${{ runner.temp }}/researcher-data
+          RESEARCHER_MODE: IMPROVEMENT
+          DRY_RUN: "true"
+          ALLOW_LIBRARY_WRITE: "false"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          root = Path(os.environ["RUNNER_TEMP"])
+          payload = json.loads((root / "evolution-work.json").read_text(encoding="utf-8"))
+          orders = []
+          for proposal in payload["proposals"]:
+              proposal_id = proposal.get("proposal_id")
+              capability_id = proposal.get("capability_id")
+              if not isinstance(proposal_id, str) or not isinstance(capability_id, str):
+                  continue
+              result = subprocess.run(
+                  [
+                      "researcher", "builder-request",
+                      "--proposal-id", proposal_id,
+                      "--capability-id", capability_id,
+                  ],
+                  check=True, capture_output=True, text=True,
+              )
+              order = json.loads(result.stdout)
+              if order["library_publish_allowed"] is not False:
+                  raise SystemExit("Builder order unexpectedly permits publication")
+              orders.append(order)
+          (root / "evolution-builder-orders.json").write_text(
+              json.dumps({"orders": orders, "execution_started": False}, indent=2),
+              encoding="utf-8",
+          )
+          print(f"Prepared {len(orders)} isolated builder orders; no execution.")
+          PY
+
       - name: Enforce Researcher-Library-Cantiere isolation
         run: |
           python - <<'PY'
@@ -101,5 +141,6 @@ jobs:
           path: |
             ${{ runner.temp }}/evolution-recovery.json
             ${{ runner.temp }}/evolution-work.json
+            ${{ runner.temp }}/evolution-builder-orders.json
           if-no-files-found: error
           retention-days: 14
