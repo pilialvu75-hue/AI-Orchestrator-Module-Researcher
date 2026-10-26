@@ -10,7 +10,7 @@ import hashlib
 import json
 import os
 import re
-import subprocess
+import subprocess  # nosec B404 - fixed argv, pinned Docker image, no shell
 import tempfile
 import zipfile
 from pathlib import Path
@@ -82,9 +82,9 @@ def _validate_order(order: Mapping[str, Any]) -> EvolutionWorkItem:
     if capability != "diagnostics.logging":
         raise ValueError("unsupported first-party builder capability")
     delta = order.get("knowledge_delta")
-    if not isinstance(delta, list) or any(not isinstance(x, str) for x in delta):
+    if not isinstance(delta, (list, tuple)) or any(not isinstance(x, str) for x in delta):
         raise ValueError("invalid knowledge delta")
-    if order.get("acceptance_gates") != list(GATES):
+    if order.get("acceptance_gates") not in (list(GATES), GATES):
         raise ValueError("builder gates do not match the contract")
     work = EvolutionWorkItem(proposal, capability, tuple(delta), GATES)
     expected = EvolutionWorker.prepare_builder_request(work)
