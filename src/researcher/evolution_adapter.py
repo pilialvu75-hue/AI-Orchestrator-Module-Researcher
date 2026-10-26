@@ -63,6 +63,10 @@ class EvolutionAdapter:
             raise ValueError("Builder proposal_id mismatch")
         if manifest.get("capability_id") != work.capability_id:
             raise ValueError("Builder capability_id mismatch")
+        if manifest.get("mutation_policy", work.mutation_policy) != work.mutation_policy:
+            raise ValueError("Builder mutation boundary mismatch")
+        if manifest.get("library_publish_allowed", False) is not False:
+            raise ValueError("Builder cannot authorize Library publication")
         ref = manifest.get("candidate_ref")
         if not isinstance(ref, str) or not ref.strip():
             raise ValueError("Builder candidate_ref is required")
