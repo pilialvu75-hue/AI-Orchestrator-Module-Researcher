@@ -53,11 +53,11 @@ class ProposalQueuePlannerTests(unittest.TestCase):
             with self.subTest(items=items), self.assertRaises(ValueError):
                 queue.select_queue(items)
 
-    def test_unrelated_branch_never_used_for_queue_writes(self):
-        self.assertEqual(
-            queue.select_queue([_pr(77, branch="researcher/proposal-handoff-x; rm -rf /")]),
-            {"existing": "false", "number": "", "branch": ""},
-        )
+    def test_malformed_queue_prefixed_branch_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "Malformed"):
+            queue.select_queue([
+                _pr(77, branch="researcher/proposal-handoff-x; rm -rf /")
+            ])
 
 
 if __name__ == "__main__":
