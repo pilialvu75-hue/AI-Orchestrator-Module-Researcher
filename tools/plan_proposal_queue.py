@@ -23,8 +23,12 @@ def select_queue(pull_requests: Any) -> dict[str, str]:
         if not isinstance(pr, dict):
             raise ValueError("Unexpected Library pull request item")
         branch = pr.get("headRefName")
-        if not isinstance(branch, str) or not _BRANCH.fullmatch(branch):
+        if not isinstance(branch, str) or not branch.startswith(
+            "researcher/proposal-handoff-"
+        ):
             continue
+        if not _BRANCH.fullmatch(branch):
+            raise ValueError("Malformed Researcher queue branch")
         if pr.get("isCrossRepository") is True:
             raise ValueError("Researcher queue PR unexpectedly comes from a fork")
         number = pr.get("number")
