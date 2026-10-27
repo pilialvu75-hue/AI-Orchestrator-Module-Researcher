@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Check for an existing Library proposal queue
+      - name: Find single canonical Library proposal queue
         id: existing_queue
         env:
           GH_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
@@ -43,13 +43,24 @@ jobs:
             echo "::error::Missing RESEARCHER_LIBRARY_TOKEN; cannot check queue idempotency"
             exit 1
           fi
-          existing="$(gh pr list --repo pilialvu75-hue/AI-Orchestrator-Module-Library --state open --limit 100 --json number,headRefName --jq '[.[] | select(.headRefName | startswith("researcher/proposal-handoff-"))] | length')"
-          if [[ "${existing}" -gt 0 ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Existing Researcher proposal queue PR(s): ${existing}; preserving pending proposals and skipping duplicate export." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
+          gh pr list --repo pilialvu75-hue/AI-Orchestrator-Module-Library \
+            --state open --limit 100 --json number,headRefName,isCrossRepository \
+            | python researcher/tools/plan_proposal_queue.py >> "$GITHUB_OUTPUT"
+
+      - name: Check out existing proposal queue for append-only export
+        if: steps.existing_queue.outputs.existing == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
+          QUEUE_BRANCH: ${{ steps.existing_queue.outputs.branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd library
+          # Fetch only the verified same-repository branch. No force push or
+          # rebase; retain all previously proposed JSON and commit history.
+          git -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)" \
+            fetch --no-tags origin "refs/heads/${QUEUE_BRANCH}"
+          git checkout -B "${QUEUE_BRANCH}" FETCH_HEAD
       - name: Restore Researcher durable state
         uses: actions/cache/restore@v4
         with:
@@ -58,7 +69,6 @@ jobs:
           restore-keys: |
             researcher-state-v2-
       - name: Transfer bounded proposals into planning queue
-        if: steps.existing_queue.outputs.skip == 'false'
         id: transfer
         shell: bash
         run: |
@@ -81,10 +91,12 @@ jobs:
               output.write(f"created={result['created']}\n")
               output.write(f"has_more={str(result['has_more']).lower()}\n")
           PY
-      - name: Validate Library and create planning-only pull request
+      - name: Validate Library and publish or append planning-only pull request
         if: steps.transfer.outputs.created != '0'
         env:
           GH_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
+          EXISTING_QUEUE: ${{ steps.existing_queue.outputs.existing }}
+          QUEUE_BRANCH: ${{ steps.existing_queue.outputs.branch }}
         shell: bash
         run: |
           set -euo pipefail
@@ -97,15 +109,33 @@ jobs:
           python -m unittest discover -s tests -p 'test_*.py'
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b "researcher/proposal-handoff-${GITHUB_RUN_ID}"
+          if [[ "${EXISTING_QUEUE}" == "true" ]]; then
+            [[ "$(git branch --show-current)" == "${QUEUE_BRANCH}" ]] || {
+              echo "::error::Checked out branch does not match canonical proposal queue"
+              exit 1
+            }
+            target_branch="${QUEUE_BRANCH}"
+          else
+            target_branch="researcher/proposal-handoff-${GITHUB_RUN_ID}"
+            git checkout -b "${target_branch}"
+          fi
           git add -- .airlab/research-improvements/pending
-          git commit -m "researcher: queue validated improvement proposals for triage"
-          git -c http.extraheader="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)" \
-            push https://github.com/pilialvu75-hue/AI-Orchestrator-Module-Library.git HEAD
-          gh pr create --repo pilialvu75-hue/AI-Orchestrator-Module-Library \
-            --head "researcher/proposal-handoff-${GITHUB_RUN_ID}" --base main \
-            --title "Researcher: queue proposals for triage" \
-            --body "Automated read-only Researcher export into the Library planning queue. No approval, certification, or execution is implied."
+          if git diff --cached --quiet; then
+            echo "No new queue files; no duplicate PR or empty commit." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "researcher: append validated improvement proposals for triage"
+          git -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "${GH_TOKEN}" | base64 -w0)" \
+            push https://github.com/pilialvu75-hue/AI-Orchestrator-Module-Library.git \
+              "HEAD:refs/heads/${target_branch}"
+          if [[ "${EXISTING_QUEUE}" == "true" ]]; then
+            echo "Appended proposals to existing canonical queue branch ${target_branch}." >> "$GITHUB_STEP_SUMMARY"
+          else
+            gh pr create --repo pilialvu75-hue/AI-Orchestrator-Module-Library \
+              --head "${target_branch}" --base main \
+              --title "Researcher: queue proposals for triage" \
+              --body "Automated read-only Researcher export into the Library planning queue. No approval, certification, or execution is implied."
+          fi
       - name: Report handoff
         if: always()
         shell: bash
