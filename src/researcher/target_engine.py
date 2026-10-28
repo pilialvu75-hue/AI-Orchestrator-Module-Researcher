@@ -252,10 +252,16 @@ class TargetAwareResearchEngine(ResearchEngine):
                 from .dedup import candidate_fingerprint
 
                 fingerprint = candidate_fingerprint(need.capability_id, candidate)
-                if self.state.is_known_candidate(fingerprint):
-                    if not self.state.security_review_retry_due(fingerprint):
-                        known_candidates_skipped += 1
-                        continue
+                if (
+                    self.state.is_known_candidate(fingerprint)
+                    and not self.state.security_review_retry_due(fingerprint)
+                    and not self.state.rejected_candidate_retry_due(fingerprint)
+                ):
+                    # Revisit recoverable license/score decisions after the
+                    # bounded cooldown, just as the non-target ResearchEngine
+                    # does. The normal security and vulnerability gates still run.
+                    known_candidates_skipped += 1
+                    continue
 
                 preliminary = self._dossier(need, candidate, contract, "SCREENED")
                 pre_screen_qualified = self._pre_screen_qualified(
