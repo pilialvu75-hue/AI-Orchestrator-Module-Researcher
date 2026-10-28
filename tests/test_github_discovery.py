@@ -91,7 +91,7 @@ class FakeGitHubApi:
 
 class FakeNoAssertionGitHubApi(FakeGitHubApi):
     def get(self, path: str) -> GitHubResponse:
-        if path == "/repos/owner/repo/license":
+        if path == "/repos/owner/repo/license?ref=" + "a" * 40:
             self.calls.append(path)
             headers = {"X-RateLimit-Remaining": "100", "X-RateLimit-Reset": "9999999999"}
             return GitHubResponse({"license": {"spdx_id": "NOASSERTION"}}, headers)
@@ -105,7 +105,7 @@ class FakeNoAssertionGitHubApi(FakeGitHubApi):
 
 class FakeRecoveredLicenseGitHubApi(FakeNoAssertionGitHubApi):
     def get(self, path: str) -> GitHubResponse:
-        if path == "/repos/owner/repo/license":
+        if path == "/repos/owner/repo/license?ref=" + "a" * 40:
             self.calls.append(path)
             headers = {"X-RateLimit-Remaining": "100", "X-RateLimit-Reset": "9999999999"}
             return GitHubResponse({"license": {"spdx_id": "Apache-2.0"}}, headers)
@@ -115,7 +115,7 @@ class FakeRecoveredLicenseGitHubApi(FakeNoAssertionGitHubApi):
 
 class FakeLicenseEndpointOnlyApi(FakeNoAssertionGitHubApi):
     def get(self, path: str) -> GitHubResponse:
-        if path == "/repos/owner/repo/license":
+        if path == "/repos/owner/repo/license?ref=" + "a" * 40:
             self.calls.append(path)
             headers = {"X-RateLimit-Remaining": "100", "X-RateLimit-Reset": "9999999999"}
             return GitHubResponse(
@@ -287,7 +287,7 @@ class GitHubDiscoveryTests(unittest.TestCase):
                 candidates[0].extra["license_detection_source"],
                 "github_license_endpoint",
             )
-            self.assertIn("/repos/owner/repo/license", api.calls)
+            self.assertIn("/repos/owner/repo/license?ref=" + "a" * 40, api.calls)
 
 
     def test_recovers_license_even_when_tree_has_no_license_evidence(self) -> None:
@@ -307,7 +307,7 @@ class GitHubDiscoveryTests(unittest.TestCase):
                 item.extra["license_detection_source"],
                 "github_license_endpoint",
             )
-            self.assertIn("/repos/owner/repo/license", api.calls)
+            self.assertIn("/repos/owner/repo/license?ref=" + "a" * 40, api.calls)
 
     def test_does_not_attach_unrelated_latest_release(self) -> None:
         candidate, _ = self._discover("b" * 40)
