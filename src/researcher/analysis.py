@@ -95,12 +95,12 @@ def _license_options(expression: str) -> list[frozenset[str]]:
     Unknown identifiers, exceptions and malformed expressions never acquire
     permission merely through parsing. No network or upstream execution.
     """
-    if len(expression) > 240 or "\\n" in expression:
+    if len(expression) > 240 or "\n" in expression:
         raise ValueError("license expression too long or multiline")
-    tokens = re.findall(r"\\(|\\)|[A-Za-z0-9][A-Za-z0-9.+:-]*", expression)
+    tokens = re.findall(r"\(|\)|[A-Za-z0-9][A-Za-z0-9.+:-]*", expression)
     if len(tokens) > 40 or not tokens:
         raise ValueError("invalid or oversized SPDX expression")
-    if re.sub(r"\\s+", "", expression) != "".join(tokens):
+    if re.sub(r"\s+", "", expression) != "".join(tokens):
         raise ValueError("unrecognized SPDX expression syntax")
     position = 0
 
@@ -172,7 +172,7 @@ def classify_license(spdx: str | None) -> dict[str, Any]:
     if spdx is None or not spdx.strip():
         return _single_license(None)
     spdx = spdx.strip()
-    if not re.search(r"\\b(?:AND|OR|WITH)\\b|[()]", spdx, flags=re.IGNORECASE):
+    if not re.search(r"\b(?:AND|OR|WITH)\b|[()]", spdx, flags=re.IGNORECASE):
         return _single_license(spdx)
     try:
         alternatives = _license_options(spdx)
