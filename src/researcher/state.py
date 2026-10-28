@@ -341,17 +341,29 @@ class SQLiteStateStore:
         return row is not None
 
     def rejected_candidate_retry_due(self, fingerprint: str) -> bool:
-        """Re-screen only score-threshold rejections after a bounded cooldown.
+        """Re-screen score and uncertain-license rejections with separate budgets.
 
-        License, archived-source and unstable-ref rejections stay excluded.
-        Any successful re-screen must still pass all security admission gates.
+        New SPDX handling and pinned license discovery may reclassify an earlier
+        metadata-only refusal. Re-evaluate after six hours, never bypassing
+        license, security or vulnerability gates. Truly incompatible terms,
+        archived source, or unstable refs remain ineligible for retry.
         """
         with self._connect() as conn:
             row = conn.execute(
                 """SELECT 1 FROM candidates
                    WHERE fingerprint=? AND lifecycle='REJECTED'
-                     AND rejection_reason='pre_screen:recommendation_threshold'
-                     AND datetime(updated_at) <= datetime('now', '-15 minutes')""",
+                     AND (
+                       (rejection_reason='pre_screen:recommendation_threshold'
+                        AND datetime(updated_at) <= datetime('now', '-15 minutes'))
+                       OR
+                       (rejection_reason IN (
+                           'pre_screen:license_unknown',
+                           'pre_screen:license_noassertion',
+                           'pre_screen:license_other',
+                           'pre_screen:license_review_required'
+                        )
+                        AND datetime(updated_at) <= datetime('now', '-6 hours'))
+                     )""",
                 (fingerprint,),
             ).fetchone()
         return row is not None

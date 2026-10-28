@@ -6,7 +6,7 @@ import urllib.parse
 from typing import TYPE_CHECKING, Any
 
 from .dedup import candidate_fingerprint
-from .github_api import GitHubApi, GitHubResponse
+from .github_api import GitHubApi, GitHubApiError, GitHubResponse
 from .models import Candidate, Dossier, utc_now
 from .rate_limit import RateLimitManager
 from .security_admission import FullTreeSecurityReport
@@ -195,11 +195,51 @@ class PinnedCandidateResolver:
             verified_tag = tag
 
         license_spdx: str | None = None
+        license_source = "repository_metadata"
         license_meta = meta.get("license")
         if isinstance(license_meta, dict):
             spdx = license_meta.get("spdx_id")
             if spdx not in {None, "NOASSERTION"}:
                 license_spdx = str(spdx)
+
+        # Repository license metadata describes the default branch, not
+        # necessarily the exact candidate revision. If it is unrecognized,
+        # use GitHub's LICENSE detector at the immutable commit and require
+        # that the detected file really occurs in that commit's verified tree.
+        # A missing/NOASSERTION response NEVER authorizes code reuse.
+        if license_spdx is None and signals.get("license_file_url"):
+            try:
+                detected = self._get(
+                    f"/repos/{encoded_repo}/license?ref={commit_sha}"
+                )
+            except GitHubApiError as exc:
+                if exc.status not in {404, 422}:
+                    raise
+            else:
+                license_data = (
+                    detected.data if isinstance(detected.data, dict) else {}
+                )
+                matched = license_data.get("license")
+                path = license_data.get("path")
+                pinned_files = {
+                    str(entry.get("path")): entry
+                    for entry in tree_data.get("tree", [])
+                    if isinstance(entry, dict) and entry.get("type") == "blob"
+                }
+                file_entry = pinned_files.get(path) if isinstance(path, str) else None
+                if file_entry is not None and (
+                    not license_data.get("sha")
+                    or license_data["sha"] == file_entry.get("sha")
+                ):
+                    detected_spdx = (
+                        matched.get("spdx_id")
+                        if isinstance(matched, dict) else None
+                    )
+                    if isinstance(detected_spdx, str) and detected_spdx not in {
+                        "", "NOASSERTION", "NONE"
+                    }:
+                        license_spdx = detected_spdx
+                        license_source = "pinned_github_license_endpoint"
 
         owner_meta = meta.get("owner")
         owner = (
@@ -248,6 +288,7 @@ class PinnedCandidateResolver:
             has_issues=bool(meta.get("has_issues", True)),
             has_wiki=bool(meta.get("has_wiki", False)),
             extra={
+                "license_detection_source": license_source,
                 "fork": bool(meta.get("fork", False)),
                 "disabled": bool(meta.get("disabled", False)),
                 "visibility": meta.get("visibility"),
