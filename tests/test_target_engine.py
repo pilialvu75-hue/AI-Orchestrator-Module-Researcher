@@ -6,6 +6,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from researcher.comparison import ComparisonEngine
+from researcher.dedup import candidate_fingerprint
 from researcher.dossiers import DossierStore
 from researcher.models import ResearchMode
 from researcher.scoring import CandidateScorer
@@ -97,6 +98,67 @@ class TargetAwareEngineTests(unittest.TestCase):
             self.assertEqual(len(result["prepared_submissions"]), 2)
             self.assertTrue(result["target_coverage"]["complete"])
             self.assertEqual(state.count_completed_submissions("voice.stt"), 2)
+
+
+    def test_target_seeding_retries_recoverable_license_rejections_only_when_due(self) -> None:
+        requested = need()
+        recovered = _target_candidate("license-recovered", "8", "android")
+        too_early = _target_candidate("license-too-early", "9", "android")
+        incompatible = _target_candidate("license-incompatible", "a", "android")
+        candidates = [recovered, too_early, incompatible]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = SQLiteStateStore(root / "state.db")
+            dossiers = DossierStore(root)
+            for item, reason in (
+                (recovered, "pre_screen:license_noassertion"),
+                (too_early, "pre_screen:license_unknown"),
+                (incompatible, "pre_screen:license_agpl"),
+            ):
+                state.upsert_candidate(
+                    candidate_fingerprint(requested.capability_id, item),
+                    requested.capability_id,
+                    item.repository,
+                    item.commit_sha,
+                    "REJECTED",
+                    0.1,
+                    "old-dossier.json",
+                    reason,
+                )
+            with state._connect() as conn:
+                for item in (recovered, incompatible):
+                    conn.execute(
+                        "UPDATE candidates SET updated_at=datetime('now', '-7 hours') "
+                        "WHERE fingerprint=?",
+                        (candidate_fingerprint(requested.capability_id, item),),
+                    )
+            security = FakeSecurityScanner()
+            vulnerability = FakeVulnerabilityScanner()
+            engine = TargetAwareResearchEngine(
+                FakeLibrary([requested]),
+                FakeLibrary([requested]),
+                FakeDiscovery(candidates),
+                state,
+                dossiers,
+                CandidateScorer(),
+                ComparisonEngine(),
+                TargetScopedSubmissionClient(DryRunSubmissionClient(dossiers)),
+                ResearchMode.SEEDING,
+                security_scanner=security,
+                vulnerability_scanner=vulnerability,
+            )
+
+            result = engine.run_cycle()
+
+            self.assertEqual(1, result["new_analyzed"])
+            self.assertEqual(2, result["known_candidates_skipped"])
+            self.assertEqual(1, len(result["prepared_submissions"]))
+            self.assertEqual(1, security.calls)
+            self.assertEqual(1, vulnerability.calls)
+            self.assertFalse(state.rejected_candidate_retry_due(
+                candidate_fingerprint(requested.capability_id, recovered)
+            ))
 
 
 if __name__ == "__main__":
