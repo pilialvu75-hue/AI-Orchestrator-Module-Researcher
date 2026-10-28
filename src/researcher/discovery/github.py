@@ -405,10 +405,11 @@ class GitHubDiscoveryProvider:
     
                 # GitHub's repository metadata often omits license detection even when
                 # a LICENSE/COPYING file is present. Ask the dedicated license endpoint
-                # for authoritative GitHub-side detection; never execute upstream code.
+                # for detection at the exact pinned revision, not changing HEAD.
+                # Never execute upstream code or treat NOASSERTION as a license.
                 if license_spdx in {None, "NOASSERTION"}:
                     try:
-                        detected = self.api.get(f"/repos/{full_name}/license")
+                        detected = self.api.get(f"/repos/{full_name}/license?ref={sha}")
                         self._observe(detected)
                         detected_data = detected.data if isinstance(detected.data, dict) else {}
                         detected_license = detected_data.get("license")
