@@ -114,6 +114,7 @@ def payload_digest(root: Path) -> str:
             raise ValueError("symlink inside source payload")
         rel = f.relative_to(root).as_posix().encode()
         h.update(len(rel).to_bytes(8, "big"))
+        h.update(rel)
         h.update(hashlib.sha256(f.read_bytes()).digest())
     return h.hexdigest()
 
