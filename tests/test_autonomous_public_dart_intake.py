@@ -1,6 +1,7 @@
 """End-to-end offline tests for Researcher's automatic public-source acquisition."""
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -68,6 +69,17 @@ class AutonomousPublicDartTests(unittest.TestCase):
         self.assertEqual((self.repo / "pkgs/path/lib/path.dart").read_bytes(),
                          (source / "vendor/path/lib/path.dart").read_bytes())
         self.assertEqual(result["payload_sha256"], payload_digest(source))
+        # Independent reference for the canonical Library framing. In
+        # particular the path bytes must be included, not only their length.
+        expected = hashlib.sha256()
+        for item in sorted(source.rglob("*"), key=lambda p: p.as_posix()):
+            if not item.is_file():
+                continue
+            name = item.relative_to(source).as_posix().encode("utf-8")
+            expected.update(len(name).to_bytes(8, "big"))
+            expected.update(name)
+            expected.update(hashlib.sha256(item.read_bytes()).digest())
+        self.assertEqual(result["payload_sha256"], expected.hexdigest())
         self.assertIn("path", known(self.library))
         self.assertIn("real path functionality",
                       (source / "tool/self_test.dart").read_text())
