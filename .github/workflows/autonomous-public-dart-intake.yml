@@ -99,18 +99,52 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if gh api "repos/pilialvu75-hue/AI-Orchestrator-Module-Library/branches/${branch//\//%2F}" >/dev/null 2>&1; then
-            echo "::warning::Existing Researcher branch; refusing overwrite"
-            exit 0
+            # The PR may have failed Library CI because of a correctable source
+            # receipt error. Resume the SAME branch, never create a duplicate,
+            # and only if the immutable upstream Git blobs are identical.
+            saved="$RUNNER_TEMP/researcher-public-dart-${PACKAGE}"
+            cp -a "sandbox/researcher_public_dart/$PACKAGE" "$saved"
+            git reset --mixed -q
+            rm -rf -- "sandbox/researcher_public_dart/$PACKAGE"
+            git fetch --no-tags origin "refs/heads/$branch"
+            git checkout -B "$branch" FETCH_HEAD
+            CURRENT="sandbox/researcher_public_dart/$PACKAGE/metadata.json" \
+            UPDATED="$saved/metadata.json" python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          a = json.loads(Path(os.environ["CURRENT"]).read_text())
+          b = json.loads(Path(os.environ["UPDATED"]).read_text())
+          assert a["package"] == b["package"]
+          assert a["source_repository"] == b["source_repository"]
+          assert a["source_commit"] == b["source_commit"]
+          assert a["source_tag"] == b["source_tag"]
+          assert a["source_git_blobs"] == b["source_git_blobs"]
+          assert a["certification_authorized"] is False
+          assert b["certification_authorized"] is False
+          print("PASS: resume original upstream source; no new PR or force push")
+          PY
+            cp -a "$saved/." "sandbox/researcher_public_dart/$PACKAGE/"
+            git add -- "sandbox/researcher_public_dart/$PACKAGE"
+            if git diff --cached --quiet; then
+              echo "Existing intake already current; no duplicate commit."
+              exit 0
+            fi
+            git commit -m "researcher: repair immutable source receipt without altering upstream"
+            git -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
+              push https://github.com/pilialvu75-hue/AI-Orchestrator-Module-Library.git \
+                "HEAD:refs/heads/$branch"
+            echo "Updated existing Researcher PR branch after source-identity check."
+          else
+            git checkout -b "$branch"
+            git commit -m "researcher: materialize tested-gate-ready public Dart ${PACKAGE} source"
+            git -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
+              push https://github.com/pilialvu75-hue/AI-Orchestrator-Module-Library.git \
+                "HEAD:refs/heads/$branch"
+            gh pr create --repo pilialvu75-hue/AI-Orchestrator-Module-Library \
+              --head "$branch" --base main \
+              --title "Researcher autonomous source: ${PACKAGE} (sandbox only, not certified)" \
+              --body "Autonomously discovered public stable tag and materialized immutable original Git blobs with a real Aivexus Dart adapter. The dedicated Library isolated CI must execute and validate source-bound functional tests. This is not a security review, certification or production installation."
           fi
-          git checkout -b "$branch"
-          git commit -m "researcher: materialize tested-gate-ready public Dart ${PACKAGE} source"
-          git -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
-            push https://github.com/pilialvu75-hue/AI-Orchestrator-Module-Library.git \
-            "HEAD:refs/heads/$branch"
-          gh pr create --repo pilialvu75-hue/AI-Orchestrator-Module-Library \
-            --head "$branch" --base main \
-            --title "Researcher autonomous source: ${PACKAGE} (sandbox only, not certified)" \
-            --body "Autonomously discovered public stable tag and materialized immutable original Git blobs with a real Aivexus Dart adapter. The dedicated Library isolated CI must execute and validate source-bound functional tests. This is not a security review, certification or production installation."
 
       - name: Preserve bounded discovery report
         if: always()
