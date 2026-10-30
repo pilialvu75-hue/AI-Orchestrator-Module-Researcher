@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from autonomous_public_dart_intake import acquire, discover, known, payload_digest
+from autonomous_public_dart_intake import acquire, discover, known, payload_digest  # noqa: E402
 
 
 class AutonomousPublicDartTests(unittest.TestCase):
