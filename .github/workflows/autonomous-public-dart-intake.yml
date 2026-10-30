@@ -1,0 +1,122 @@
+name: Researcher autonomous public Dart source acquisition
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - tools/autonomous_public_dart_intake.py
+      - .github/workflows/autonomous-public-dart-intake.yml
+  schedule:
+    - cron: '23 */6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: researcher-public-source-to-library
+  cancel-in-progress: false
+
+jobs:
+  discover-acquire-submit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout trusted Researcher code
+        uses: actions/checkout@v4
+        with:
+          path: researcher
+          persist-credentials: false
+
+      - name: Checkout Library main (destination only)
+        uses: actions/checkout@v4
+        with:
+          repository: pilialvu75-hue/AI-Orchestrator-Module-Library
+          ref: main
+          path: library
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Test Researcher public source admission before real discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s researcher/tests -p 'test_autonomous_public_dart_intake.py' -v
+
+      - name: Discover stable public source and materialize verified original Git blobs
+        id: acquire
+        shell: bash
+        run: |
+          set -euo pipefail
+          python researcher/tools/autonomous_public_dart_intake.py \
+            --library-root library \
+            --output "${{ runner.temp }}/researcher-public-dart-result.json"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          p = Path(os.environ["RUNNER_TEMP"]) / "researcher-public-dart-result.json"
+          a = json.loads(p.read_text(encoding="utf-8"))
+          assert a.get("certification_authorized") is not True
+          assert a.get("security_reviewed") is not True
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write("created=" + str(a["created"]).lower() + "\n")
+              f.write("package=" + str(a.get("package") or "none") + "\n")
+          PY
+
+      - name: Validate original source and strict destination scope
+        if: steps.acquire.outputs.created == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd library
+          python tools/validate_library.py
+          git add -- sandbox/researcher_public_dart
+          git diff --cached --name-only | grep -Eq '^sandbox/researcher_public_dart/[a-z_]+/'
+          if git diff --cached --name-only | grep -Ev '^sandbox/researcher_public_dart/[a-z_]+/'; then
+            echo "::error::Researcher attempted writing outside public source sandbox"
+            exit 1
+          fi
+
+      - name: Publish one idempotent Library PR (never execute untrusted code with token)
+        if: steps.acquire.outputs.created == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
+          PACKAGE: ${{ steps.acquire.outputs.package }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::RESEARCHER_LIBRARY_TOKEN unavailable; source stays local to this run"
+            exit 1
+          fi
+          [[ "$PACKAGE" =~ ^(path|characters|fixnum)$ ]]
+          cd library
+          branch="researcher/public-dart-${PACKAGE}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if gh api "repos/pilialvu75-hue/AI-Orchestrator-Module-Library/branches/${branch//\//%2F}" >/dev/null 2>&1; then
+            echo "::warning::Existing Researcher branch; refusing overwrite"
+            exit 0
+          fi
+          git checkout -b "$branch"
+          git commit -m "researcher: materialize tested-gate-ready public Dart ${PACKAGE} source"
+          git -c "http.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)" \
+            push https://github.com/pilialvu75-hue/AI-Orchestrator-Module-Library.git \
+            "HEAD:refs/heads/$branch"
+          gh pr create --repo pilialvu75-hue/AI-Orchestrator-Module-Library \
+            --head "$branch" --base main \
+            --title "Researcher autonomous source: ${PACKAGE} (sandbox only, not certified)" \
+            --body "Autonomously discovered public stable tag and materialized immutable original Git blobs with a real Aivexus Dart adapter. The dedicated Library isolated CI must execute and validate source-bound functional tests. This is not a security review, certification or production installation."
+
+      - name: Preserve bounded discovery report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: researcher-public-dart-source-report-${{ github.run_id }}
+          path: ${{ runner.temp }}/researcher-public-dart-result.json
+          if-no-files-found: warn
+          retention-days: 14
