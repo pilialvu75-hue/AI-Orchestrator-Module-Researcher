@@ -28,7 +28,7 @@ jobs:
           LIBRARY_GITHUB_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
         run: |
           if [[ -z "${LIBRARY_GITHUB_TOKEN}" ]]; then
-            echo "Missing RESEARCHER_LIBRARY_TOKEN repository secret." >&2
+            echo "::error title=Missing Library credential::Configure RESEARCHER_LIBRARY_TOKEN in repository Actions secrets."
             exit 1
           fi
       - name: Install Researcher
