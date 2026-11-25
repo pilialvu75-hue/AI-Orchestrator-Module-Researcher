@@ -164,16 +164,32 @@ class GitHubLibrarySource:
         entries = index.get("packages")
         if not isinstance(entries, list):
             raise ValueError("Invalid development package index")
-        return {
-            "used_cache": cached,
-            "packages": [
-                {"pin": row["pin"], "package_sha256": row["package_sha256"],
-                 "validated_targets": row["validated_targets"]}
-                for row in entries
-                if row.get("development_qualified") is True
-                and row.get("independent_export_consumer") == "PASS"
-            ],
-        }
+        evidence, evidence_cached = self._fetch_with_cache(
+            "packages/development-platform-evidence.json", "development-platform-evidence.json"
+        )
+        if evidence.get("schema") != "aivexus.development-platform-evidence.v1":
+            raise ValueError("Invalid development platform evidence schema")
+        records = evidence.get("records")
+        if not isinstance(records, list):
+            raise ValueError("Invalid development platform evidence records")
+        packages = []
+        for row in entries:
+            if (row.get("development_qualified") is not True
+                    or row.get("independent_export_consumer") != "PASS"):
+                continue
+            targets = set(row["validated_targets"])
+            for record in records:
+                if (record.get("pin") == row["pin"]
+                        and record.get("package_sha256") == row["package_sha256"]
+                        and record.get("target") in ("linux", "windows", "macos")
+                        and type(record.get("run_id")) is int and record["run_id"] > 0
+                        and type(record.get("job_id")) is int and record["job_id"] > 0):
+                    targets.add(record["target"])
+            packages.append({
+                "pin": row["pin"], "package_sha256": row["package_sha256"],
+                "validated_targets": sorted(targets),
+            })
+        return {"used_cache": cached or evidence_cached, "packages": packages}
 
     def load_first_party_sources(self) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         payload, used_cache = self._fetch_with_cache(

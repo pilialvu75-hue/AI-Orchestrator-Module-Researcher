@@ -7,6 +7,16 @@ class FeedbackTests(unittest.TestCase):
     def test_only_functional_passes(self):
         class Api:
             def get_json_file(self, repository, path, ref):
+                if path == "packages/development-platform-evidence.json":
+                    return {
+                        "schema": "aivexus.development-platform-evidence.v1",
+                        "records": [
+                            dict(pin="module@0.1.0", package_sha256="a"*64,
+                                 target="windows", run_id=1, job_id=2),
+                            dict(pin="module@0.1.0", package_sha256="b"*64,
+                                 target="macos", run_id=1, job_id=3),
+                        ],
+                    }
                 assert path == "packages/development-index.json"
                 base = dict(pin="module@0.1.0", package_sha256="a"*64,
                             validated_targets=["linux"])
@@ -23,3 +33,5 @@ class FeedbackTests(unittest.TestCase):
             result = source.load_development_feedback()
             self.assertFalse(result["used_cache"])
             self.assertEqual([p["pin"] for p in result["packages"]], ["module@0.1.0"])
+            self.assertEqual(result["packages"][0]["validated_targets"],
+                             ["linux", "windows"])
