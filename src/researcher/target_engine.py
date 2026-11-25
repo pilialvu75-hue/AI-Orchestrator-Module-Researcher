@@ -36,6 +36,9 @@ class TargetAwareResearchEngine(ResearchEngine):
         return load_target_coverage(self.state, need)
 
     def _need_complete(self, need: Need) -> bool:
+        functional_gap = self._functional_gap(need)
+        if functional_gap is not None and functional_gap > 0:
+            return False
         coverage = self._coverage(need)
         if coverage.tracked:
             return coverage.complete
@@ -47,6 +50,9 @@ class TargetAwareResearchEngine(ResearchEngine):
         )
 
     def _need_shortage(self, need: Need) -> int:
+        functional_gap = self._functional_gap(need)
+        if functional_gap is not None and functional_gap > 0:
+            return functional_gap
         coverage = self._coverage(need)
         if coverage.tracked:
             return coverage.total_gap
@@ -115,6 +121,14 @@ class TargetAwareResearchEngine(ResearchEngine):
         missing_targets = tuple(
             target for target, gap in coverage.gaps.items() if gap > 0
         )
+        report = self.state.get_json("functional_coverage", {})
+        if self._functional_gap(need) is not None:
+            row = report["capabilities"][need.capability_id]
+            functional_targets = tuple(
+                target for target, gap in row["candidate_gaps"].items() if gap > 0
+            )
+            if functional_targets:
+                missing_targets = functional_targets
         if not missing_targets:
             missing_targets = need.targets
         limit = max(
