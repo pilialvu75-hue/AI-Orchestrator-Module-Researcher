@@ -34,6 +34,36 @@ def _target_candidate(name: str, sha_char: str, *targets: str):
 
 
 class TargetAwareEngineTests(unittest.TestCase):
+    def test_functional_gap_reopens_completed_submission_coverage(self) -> None:
+        requested = need()
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = SQLiteStateStore(root / "state.db")
+            dossiers = DossierStore(root)
+            engine = TargetAwareResearchEngine(
+                FakeLibrary([requested]), FakeLibrary([requested]),
+                FakeDiscovery([
+                    _target_candidate("first", "1", "android", "desktop"),
+                    _target_candidate("second", "2", "android", "desktop"),
+                ]),
+                state, dossiers, CandidateScorer(), ComparisonEngine(),
+                TargetScopedSubmissionClient(DryRunSubmissionClient(dossiers)),
+                ResearchMode.SEEDING,
+                security_scanner=FakeSecurityScanner(),
+                vulnerability_scanner=FakeVulnerabilityScanner(),
+            )
+            engine.run_cycle()
+            self.assertTrue(engine._need_complete(requested))
+            state.set_json("functional_coverage", {
+                "status": "available", "used_cache": False,
+                "capabilities": {requested.capability_id: {
+                    "candidate_gaps": {"android": 2, "desktop": 0},
+                }},
+            })
+            self.assertFalse(engine._need_complete(requested))
+            self.assertEqual(engine._need_shortage(requested), 2)
+            self.assertIn(requested, engine._rank_needs([requested]))
+
     def test_split_candidates_continue_until_two_per_target(self) -> None:
         requested = need()
         candidates = [
