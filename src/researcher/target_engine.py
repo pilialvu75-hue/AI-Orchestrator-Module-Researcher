@@ -53,6 +53,18 @@ class TargetAwareResearchEngine(ResearchEngine):
         completed = self.state.count_completed_submissions(need.capability_id)
         return max(0, need.desired_candidates - completed)
 
+    def _functional_gap(self, need: Need) -> int | None:
+        report = self.state.get_json("functional_coverage", {})
+        if report.get("status") != "available" or report.get("used_cache"):
+            return None
+        row = report.get("capabilities", {}).get(need.capability_id)
+        if not isinstance(row, dict):
+            return None
+        gaps = row.get("candidate_gaps", {})
+        if set(gaps) != set(need.targets):
+            return None
+        return sum(int(gap) for gap in gaps.values())
+
     def _rank_needs(self, needs: list[Need]) -> list[Need]:
         statuses = (
             {"needed", "researching", "satisfied"}
@@ -64,7 +76,10 @@ class TargetAwareResearchEngine(ResearchEngine):
             active = [need for need in active if not self._need_complete(need)]
 
         def key(need: Need) -> tuple[int, int, str]:
-            shortage = self._need_shortage(need)
+            functional_gap = self._functional_gap(need)
+            shortage = (
+                self._need_shortage(need) if functional_gap is None else functional_gap
+            )
             last_scan = self.state.last_scan(need.capability_id) or ""
             return (_PRIORITY.get(need.priority, 99), -shortage, last_scan)
 
