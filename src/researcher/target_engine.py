@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from .engine import ResearchEngine, _PRIORITY
+from .functional_coverage import functional_coverage
 from .models import Dossier, Need, ResearchMode, utc_now
 from .knowledge import (
     research_source,
@@ -119,6 +120,25 @@ class TargetAwareResearchEngine(ResearchEngine):
             needs, snapshot = self.need_source.load_needs()
             contracts, standard_version = self.contract_source.load_contracts()
             self.state.set_json("library_snapshot", snapshot)
+            feedback_loader = getattr(self.need_source, "load_development_feedback", None)
+            if callable(feedback_loader):
+                try:
+                    feedback = feedback_loader()
+                    functional = {
+                        need.capability_id: functional_coverage(
+                            need, contracts[need.capability_id].contract_id, feedback
+                        )
+                        for need in needs if need.capability_id in contracts
+                    }
+                    self.state.set_json("functional_coverage", {
+                        "status": "available", "used_cache": feedback["used_cache"],
+                        "capabilities": functional,
+                    })
+                except Exception as exc:
+                    self.state.set_json("functional_coverage", {
+                        "status": "unavailable", "error_type": type(exc).__name__,
+                        "capabilities": {},
+                    })
             ranked = self._rank_needs(needs)
             self.state.set_json("needs_total", len(needs))
             self.state.set_json("needs_incomplete", len(ranked))
