@@ -34,7 +34,7 @@ jobs:
       - name: Install Researcher
         run: python -m pip install --disable-pip-version-check .
       - name: Restore durable Researcher state
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/researcher-data
           key: researcher-state-v2-${{ github.run_id }}
@@ -64,7 +64,7 @@ jobs:
           researcher backfill-knowledge --limit 250 | tee "${RUNNER_TEMP}/researcher-backfill-result.json"
           echo "::endgroup::"
           echo "::group::Run researcher sweep"
-          researcher sweep --cycles 4 | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
+          timeout --signal=TERM --kill-after=15s 20m researcher sweep --cycles 4 | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
           echo "::endgroup::"
           echo "::group::Collect researcher diagnostics"
           researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json"
@@ -107,6 +107,12 @@ jobs:
           with open(target, "w", encoding="utf-8") as handle:
               json.dump(preview, handle, indent=2, sort_keys=True)
           PY
+      - name: Save durable Researcher state after bounded sweep
+        if: ${{ always() }}
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/researcher-data
+          key: researcher-state-v2-${{ github.run_id }}-${{ github.run_attempt }}
       - name: Preserve sanitized seeding diagnostics
         if: ${{ always() }}
         run: |
