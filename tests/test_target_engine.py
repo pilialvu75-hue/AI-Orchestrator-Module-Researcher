@@ -73,6 +73,8 @@ class TargetAwareEngineTests(unittest.TestCase):
             self.assertFalse(engine._need_complete(requested))
             self.assertEqual(engine._need_shortage(requested), 2)
             self.assertIn(requested, engine._rank_needs([requested]))
+            satisfied = replace(requested, status="satisfied")
+            self.assertIn(satisfied, engine._rank_needs([satisfied]))
             engine.discovery = FakeDiscovery([
                 _target_candidate("replacement-one", "3", "android"),
                 _target_candidate("replacement-two", "4", "android"),
