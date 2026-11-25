@@ -186,7 +186,27 @@ class TargetAwareResearchEngine(ResearchEngine):
                 self._emit(EventLevel.INFO, "cycle_idle", {"mode": self.mode.value})
                 return result
 
-            need = ranked[0]
+            missing_contracts = [
+                item for item in ranked if item.capability_id not in contracts
+            ]
+            for item in missing_contracts:
+                gap = {
+                    "schema_version": 1,
+                    "capability_id": item.capability_id,
+                    "title": item.title,
+                    "reason": "No contract_id exists in current Library contracts index",
+                    "observed_at": utc_now(),
+                    "action": "CONTRACT_PROPOSAL_REQUIRED",
+                }
+                self.dossiers.save_contract_gap(item.capability_id, gap)
+            self.state.set_json(
+                "pending_contract_gaps",
+                [item.capability_id for item in missing_contracts],
+            )
+            need = next(
+                (item for item in ranked if item.capability_id in contracts),
+                ranked[0],
+            )
             coverage_before = self._coverage(need)
             self.state.set_json("current_capability", need.capability_id)
             self._emit(

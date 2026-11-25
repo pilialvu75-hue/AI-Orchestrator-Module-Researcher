@@ -72,6 +72,32 @@ class TargetAwareEngineTests(unittest.TestCase):
             self.assertEqual(len(result["prepared_submissions"]), 2)
             self.assertEqual(state.count_completed_submissions("voice.stt"), 4)
 
+    def test_missing_contract_does_not_block_other_needs(self) -> None:
+        missing = replace(need("missing.contract"), priority="critical")
+        requested = need()
+        library = FakeLibrary([missing, requested], FakeLibrary([requested]).contracts)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = SQLiteStateStore(root / "state.db")
+            dossiers = DossierStore(root)
+            engine = TargetAwareResearchEngine(
+                library, library,
+                FakeDiscovery([_target_candidate("available", "1", "android")]),
+                state, dossiers, CandidateScorer(), ComparisonEngine(),
+                TargetScopedSubmissionClient(DryRunSubmissionClient(dossiers)),
+                ResearchMode.SEEDING,
+                security_scanner=FakeSecurityScanner(),
+                vulnerability_scanner=FakeVulnerabilityScanner(),
+            )
+            result = engine.run_cycle()
+            self.assertEqual(result["capability_id"], requested.capability_id)
+            self.assertEqual(len(result["prepared_submissions"]), 1)
+            self.assertEqual(state.get_json("pending_contract_gaps"),
+                             [missing.capability_id])
+            library.contracts = {}
+            result = engine.run_cycle()
+            self.assertEqual(result["state"], "BLOCKED")
+
     def test_split_candidates_continue_until_two_per_target(self) -> None:
         requested = need()
         candidates = [
