@@ -508,7 +508,7 @@ class TargetAwareResearchEngine(ResearchEngine):
             if functional_gap is not None and functional_gap > 0:
                 report = self.state.get_json("functional_coverage", {})
                 gaps = dict(report["capabilities"][need.capability_id]["candidate_gaps"])
-                selected = []
+                selected: list[Dossier] = []
                 remaining = list(shortlisted)
                 while remaining and len(selected) < need.desired_candidates:
                     best = max(
