@@ -217,6 +217,34 @@ class GitHubLibrarySource:
             })
         return {"used_cache": cached or evidence_cached, "packages": packages}
 
+    def load_first_party_previews(self) -> dict[str, Any]:
+        """Discover extracted source packages without claiming functional parity."""
+        payload, cached = self._fetch_with_cache(
+            "catalog/first-party-preview.json", "first-party-preview.json"
+        )
+        if payload.get("schema") != "aivexus.first-party-preview.v1":
+            raise ValueError("Invalid first-party preview schema")
+        assets = payload.get("assets")
+        if not isinstance(assets, list):
+            raise ValueError("Invalid first-party preview assets")
+        records: list[dict[str, Any]] = []
+        for asset in assets:
+            for key in ("source_commit", "package_commit"):
+                if not re.fullmatch(r"[0-9a-f]{40}", str(asset[key])):
+                    raise ValueError("Preview commit must be immutable")
+            path = str(asset["path"])
+            if not re.fullmatch(r"packages/[A-Za-z0-9_-]+", path):
+                raise ValueError("Invalid preview package path")
+            records.append({
+                "id": asset["id"], "version": asset["version"],
+                "path": path, "package_commit": asset["package_commit"],
+                "source_commit": asset["source_commit"],
+                "capabilities": asset["capabilities"],
+                "physical_ota": asset.get("physical_ota", "unknown"),
+                "functional_coverage": False,
+            })
+        return {"used_cache": cached, "packages": records}
+
     def load_first_party_sources(self) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         payload, used_cache = self._fetch_with_cache(
             ".airlab/first-party-sources.json",
