@@ -168,6 +168,18 @@ class TargetAwareResearchEngine(ResearchEngine):
                         "status": "unavailable", "error_type": type(exc).__name__,
                         "capabilities": {},
                     })
+            preview_loader = getattr(self.need_source, "load_first_party_previews", None)
+            if callable(preview_loader):
+                try:
+                    previews = preview_loader()
+                    self.state.set_json("first_party_previews", {
+                        "status": "available", **previews,
+                    })
+                except Exception as exc:
+                    self.state.set_json("first_party_previews", {
+                        "status": "unavailable", "error_type": type(exc).__name__,
+                        "packages": [],
+                    })
             ranked = self._rank_needs(needs)
             self.state.set_json("needs_total", len(needs))
             self.state.set_json("needs_incomplete", len(ranked))
