@@ -53,3 +53,25 @@ class FeedbackTests(unittest.TestCase):
             package["contracts"] = ["tampered"]
             with self.assertRaisesRegex(ValueError, "integrity mismatch"):
                 source.load_development_feedback()
+
+    def test_preview_is_not_functional_coverage(self):
+        asset = {
+            "id": "release.update_manager.original", "version": "0.1.0-dev.1",
+            "path": "packages/aivexus_original_updater",
+            "source_commit": "a"*40, "package_commit": "b"*40,
+            "capabilities": ["release.update_manager"], "physical_ota": "pending",
+        }
+
+        class Api:
+            def get_json_file(self, repository, path, ref):
+                assert path == "catalog/first-party-preview.json"
+                return {"schema": "aivexus.first-party-preview.v1", "assets": [asset]}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = GitHubLibrarySource(Api(), "owner/library", "main", Path(tmp))
+            result = source.load_first_party_previews()
+            self.assertFalse(result["packages"][0]["functional_coverage"])
+            self.assertEqual(result["packages"][0]["physical_ota"], "pending")
+            asset["package_commit"] = "main"
+            with self.assertRaisesRegex(ValueError, "immutable"):
+                source.load_first_party_previews()
