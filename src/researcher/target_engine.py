@@ -37,8 +37,8 @@ class TargetAwareResearchEngine(ResearchEngine):
 
     def _need_complete(self, need: Need) -> bool:
         functional_gap = self._functional_gap(need)
-        if functional_gap is not None and functional_gap > 0:
-            return False
+        if functional_gap is not None:
+            return functional_gap == 0
         coverage = self._coverage(need)
         if coverage.tracked:
             return coverage.complete
@@ -51,7 +51,7 @@ class TargetAwareResearchEngine(ResearchEngine):
 
     def _need_shortage(self, need: Need) -> int:
         functional_gap = self._functional_gap(need)
-        if functional_gap is not None and functional_gap > 0:
+        if functional_gap is not None:
             return functional_gap
         coverage = self._coverage(need)
         if coverage.tracked:

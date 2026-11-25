@@ -52,6 +52,16 @@ class TargetAwareEngineTests(unittest.TestCase):
                 security_scanner=FakeSecurityScanner(),
                 vulnerability_scanner=FakeVulnerabilityScanner(),
             )
+            state.set_json("functional_coverage", {
+                "status": "available", "used_cache": False,
+                "capabilities": {requested.capability_id: {
+                    "candidate_gaps": {"android": 0, "desktop": 0},
+                }},
+            })
+            self.assertTrue(engine._need_complete(requested))
+            self.assertEqual(engine._need_shortage(requested), 0)
+            self.assertEqual(engine._rank_needs([requested]), [])
+            state.set_json("functional_coverage", {})
             engine.run_cycle()
             self.assertTrue(engine._need_complete(requested))
             state.set_json("functional_coverage", {
