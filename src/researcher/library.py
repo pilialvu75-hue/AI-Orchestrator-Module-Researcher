@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from dataclasses import dataclass
@@ -177,6 +178,28 @@ class GitHubLibrarySource:
             if (row.get("development_qualified") is not True
                     or row.get("independent_export_consumer") != "PASS"):
                 continue
+            pin = row["pin"]
+            digest = row["package_sha256"]
+            if not re.fullmatch(r"[0-9a-f]{64}", digest):
+                raise ValueError("Invalid development package digest")
+            remote_path = row["path"]
+            if not re.fullmatch(
+                r"packages/experimental/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/package.json",
+                remote_path,
+            ) or ".." in remote_path.split("/"):
+                raise ValueError("Invalid development package path")
+            envelope, package_cached = self._fetch_with_cache(
+                remote_path, f"development-package-{digest}.json"
+            )
+            cached = cached or package_cached
+            package = envelope["package"]
+            actual = hashlib.sha256(json.dumps(
+                package, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")).hexdigest()
+            if actual != digest or envelope.get("package_sha256") != digest:
+                raise ValueError("Development package integrity mismatch")
+            if package.get("pin") != pin:
+                raise ValueError("Development package identity mismatch")
             targets = set(row["validated_targets"])
             for record in records:
                 if (record.get("pin") == row["pin"]
@@ -188,6 +211,9 @@ class GitHubLibrarySource:
             packages.append({
                 "pin": row["pin"], "package_sha256": row["package_sha256"],
                 "validated_targets": sorted(targets),
+                "capabilities": package["capabilities"],
+                "contracts": package["contracts"],
+                "source": package["source"],
             })
         return {"used_cache": cached or evidence_cached, "packages": packages}
 
