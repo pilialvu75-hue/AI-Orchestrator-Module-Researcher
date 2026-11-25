@@ -504,7 +504,28 @@ class TargetAwareResearchEngine(ResearchEngine):
                 candidate_research_targets(need, dossier.candidate)
                 for dossier in shortlisted
             )
-            if coverage_after_recovery.tracked or has_target_evidence:
+            functional_gap = self._functional_gap(need)
+            if functional_gap is not None and functional_gap > 0:
+                report = self.state.get_json("functional_coverage", {})
+                gaps = dict(report["capabilities"][need.capability_id]["candidate_gaps"])
+                selected = []
+                remaining = list(shortlisted)
+                while remaining and len(selected) < need.desired_candidates:
+                    best = max(
+                        remaining,
+                        key=lambda d: sum(
+                            gaps.get(t, 0) > 0
+                            for t in candidate_research_targets(need, d.candidate)
+                        ),
+                    )
+                    targets = candidate_research_targets(need, best.candidate)
+                    if not any(gaps.get(t, 0) > 0 for t in targets):
+                        break
+                    selected.append(best)
+                    remaining.remove(best)
+                    for target in targets:
+                        gaps[target] = max(0, gaps.get(target, 0) - 1)
+            elif coverage_after_recovery.tracked or has_target_evidence:
                 selected = select_for_target_gaps(
                     need,
                     coverage_after_recovery,
