@@ -156,6 +156,25 @@ class GitHubLibrarySource:
             "items": merged_status,
         }
 
+    def load_development_feedback(self) -> dict[str, Any]:
+        """Read development test receipts; never treat a submission as a pass."""
+        index, cached = self._fetch_with_cache(
+            "packages/development-index.json", "development-index.json"
+        )
+        entries = index.get("packages")
+        if not isinstance(entries, list):
+            raise ValueError("Invalid development package index")
+        return {
+            "used_cache": cached,
+            "packages": [
+                {"pin": row["pin"], "package_sha256": row["package_sha256"],
+                 "validated_targets": row["validated_targets"]}
+                for row in entries
+                if row.get("development_qualified") is True
+                and row.get("independent_export_consumer") == "PASS"
+            ],
+        }
+
     def load_first_party_sources(self) -> tuple[list[dict[str, Any]], dict[str, Any]]:
         payload, used_cache = self._fetch_with_cache(
             ".airlab/first-party-sources.json",
