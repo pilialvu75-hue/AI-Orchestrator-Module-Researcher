@@ -22,7 +22,9 @@ def functional_coverage(
         "used_cache": feedback["used_cache"],
         "tested_candidates": {target: sorted(pins) for target, pins in targets.items()},
         "candidate_gaps": {
-            target: max(0, need.desired_candidates - len(pins))
+            target: max(
+                0, need.desired_candidates - len({pin.rsplit("@", 1)[0] for pin in pins})
+            )
             for target, pins in targets.items()
         },
         "independent_pair_verified": False,
