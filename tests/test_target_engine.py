@@ -63,6 +63,14 @@ class TargetAwareEngineTests(unittest.TestCase):
             self.assertFalse(engine._need_complete(requested))
             self.assertEqual(engine._need_shortage(requested), 2)
             self.assertIn(requested, engine._rank_needs([requested]))
+            engine.discovery = FakeDiscovery([
+                _target_candidate("replacement-one", "3", "android"),
+                _target_candidate("replacement-two", "4", "android"),
+                _target_candidate("unneeded-desktop", "5", "desktop"),
+            ])
+            result = engine.run_cycle()
+            self.assertEqual(len(result["prepared_submissions"]), 2)
+            self.assertEqual(state.count_completed_submissions("voice.stt"), 4)
 
     def test_split_candidates_continue_until_two_per_target(self) -> None:
         requested = need()
