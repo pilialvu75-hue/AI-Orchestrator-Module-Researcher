@@ -93,6 +93,19 @@ class AutonomousPublicDartTests(unittest.TestCase):
         self.assertFalse(result["created"])
         self.assertEqual(["path"], result["staged_not_proven"])
 
+    def test_reassessment_detects_stale_mapping_and_payload_damage(self):
+        acquire(self.library, "path", "path-v1.9.1", "1.9.1", self.repo)
+        target = self.library / "sandbox/researcher_public_dart/path"
+        receipt = target / "metadata.json"
+        meta = json.loads(receipt.read_text())
+        meta["capability_id"] = "platform.filesystem"
+        receipt.write_text(json.dumps(meta))
+        self.assertEqual("repair_capability_mapping",
+                         run(self.library)["reassessment"][0]["action"])
+        (target / "payload/src/vendor/path/lib/path.dart").write_text("damaged")
+        self.assertEqual("recover_source_integrity",
+                         run(self.library)["reassessment"][0]["action"])
+
     def test_large_development_data_omitted_but_license_preserved(self):
         folder = self.repo / "pkgs/path/third_party"
         folder.mkdir()
