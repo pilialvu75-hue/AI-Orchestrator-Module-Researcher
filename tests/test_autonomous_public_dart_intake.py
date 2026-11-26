@@ -11,7 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from autonomous_public_dart_intake import acquire, discover, staged, run, payload_digest, repair_mapping, reassessment_plan  # noqa: E402
+from autonomous_public_dart_intake import (  # noqa: E402
+    acquire, discover, staged, run, payload_digest, repair_mapping, reassessment_plan,
+)
 
 
 class AutonomousPublicDartTests(unittest.TestCase):
