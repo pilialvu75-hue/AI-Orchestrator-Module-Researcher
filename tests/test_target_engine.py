@@ -84,6 +84,39 @@ class TargetAwareEngineTests(unittest.TestCase):
             self.assertEqual(len(result["prepared_submissions"]), 2)
             self.assertEqual(state.count_completed_submissions("voice.stt"), 4)
 
+    def test_cycle_loads_fresh_functional_feedback(self) -> None:
+        requested = need()
+
+        class LiveLibrary(FakeLibrary):
+            def load_development_feedback(self):
+                return {"used_cache": False, "packages": [
+                    {"pin": f"engine-{index}@1.0.0",
+                     "capabilities": [requested.capability_id],
+                     "contracts": ["voice.stt.v1"],
+                     "validated_targets": ["android", "desktop"]}
+                    for index in range(2)
+                ]}
+
+        library = LiveLibrary([requested])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state = SQLiteStateStore(root / "state.db")
+            dossiers = DossierStore(root)
+            discovery = FakeDiscovery([])
+            engine = TargetAwareResearchEngine(
+                library, library, discovery, state, dossiers,
+                CandidateScorer(), ComparisonEngine(),
+                TargetScopedSubmissionClient(DryRunSubmissionClient(dossiers)),
+                ResearchMode.SEEDING,
+                security_scanner=FakeSecurityScanner(),
+                vulnerability_scanner=FakeVulnerabilityScanner(),
+            )
+            result = engine.run_cycle()
+            self.assertEqual(result["state"], "IDLE")
+            self.assertEqual(discovery.calls, 0)
+            self.assertEqual(state.get_json("functional_coverage")["status"], "available")
+            self.assertEqual(engine._need_shortage(requested), 0)
+
     def test_missing_contract_does_not_block_other_needs(self) -> None:
         missing = replace(need("missing.contract"), priority="critical")
         requested = need()
