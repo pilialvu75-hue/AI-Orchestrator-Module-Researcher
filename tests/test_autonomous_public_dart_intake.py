@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from autonomous_public_dart_intake import acquire, discover, known, payload_digest  # noqa: E402
+from autonomous_public_dart_intake import acquire, discover, staged, run, payload_digest  # noqa: E402
 
 
 class AutonomousPublicDartTests(unittest.TestCase):
@@ -81,11 +81,17 @@ class AutonomousPublicDartTests(unittest.TestCase):
             expected.update(name)
             expected.update(hashlib.sha256(item.read_bytes()).digest())
         self.assertEqual(result["payload_sha256"], expected.hexdigest())
-        self.assertIn("path", known(self.library))
+        self.assertIn("path", staged(self.library))
         self.assertIn("real path functionality",
                       (source / "tool/self_test.dart").read_text())
         with self.assertRaises(ValueError):
             acquire(self.library, "path", "path-v1.9.1", "1.9.1", self.repo)
+
+    def test_staged_source_is_reported_as_unproven(self):
+        acquire(self.library, "path", "path-v1.9.1", "1.9.1", self.repo)
+        result = run(self.library)
+        self.assertFalse(result["created"])
+        self.assertEqual(["path"], result["staged_not_proven"])
 
     def test_large_development_data_omitted_but_license_preserved(self):
         folder = self.repo / "pkgs/path/third_party"

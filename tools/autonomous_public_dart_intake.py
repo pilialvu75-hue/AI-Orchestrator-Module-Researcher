@@ -35,7 +35,8 @@ def git(*args: str, cwd: Path | None = None, timeout: int = 120) -> bytes:
                           capture_output=True, timeout=timeout).stdout
 
 
-def known(library: Path) -> set[str]:
+def staged(library: Path) -> set[str]:
+    """Acquired/submitted source identities, not functional coverage."""
     found = set()
     for p in (library / "sandbox/researcher_public_dart").glob("*/metadata.json"):
         try:
@@ -208,11 +209,14 @@ def run(library: Path) -> dict:
     needs = json.loads((library / "catalog/needs.json").read_text(encoding="utf-8"))
     wanted = {x.get("capability_id") for x in needs.get("items", [])
               if x.get("status") == "needed"}
-    pending = [p for p in PROFILES if PROFILES[p] in wanted and p not in known(library)]
+    pending = [p for p in PROFILES if PROFILES[p] in wanted and p not in staged(library)]
+    existing = staged(library)
+    awaiting = [p for p in PROFILES if p in existing]
     if not pending:
-        return {"created": False, "reason": "no_missing_supported_package"}
+        return {"created": False, "reason": "no_missing_supported_package",
+                "staged_not_proven": awaiting}
     tags = git("ls-remote", "--tags", "--refs", REMOTE, timeout=50)
-    candidates = discover(tags, known(library), wanted)[:12]
+    candidates = discover(tags, staged(library), wanted)[:12]
     failures = []
     for pkg, tag, version in candidates:
         try:
@@ -249,7 +253,8 @@ def run(library: Path) -> dict:
                 "reason": reason,
             })
     return {"created": False, "reason": "all_candidates_rejected",
-            "attempted": len(candidates), "failures": failures[:5]}
+            "attempted": len(candidates), "failures": failures[:5],
+            "staged_not_proven": awaiting}
 
 
 def main() -> None:
