@@ -22,7 +22,7 @@ class AutonomousPublicDartTests(unittest.TestCase):
         self.library = self.root / "library"
         (self.library / "catalog").mkdir(parents=True)
         (self.library / "catalog/needs.json").write_text(
-            json.dumps({"items": [{"capability_id": "platform.filesystem",
+            json.dumps({"items": [{"capability_id": "utility.path_operations",
                                    "status": "needed"}]}))
         self.repo = self.root / "source"
         self.repo.mkdir()
@@ -52,11 +52,12 @@ class AutonomousPublicDartTests(unittest.TestCase):
         ).encode()
         self.assertEqual(
             ("path", "path-v1.9.1", "1.9.1"),
-            discover(tags, set(), {"platform.filesystem"})[0])
+            discover(tags, set(), {"utility.path_operations"})[0])
         self.assertEqual(
             [("characters", "characters-v1.4.0", "1.4.0")],
-            discover(tags, {"path"}, {"platform.filesystem"}))
+            discover(tags, {"path"}, {"utility.unicode_graphemes"}))
         self.assertEqual([], discover(tags, set(), {"voice.tts"}))
+        self.assertEqual([], discover(tags, set(), {"platform.filesystem", "platform.process"}))
 
     def test_materializes_git_bytes_and_functional_adapter_unapproved(self):
         result = acquire(self.library, "path", "path-v1.9.1", "1.9.1", self.repo)
