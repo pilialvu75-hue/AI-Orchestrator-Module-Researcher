@@ -221,7 +221,28 @@ def run(library: Path) -> dict:
                     "payload_sha256": result["payload_sha256"],
                     "security_reviewed": False, "certification_authorized": False}
         except (ValueError, subprocess.SubprocessError, OSError, UnicodeError) as exc:
-            failures.append({"package": pkg, "tag": tag, "error_type": type(exc).__name__})
+            known_reasons = [
+                "no audited integration template",
+                "symlink inside source payload",
+                "tag did not resolve to immutable commit",
+                "out-of-scope public file",
+                "untrusted symlink, executable, gitlink or unsafe file path",
+                "upstream package too large",
+                "upstream package name mismatch",
+                "tag is not verified stable package version",
+                "unreviewed third party runtime dependency",
+                "public Dart library absent",
+                "BSD-3-Clause license bytes not demonstrated",
+                "package already staged",
+                "Library needs catalog missing"
+            ]
+            reason = str(exc) if type(exc) is ValueError and str(exc) in known_reasons else (
+                "source_acquisition_failed"
+            )
+            failures.append({
+                "package": pkg, "tag": tag, "error_type": type(exc).__name__,
+                "reason": reason,
+            })
     return {"created": False, "reason": "all_candidates_rejected",
             "attempted": len(candidates), "failures": failures[:5]}
 
