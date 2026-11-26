@@ -2,8 +2,6 @@ name: Autonomous Library Seeding
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 */6 * * *"
 
 permissions:
   contents: read
