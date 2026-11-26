@@ -229,6 +229,32 @@ def reassessment_plan(library: Path) -> list[dict]:
     return work
 
 
+def repair_mapping(library: Path, work: list[dict]) -> list[dict]:
+    """Apply only deterministic metadata repairs to intact local sources."""
+    repairs = []
+    for item in work:
+        if item["action"] != "repair_capability_mapping":
+            continue
+        pkg = item["package"]
+        target = library / "sandbox/researcher_public_dart" / pkg
+        receipt = target / "metadata.json"
+        if receipt.is_symlink() or target.is_symlink():
+            continue
+        meta = json.loads(receipt.read_text(encoding="utf-8"))
+        if (meta.get("package") != pkg or meta.get("source_repository") != REPOSITORY
+                or meta.get("state") != "NORMALIZED_NOT_TESTED"
+                or payload_digest(target / "payload/src") != meta.get("payload_sha256")):
+            continue
+        previous = meta["capability_id"]
+        meta["capability_id"] = PROFILES[pkg]
+        tmp = receipt.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        tmp.replace(receipt)
+        repairs.append({"package": pkg, "previous": previous,
+                        "capability": PROFILES[pkg], "payload_sha256": meta["payload_sha256"]})
+    return repairs
+
+
 def run(library: Path) -> dict:
     if not (library / "catalog/needs.json").is_file():
         raise ValueError("Library needs catalog missing")
