@@ -19,9 +19,9 @@ REPOSITORY = "https://github.com/dart-lang/core"
 # Only generic, previously specified Aivexus integration contracts are supported.
 # Actual source tag, version, commit and package choice are resolved on each run.
 PROFILES = {
-    "path": "platform.filesystem",
-    "characters": "platform.filesystem",
-    "fixnum": "platform.process",
+    "path": "utility.path_operations",
+    "characters": "utility.unicode_graphemes",
+    "fixnum": "utility.fixed_width_integer",
 }
 TAG = re.compile(r"(path|characters|fixnum)-v([0-9]+[.][0-9]+[.][0-9]+)$")
 SHA = re.compile(r"[a-f0-9]{40}$")
