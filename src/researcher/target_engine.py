@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 from typing import Any
 
 from .engine import ResearchEngine, _PRIORITY
@@ -150,6 +152,7 @@ class TargetAwareResearchEngine(ResearchEngine):
         self._emit(EventLevel.INFO, "cycle_started", {"mode": self.mode.value})
         result: dict[str, Any]
         try:
+            print("research: loading Library indexes", file=sys.stderr, flush=True)
             needs, snapshot = self.need_source.load_needs()
             contracts, standard_version = self.contract_source.load_contracts()
             self.state.set_json("library_snapshot", snapshot)
@@ -184,6 +187,7 @@ class TargetAwareResearchEngine(ResearchEngine):
                         "status": "unavailable", "error_type": type(exc).__name__,
                         "packages": [],
                     })
+            print("research: Library feedback loaded", file=sys.stderr, flush=True)
             ranked = self._rank_needs(needs)
             self.state.set_json("needs_total", len(needs))
             self.state.set_json("needs_incomplete", len(ranked))
@@ -314,7 +318,9 @@ class TargetAwareResearchEngine(ResearchEngine):
                 )
                 return result
 
+            print("research: discovery started", file=sys.stderr, flush=True)
             candidates = self._discover_for_gaps(need, coverage_after_recovery)
+            print("research: discovery finished", file=sys.stderr, flush=True)
             raw_diagnostics = getattr(self.discovery, "last_discovery_diagnostics", {})
             discovery_diagnostics = (
                 {
@@ -355,8 +361,11 @@ class TargetAwareResearchEngine(ResearchEngine):
                     self.shortlist_threshold,
                 )
                 if pre_screen_qualified:
+                    print("research: source scan started", file=sys.stderr, flush=True)
                     security_report = self._scan_candidate(candidate)
+                    print("research: source scan finished", file=sys.stderr, flush=True)
                     if security_report.admission_eligible:
+                        print("research: dependency scan started", file=sys.stderr, flush=True)
                         vulnerability_admission = self._scan_vulnerabilities(
                             candidate,
                             security_report,
@@ -575,6 +584,7 @@ class TargetAwareResearchEngine(ResearchEngine):
                 selected = shortlisted[:slots]
 
             for dossier in selected:
+                print("research: handoff started", file=sys.stderr, flush=True)
                 summary = self._submit_dossier(
                     need,
                     contract,
