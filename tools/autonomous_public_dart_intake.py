@@ -203,6 +203,32 @@ def acquire(library: Path, pkg: str, tag: str, version: str, repo: Path) -> dict
     return meta
 
 
+def reassessment_plan(library: Path) -> list[dict]:
+    """Reassess local candidates without downloading or executing source."""
+    work = []
+    for pkg in PROFILES:
+        target = library / "sandbox/researcher_public_dart" / pkg
+        receipt = target / "metadata.json"
+        if not receipt.is_file():
+            continue
+        try:
+            meta = json.loads(receipt.read_text(encoding="utf-8"))
+            if (meta.get("package") != pkg
+                    or meta.get("source_repository") != REPOSITORY):
+                action = "inspect_source_identity"
+            elif payload_digest(target / "payload/src") != meta.get("payload_sha256"):
+                action = "recover_source_integrity"
+            elif meta.get("capability_id") != PROFILES[pkg]:
+                action = "repair_capability_mapping"
+            else:
+                action = "check_functional_evidence"
+        except (ValueError, OSError):
+            action = "inspect_source_receipt"
+        work.append({"package": pkg, "action": action,
+                     "expected_capability": PROFILES[pkg]})
+    return work
+
+
 def run(library: Path) -> dict:
     if not (library / "catalog/needs.json").is_file():
         raise ValueError("Library needs catalog missing")
@@ -210,11 +236,12 @@ def run(library: Path) -> dict:
     wanted = {x.get("capability_id") for x in needs.get("items", [])
               if x.get("status") == "needed"}
     pending = [p for p in PROFILES if PROFILES[p] in wanted and p not in staged(library)]
+    reassessment = reassessment_plan(library)
     existing = staged(library)
     awaiting = [p for p in PROFILES if p in existing]
     if not pending:
         return {"created": False, "reason": "no_missing_supported_package",
-                "staged_not_proven": awaiting}
+                "staged_not_proven": awaiting, "reassessment": reassessment}
     tags = git("ls-remote", "--tags", "--refs", REMOTE, timeout=50)
     candidates = discover(tags, staged(library), wanted)[:12]
     failures = []
@@ -228,7 +255,8 @@ def run(library: Path) -> dict:
             return {"created": True, "package": pkg,
                     "source_commit": result["source_commit"],
                     "payload_sha256": result["payload_sha256"],
-                    "security_reviewed": False, "certification_authorized": False}
+                    "security_reviewed": False, "certification_authorized": False,
+                    "reassessment": reassessment}
         except (ValueError, subprocess.SubprocessError, OSError, UnicodeError) as exc:
             known_reasons = [
                 "no audited integration template",
