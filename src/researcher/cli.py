@@ -250,11 +250,15 @@ def main() -> None:
         return
     if args.command == "sweep":
         cycles = max(1, min(int(args.cycles), 24))
+        print("sweep: first-party mining started", file=sys.stderr, flush=True)
         first_party = run_one_first_party_candidate(app)
+        print("sweep: first-party mining finished", file=sys.stderr, flush=True)
         results = []
-        for _ in range(cycles):
+        for index in range(cycles):
+            print(f"sweep: cycle {index + 1}/{cycles} started", file=sys.stderr, flush=True)
             cycle_result = app.engine.run_cycle()
             results.append(cycle_result)
+            print(f"sweep: cycle {index + 1}/{cycles} finished", file=sys.stderr, flush=True)
             if cycle_result.get("state") == "BACKOFF":
                 break
         _sync_diagnostics(app)
