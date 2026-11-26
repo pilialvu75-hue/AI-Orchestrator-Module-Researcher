@@ -118,7 +118,9 @@ class AutonomousPublicDartTests(unittest.TestCase):
         before = payload_digest(target / "payload/src")
         repairs = repair_mapping(self.library, reassessment_plan(self.library))
         self.assertEqual(1, len(repairs))
-        self.assertEqual("utility.path_operations", json.loads(receipt.read_text())["capability_id"])
+        self.assertEqual(
+            "utility.path_operations", json.loads(receipt.read_text())["capability_id"]
+        )
         self.assertEqual(before, payload_digest(target / "payload/src"))
         self.assertEqual([], repair_mapping(self.library, reassessment_plan(self.library)))
 
