@@ -188,9 +188,28 @@ class GitHubLibrarySource:
                 remote_path,
             ) or ".." in remote_path.split("/"):
                 raise ValueError("Invalid development package path")
-            envelope, package_cached = self._fetch_with_cache(
-                remote_path, f"development-package-{digest}.json"
-            )
+            cache_name = f"development-package-{digest}.json"
+            cache_path = self.cache_dir / cache_name
+            envelope = None
+            if cache_path.exists():
+                try:
+                    local = json.loads(cache_path.read_text(encoding="utf-8"))
+                    local_package = local["package"]
+                    local_digest = hashlib.sha256(json.dumps(
+                        local_package, sort_keys=True, separators=(",", ":"),
+                        ensure_ascii=False
+                    ).encode("utf-8")).hexdigest()
+                    if (local_digest == digest
+                            and local.get("package_sha256") == digest
+                            and local_package.get("pin") == pin):
+                        envelope = local
+                except (OSError, ValueError, KeyError, TypeError, AttributeError):
+                    pass
+            package_cached = False
+            if envelope is None:
+                envelope, package_cached = self._fetch_with_cache(
+                    remote_path, cache_name
+                )
             cached = cached or package_cached
             package = envelope["package"]
             actual = hashlib.sha256(json.dumps(
