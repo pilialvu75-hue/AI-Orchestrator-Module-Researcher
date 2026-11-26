@@ -2,13 +2,6 @@ name: Researcher autonomous public Dart source acquisition
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - tools/autonomous_public_dart_intake.py
-      - .github/workflows/autonomous-public-dart-intake.yml
-  schedule:
-    - cron: '23 */6 * * *'
 
 permissions:
   contents: read
