@@ -86,6 +86,21 @@ class AutonomousPublicDartTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             acquire(self.library, "path", "path-v1.9.1", "1.9.1", self.repo)
 
+    def test_large_development_data_omitted_but_license_preserved(self):
+        folder = self.repo / "pkgs/path/third_party"
+        folder.mkdir()
+        (folder / "test_data.txt").write_bytes(b"x" * 1100000)
+        (folder / "LICENSE.txt").write_text("Third-party notice")
+        subprocess.run(["git", "add", "-A"], cwd=self.repo, check=True)
+        subprocess.run(["git", "commit", "-qm", "add development data"],
+                       cwd=self.repo, check=True)
+        result = acquire(self.library, "path", "path-v1.9.1", "1.9.1", self.repo)
+        source = self.library / "sandbox/researcher_public_dart/path/payload/src/vendor/path"
+        self.assertFalse((source / "third_party/test_data.txt").exists())
+        self.assertEqual("Third-party notice",
+                         (source / "third_party/LICENSE.txt").read_text())
+        self.assertNotIn("third_party/test_data.txt", result["source_git_blobs"])
+
     def test_stable_version_mismatch_rejected_without_creating_a_module(self):
         with self.assertRaisesRegex(ValueError, "version"):
             acquire(self.library, "path", "path-v1.9.2", "1.9.2", self.repo)
