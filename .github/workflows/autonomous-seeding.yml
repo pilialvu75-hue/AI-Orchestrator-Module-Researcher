@@ -64,12 +64,17 @@ jobs:
           researcher backfill-knowledge --limit 250 | tee "${RUNNER_TEMP}/researcher-backfill-result.json"
           echo "::endgroup::"
           echo "::group::Run researcher sweep"
-          timeout --signal=TERM --kill-after=15s 20m researcher sweep --cycles 4 | tee "${RUNNER_TEMP}/researcher-cycle-result.json"
+          sweep_status=0
+          timeout --signal=TERM --kill-after=15s 20m researcher sweep --cycles 4 | tee "${RUNNER_TEMP}/researcher-cycle-result.json" || sweep_status=$?
           echo "::endgroup::"
           echo "::group::Collect researcher diagnostics"
-          researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json"
-          researcher handoffs > "${RUNNER_TEMP}/researcher-handoffs.json"
+          timeout 45s researcher events --limit 1000 > "${RUNNER_TEMP}/researcher-events.json" || echo "::warning::Event collection failed"
+          timeout 45s researcher handoffs > "${RUNNER_TEMP}/researcher-handoffs.json" || echo "::warning::Handoff collection failed"
           echo "::endgroup::"
+          if [[ "$sweep_status" != 0 ]]; then
+            echo "::error::Sweep failed with exit $sweep_status; partial state and events preserved."
+            exit "$sweep_status"
+          fi
           echo "::group::Validate seeding health"
           python tools/seeding_health_report.py --backfill "${RUNNER_TEMP}/researcher-backfill-result.json" --sweep "${RUNNER_TEMP}/researcher-cycle-result.json" --output "${RUNNER_TEMP}/researcher-run-health.json"
           echo "::endgroup::"
