@@ -53,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           python researcher/tools/autonomous_public_dart_intake.py \
-            --library-root library \
+            --library-root library --apply-repairs \
             --output "${{ runner.temp }}/researcher-public-dart-result.json"
           python - <<'PY'
           import json, os
@@ -63,6 +63,7 @@ jobs:
           assert a.get("certification_authorized") is not True
           assert a.get("security_reviewed") is not True
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write("repaired=" + str(bool(a.get("repairs"))).lower() + "\n")
               f.write("created=" + str(a["created"]).lower() + "\n")
               f.write("package=" + str(a.get("package") or "none") + "\n")
           PY
@@ -144,6 +145,49 @@ jobs:
               --head "$branch" --base main \
               --title "Researcher autonomous source: ${PACKAGE} (sandbox only, not certified)" \
               --body "Autonomously discovered public stable tag and materialized immutable original Git blobs with a real Aivexus Dart adapter. The dedicated Library isolated CI must execute and validate source-bound functional tests. This is not a security review, certification or production installation."
+          fi
+
+      - name: Validate staged metadata repairs
+        if: steps.acquire.outputs.repaired == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd library
+          python tools/validate_library.py
+          git add -- sandbox/researcher_public_dart
+          python - <<'PY'
+          import json, subprocess
+          paths = subprocess.check_output(["git", "diff", "--cached", "--name-only"], text=True).splitlines()
+          assert paths
+          for p in paths:
+              assert p in [f"sandbox/researcher_public_dart/{n}/metadata.json" for n in ("path", "characters", "fixnum")]
+              before = json.loads(subprocess.check_output(["git", "show", "HEAD:" + p]))
+              after = json.loads(open(p).read())
+              assert before.pop("capability_id") != after.pop("capability_id")
+              assert before == after
+          PY
+
+      - name: Submit metadata-only repair against current Library main
+        if: steps.acquire.outputs.repaired == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$GH_TOKEN"
+          cd library
+          branch="researcher/public-dart-mapping-$(git rev-parse --short=12 HEAD)"
+          if gh api "repos/pilialvu75-hue/AI-Orchestrator-Module-Library/branches/${branch//\//%2F}" >/dev/null 2>&1; then
+            echo "Repair branch already exists; no duplicate or overwrite."
+          else
+            git checkout -b "$branch"
+            git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "researcher: repair staged capability mappings"
+            gh auth setup-git
+            git push origin "HEAD:refs/heads/$branch"
+          fi
+          existing=$(gh pr list --repo pilialvu75-hue/AI-Orchestrator-Module-Library --head "$branch" --state all --json number --jq 'length')
+          if [[ "$existing" == 0 ]]; then
+            gh pr create --repo pilialvu75-hue/AI-Orchestrator-Module-Library --head "$branch" --base main --title "Repair staged public Dart capability metadata" --body "Automatic deterministic mapping correction only; no source or functional qualification changes."
           fi
 
       - name: Preserve bounded discovery report
