@@ -255,7 +255,7 @@ def repair_mapping(library: Path, work: list[dict]) -> list[dict]:
     return repairs
 
 
-def run(library: Path) -> dict:
+def run(library: Path, *, apply_repairs: bool = False) -> dict:
     if not (library / "catalog/needs.json").is_file():
         raise ValueError("Library needs catalog missing")
     needs = json.loads((library / "catalog/needs.json").read_text(encoding="utf-8"))
@@ -263,6 +263,11 @@ def run(library: Path) -> dict:
               if x.get("status") == "needed"}
     pending = [p for p in PROFILES if PROFILES[p] in wanted and p not in staged(library)]
     reassessment = reassessment_plan(library)
+    if apply_repairs:
+        repairs = repair_mapping(library, reassessment)
+        if repairs:
+            return {"created": False, "reason": "mapping_repaired", "repairs": repairs,
+                    "reassessment": reassessment_plan(library)}
     existing = staged(library)
     awaiting = [p for p in PROFILES if p in existing]
     if not pending:
@@ -316,7 +321,8 @@ def main() -> None:
     p.add_argument("--library-root", type=Path, required=True)
     p.add_argument("--output", type=Path, required=True)
     args = p.parse_args()
-    result = run(args.library_root)
+    p.add_argument("--apply-repairs", action="store_true")
+    result = run(args.library_root, apply_repairs=args.apply_repairs)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
     print(json.dumps(result, sort_keys=True))
