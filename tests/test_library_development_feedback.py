@@ -17,8 +17,11 @@ class FeedbackTests(unittest.TestCase):
         package_path = "packages/experimental/module/0.1.0/package.json"
 
         class Api:
+            package_calls = 0
+
             def get_json_file(self, repository, path, ref):
                 if path == package_path:
+                    self.package_calls += 1
                     return {"package": package, "package_sha256": digest}
                 if path == "packages/development-platform-evidence.json":
                     return {
@@ -42,7 +45,8 @@ class FeedbackTests(unittest.TestCase):
                          independent_export_consumer="PASS"),
                 ]}
         with tempfile.TemporaryDirectory() as tmp:
-            source = GitHubLibrarySource(Api(), "owner/library", "main", Path(tmp))
+            api = Api()
+            source = GitHubLibrarySource(api, "owner/library", "main", Path(tmp))
             result = source.load_development_feedback()
             self.assertFalse(result["used_cache"])
             self.assertEqual([p["pin"] for p in result["packages"]], ["module@0.1.0"])
@@ -50,6 +54,13 @@ class FeedbackTests(unittest.TestCase):
                              ["linux", "windows"])
             self.assertEqual(result["packages"][0]["capabilities"], ["platform.clipboard"])
             self.assertEqual(result["packages"][0]["contracts"], ["platform.clipboard.v1"])
+            self.assertEqual(source.load_development_feedback(), result)
+            self.assertEqual(api.package_calls, 1)
+            cache = Path(tmp) / f"development-package-{digest}.json"
+            cache.write_text("invalid JSON", encoding="utf-8")
+            self.assertEqual(source.load_development_feedback(), result)
+            self.assertEqual(api.package_calls, 2)
+            cache.unlink()
             package["contracts"] = ["tampered"]
             with self.assertRaisesRegex(ValueError, "integrity mismatch"):
                 source.load_development_feedback()
