@@ -142,6 +142,10 @@ def acquire(library: Path, pkg: str, tag: str, version: str, repo: Path) -> dict
                 or mode != "100644" or typ != "blob"
                 or SHA.fullmatch(blob_sha) is None):
             raise ValueError("untrusted symlink, executable, gitlink or unsafe file path")
+        # Preserve source and notices, but omit non-runtime development data.
+        if not (rel.startswith("lib/") or rel == "pubspec.yaml"
+                or parts[-1].upper().startswith(("LICENSE", "COPYING", "NOTICE", "AUTHORS"))):
+            continue
         blob = git("cat-file", "blob", blob_sha, cwd=repo)
         total += len(blob)
         if len(files) >= MAX_FILES or len(blob) > MAX_FILE_BYTES or total > MAX_TOTAL_BYTES:
@@ -189,6 +193,7 @@ def acquire(library: Path, pkg: str, tag: str, version: str, repo: Path) -> dict
         "source_commit": commit, "source_license": "BSD-3-Clause",
         "source_git_blobs": {p: blob for p, (blob, _) in files.items()},
         "payload_sha256": payload_digest(source), "upstream_files": len(files),
+        "source_selection": "runtime-and-license-notices",
         "source_materialized": True, "independent_security_reviewed": False,
         "certification_authorized": False, "production_installation_authorized": False,
     }
