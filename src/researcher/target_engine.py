@@ -77,7 +77,11 @@ class TargetAwareResearchEngine(ResearchEngine):
             if self.mode == ResearchMode.IMPROVEMENT
             else {"needed", "researching"}
         )
-        active = [need for need in needs if need.status in statuses]
+        active = [
+            need for need in needs
+            if need.status in statuses
+            or (need.status == "satisfied" and (self._functional_gap(need) or 0) > 0)
+        ]
         if self.mode != ResearchMode.IMPROVEMENT:
             active = [need for need in active if not self._need_complete(need)]
 
