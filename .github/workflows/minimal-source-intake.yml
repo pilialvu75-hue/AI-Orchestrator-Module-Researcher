@@ -1,0 +1,44 @@
+name: Minimal source intake
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '35 */6 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: minimal-source-intake
+  cancel-in-progress: false
+jobs:
+  acquire:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: researcher
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: pilialvu75-hue/AI-Orchestrator-Module-Library
+          path: library
+          persist-credentials: false
+      - name: Acquire source without executing it
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 researcher/tools/minimal_source_intake.py library
+      - name: Publish reference-only source
+        env:
+          GH_TOKEN: ${{ secrets.RESEARCHER_LIBRARY_TOKEN }}
+        working-directory: library
+        run: |
+          set -euo pipefail
+          if [[ -z "$(git status --porcelain -- incoming/dart-lang-core)" ]]; then
+            echo "No new source"
+            exit 0
+          fi
+          git add -- incoming/dart-lang-core
+          git diff --cached --name-only | grep -q '^incoming/dart-lang-core/'
+          if git diff --cached --name-only | grep -v '^incoming/dart-lang-core/'; then exit 1; fi
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com commit -m "researcher: acquire reference-only upstream source"
+          gh auth setup-git
+          git push origin HEAD:main
