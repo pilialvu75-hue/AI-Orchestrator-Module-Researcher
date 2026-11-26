@@ -11,7 +11,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from autonomous_public_dart_intake import acquire, discover, staged, run, payload_digest  # noqa: E402
+from autonomous_public_dart_intake import (  # noqa: E402
+    acquire, discover, staged, run, payload_digest, repair_mapping, reassessment_plan,
+)
 
 
 class AutonomousPublicDartTests(unittest.TestCase):
@@ -105,6 +107,22 @@ class AutonomousPublicDartTests(unittest.TestCase):
         (target / "payload/src/vendor/path/lib/path.dart").write_text("damaged")
         self.assertEqual("recover_source_integrity",
                          run(self.library)["reassessment"][0]["action"])
+
+    def test_mapping_repair_preserves_payload_and_is_idempotent(self):
+        acquire(self.library, "path", "path-v1.9.1", "1.9.1", self.repo)
+        target = self.library / "sandbox/researcher_public_dart/path"
+        receipt = target / "metadata.json"
+        meta = json.loads(receipt.read_text())
+        meta["capability_id"] = "platform.filesystem"
+        receipt.write_text(json.dumps(meta))
+        before = payload_digest(target / "payload/src")
+        repairs = repair_mapping(self.library, reassessment_plan(self.library))
+        self.assertEqual(1, len(repairs))
+        self.assertEqual(
+            "utility.path_operations", json.loads(receipt.read_text())["capability_id"]
+        )
+        self.assertEqual(before, payload_digest(target / "payload/src"))
+        self.assertEqual([], repair_mapping(self.library, reassessment_plan(self.library)))
 
     def test_large_development_data_omitted_but_license_preserved(self):
         folder = self.repo / "pkgs/path/third_party"
